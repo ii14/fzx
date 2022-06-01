@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 #include <thread>
-#include <atomic>
 #include <cassert>
+
 #include "queue.hpp"
 
 using std::string;
@@ -62,8 +62,7 @@ struct thread_match_t
     size_t matches = 0;
 
     do {
-      c.load();
-      for (; c.pos < c.size(); ++c.pos) {
+      for (c.fetch(); c.pos < c.size(); ++c.pos) {
         if (match(pattern, c.get())) {
           p.push(c.get());
           ++matches;
@@ -86,46 +85,6 @@ struct thread_match_t
   }
 };
 
-struct results_buffer_t
-{
-  // std::mutex mut;
-  size_t refs;
-  results_buffer_t* next;
-  size_t len;
-  size_t cap;
-  const char *res;
-
-  explicit results_buffer_t()
-    : refs{0}
-    , next{nullptr}
-    , len{0}
-    , cap{0}
-    , res{nullptr}
-  {
-  }
-};
-
-struct results_cosumer_t
-{
-  results_buffer_t* buf {nullptr};
-
-  explicit results_cosumer_t()
-    : buf{new results_buffer_t}
-  {
-  }
-
-  void next()
-  {
-    results_buffer_t* it = buf;
-    while (true) {
-      if (it == nullptr)
-        break;
-      it = it->next;
-    }
-    buf = it;
-  }
-};
-
 static void merge_thread(vector<thread_match_t*>* threads)
 {
   vector<const char*> output;
@@ -135,8 +94,7 @@ static void merge_thread(vector<thread_match_t*>* threads)
 
   while (!results.empty()) {
     auto&& c = results[selected]->c;
-    c.load();
-    for (; c.pos < c.size(); ++c.pos)
+    for (c.fetch(); c.pos < c.size(); ++c.pos)
       output.emplace_back(c.get());
     if (!c.next())
       results.erase(results.begin() + selected);

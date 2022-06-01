@@ -22,14 +22,14 @@ queue_buffer_t* new_queue_buffer()
 }
 
 
+void queue_consumer_t::fetch()
+{
+  meta = buf->meta;
+}
+
 uint32_t queue_consumer_t::size() const
 {
   return meta & MASKSIZE;
-}
-
-void queue_consumer_t::load()
-{
-  meta = buf->meta;
 }
 
 const char* queue_consumer_t::get() const

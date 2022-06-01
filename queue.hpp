@@ -13,9 +13,7 @@ struct queue_consumer_t
   uint32_t meta;
 
   explicit queue_consumer_t(queue_buffer_t* buffer)
-    : buf{buffer}
-    , pos{0}
-    , meta{0}
+    : buf{buffer}, pos{0}, meta{0}
   {
     assert(buf != nullptr);
   }
@@ -23,8 +21,8 @@ struct queue_consumer_t
   queue_consumer_t(const queue_consumer_t&) = delete;
   queue_consumer_t& operator=(const queue_consumer_t&) = delete;
 
+  void fetch();
   uint32_t size() const;
-  void load();
   const char* get() const;
   bool next();
 };
@@ -35,8 +33,7 @@ struct queue_producer_t
   uint32_t pos;
 
   explicit queue_producer_t(queue_buffer_t* buffer)
-    : buf{buffer}
-    , pos{0}
+    : buf{buffer}, pos{0}
   {
     assert(buf != nullptr);
   }
