@@ -6,8 +6,8 @@
 #include <thread>
 #include <atomic>
 #include <cassert>
+#include "queue.hpp"
 
-using std::atomic;
 using std::string;
 using std::vector;
 
@@ -33,134 +33,8 @@ static inline bool match(
 }
 
 static constexpr size_t WORKERS = 3;
-static constexpr size_t BUFSIZE = 4096 - 2;
-static constexpr uint32_t MASKSIZE = 0x3FFFFFFF;
-static constexpr uint32_t MASKSTOP = 0x80000000;
-static constexpr uint32_t MASKNEXT = 0x40000000;
-
-struct queue_buffer_t
-{
-  const char* data[BUFSIZE] {0};
-  queue_buffer_t* next {nullptr};
-  atomic<uint32_t> meta {0};
-
-  inline queue_buffer_t* get_next()
-  {
-    auto buf = next;
-    delete this;
-    return buf;
-  }
-};
-
-struct queue_consumer_t
-{
-  queue_buffer_t* buf;
-  uint32_t pos;
-  uint32_t meta;
-
-  explicit queue_consumer_t(queue_buffer_t* buffer)
-    : buf{buffer}
-    , pos{0}
-    , meta{0}
-  {
-    assert(buf != nullptr);
-  }
-
-  queue_consumer_t(const queue_consumer_t&) = delete;
-  queue_consumer_t& operator=(const queue_consumer_t&) = delete;
-
-  inline uint32_t size() const
-  {
-    return meta & MASKSIZE;
-  }
-
-  inline void load()
-  {
-    meta = buf->meta;
-  }
-
-  inline const char* get() const
-  {
-    return buf->data[pos];
-  }
-
-  inline bool next()
-  {
-    if (meta & MASKNEXT) {
-      auto nbuf = buf->next;
-      delete buf;
-      buf = nbuf;
-      pos = 0;
-    } else if (meta & MASKSTOP) {
-      delete buf;
-      buf = nullptr;
-      pos = 0;
-      meta = 0;
-      return false;
-    }
-    return true;
-  }
-};
-
-struct queue_producer_t
-{
-  queue_buffer_t* buf;
-  uint32_t pos;
-
-  explicit queue_producer_t(queue_buffer_t* buffer)
-    : buf{buffer}
-    , pos{0}
-  {
-    assert(buf != nullptr);
-  }
-
-  queue_producer_t(const queue_producer_t&) = delete;
-  queue_producer_t& operator=(const queue_producer_t&) = delete;
-
-  inline void push(const char* s)
-  {
-    if (pos < BUFSIZE) {
-      buf->data[pos++] = s;
-      buf->meta = pos;
-    } else {
-      auto nbuf = new queue_buffer_t;
-      nbuf->data[0] = s;
-      nbuf->meta = 1;
-      buf->next = nbuf;
-      buf->meta = BUFSIZE | MASKNEXT;
-      buf = nbuf;
-      pos = 1;
-    }
-  }
-
-  inline void stop()
-  {
-    buf->meta |= MASKSTOP;
-  }
-};
 
 const string pattern = "quid";
-
-static void thread_match(int id, queue_buffer_t* ibuf, queue_buffer_t* obuf)
-{
-  printf("start #%d\n", id);
-  queue_consumer_t c{ibuf};
-  queue_producer_t p{obuf};
-  size_t matches = 0;
-
-  do {
-    c.load();
-    for (; c.pos < c.size(); ++c.pos) {
-      if (match(pattern, c.get())) {
-        p.push(c.get());
-        ++matches;
-      }
-    }
-  } while (c.next());
-
-  p.stop();
-  printf("exit #%d matches=%ld\n", id, matches);
-}
 
 struct thread_match_t
 {
@@ -170,24 +44,43 @@ struct thread_match_t
 
   static thread_match_t* create(int i)
   {
-    auto ibuf = new queue_buffer_t;
-    auto obuf = new queue_buffer_t;
-    return new thread_match_t(i, ibuf, obuf);
+    return new thread_match_t(i, new_queue_buffer(), new_queue_buffer());
   }
 
   explicit thread_match_t(int i, queue_buffer_t* ibuf, queue_buffer_t* obuf)
     : p{ibuf}
     , c{obuf}
-    , t{std::thread{thread_match, i, ibuf, obuf}}
+    , t{std::thread{run, i, ibuf, obuf}}
   {
   }
 
-  inline void push(const char* s)
+  static void run(int id, queue_buffer_t* ibuf, queue_buffer_t* obuf)
+  {
+    printf("start #%d\n", id);
+    queue_consumer_t c{ibuf};
+    queue_producer_t p{obuf};
+    size_t matches = 0;
+
+    do {
+      c.load();
+      for (; c.pos < c.size(); ++c.pos) {
+        if (match(pattern, c.get())) {
+          p.push(c.get());
+          ++matches;
+        }
+      }
+    } while (c.next());
+
+    p.stop();
+    printf("exit #%d matches=%ld\n", id, matches);
+  }
+
+  void push(const char* s)
   {
     p.push(s);
   }
 
-  inline void stop()
+  void stop()
   {
     p.stop();
   }
