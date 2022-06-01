@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include "queue.hpp"
+#include "match.hpp"
 
 using std::string;
 using std::vector;
@@ -15,32 +16,16 @@ vector<string> example {
 #include "example.h"
 };
 
-static inline bool match(
-        const string& pattern,
-        const char* choice)
-{
-  auto compare = [&](const char *c){
-    for (size_t i = 0; i < pattern.size(); ++i)
-      if (tolower(c[i]) != tolower(pattern[i]))
-        return false;
-    return true;
-  };
-
-  for (const char *c = choice; *c != '\0'; ++c)
-    if (compare(c))
-      return true;
-  return false;
-}
 
 static constexpr size_t WORKERS = 3;
+const string PATTERN = "quid";
 
-const string pattern = "quid";
 
 struct thread_match_t
 {
   queue_producer_t p;
   queue_consumer_t c;
-  std::thread      t;
+  std::thread t;
 
   static thread_match_t* create(int i)
   {
@@ -63,7 +48,8 @@ struct thread_match_t
 
     do {
       for (c.fetch(); c.pos < c.size(); ++c.pos) {
-        if (match(pattern, c.get())) {
+        if (has_match(PATTERN.c_str(), c.get())) {
+          match(PATTERN.c_str(), c.get());
           p.push(c.get());
           ++matches;
         }
@@ -93,12 +79,14 @@ static void merge_thread(vector<thread_match_t*>* threads)
   size_t selected = 0;
 
   while (!results.empty()) {
-    auto&& c = results[selected]->c;
+    auto& c = results[selected]->c;
     for (c.fetch(); c.pos < c.size(); ++c.pos)
       output.emplace_back(c.get());
     if (!c.next())
       results.erase(results.begin() + selected);
-    if (++selected >= results.size())
+    else
+      ++selected;
+    if (selected >= results.size())
       selected = 0;
   }
 
@@ -114,12 +102,12 @@ int main()
       input.emplace_back(choice.c_str());
   printf("%ld items\n", input.size());
 
-  size_t selected = 0;
   vector<thread_match_t*> threads {};
   for (size_t i = 0; i < WORKERS; ++i)
     threads.emplace_back(thread_match_t::create(i));
   std::thread merge{merge_thread, &threads};
 
+  size_t selected = 0;
   for (auto s : input) {
     auto w = threads[selected++];
     if (selected >= threads.size())
@@ -131,9 +119,9 @@ int main()
     w->stop();
   for (auto w : threads)
     w->t.join();
+  merge.join();
   for (auto w : threads)
     delete w;
-  merge.join();
 }
 
 // vim: sts=2 sw=2 et

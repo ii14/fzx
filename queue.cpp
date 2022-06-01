@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <atomic>
+#include <cassert>
 
 static constexpr size_t BUFSIZE = 4096 - 2;
 static constexpr uint32_t MASKSIZE = 0x3FFFFFFF;
@@ -21,6 +22,12 @@ queue_buffer_t* new_queue_buffer()
   return new queue_buffer_t();
 }
 
+
+queue_consumer_t::queue_consumer_t(queue_buffer_t* buffer)
+  : buf{buffer}, pos{0}, meta{0}
+{
+  assert(buf != nullptr);
+}
 
 void queue_consumer_t::fetch()
 {
@@ -54,6 +61,12 @@ bool queue_consumer_t::next()
   return true;
 }
 
+
+queue_producer_t::queue_producer_t(queue_buffer_t* buffer)
+  : buf{buffer}, pos{0}
+{
+  assert(buf != nullptr);
+}
 
 void queue_producer_t::push(const char* s)
 {
