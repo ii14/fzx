@@ -162,7 +162,7 @@ void ctx_t::run()
 static int deferred_cb(lua_State* L)
 {
   auto ctx = static_cast<ctx_t*>(lua_touserdata(L, lua_upvalueindex(1)));
-  lua_getref(L, ctx->callback);
+  lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->callback);
   lua_pushboolean(L, ctx->done);
 
   results_buffer_t buf;
