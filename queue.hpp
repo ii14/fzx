@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "choice.hpp"
+
 struct queue_buffer_t;
 queue_buffer_t* new_queue_buffer();
 
@@ -17,7 +19,7 @@ struct queue_consumer_t
 
   void fetch();
   uint32_t size() const;
-  const char* get() const;
+  choice_t get() const;
   bool next();
 };
 
@@ -30,7 +32,7 @@ struct queue_producer_t
   queue_producer_t(const queue_producer_t&) = delete;
   queue_producer_t& operator=(const queue_producer_t&) = delete;
 
-  void push(const char* s);
+  void push(choice_t s);
   void stop();
 };
 

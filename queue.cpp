@@ -12,7 +12,7 @@ static constexpr uint32_t MASKNEXT = 0x40000000;
 
 struct queue_buffer_t
 {
-  const char* data[BUFSIZE] {0};
+  choice_t data[BUFSIZE] {0};
   queue_buffer_t* next {nullptr};
   std::atomic<uint32_t> meta {0};
 };
@@ -39,7 +39,7 @@ uint32_t queue_consumer_t::size() const
   return meta & MASKSIZE;
 }
 
-const char* queue_consumer_t::get() const
+choice_t queue_consumer_t::get() const
 {
   return buf->data[pos];
 }
@@ -68,7 +68,7 @@ queue_producer_t::queue_producer_t(queue_buffer_t* buffer)
   assert(buf != nullptr);
 }
 
-void queue_producer_t::push(const char* s)
+void queue_producer_t::push(choice_t s)
 {
   if (pos < BUFSIZE) {
     buf->data[pos++] = s;

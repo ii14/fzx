@@ -12,12 +12,12 @@ class choice_t
 public:
   using index_type = uint32_t;
 
-  explicit choice_t() noexcept
+  choice_t() noexcept
     : data{nullptr}
   {
   }
 
-  explicit choice_t(const char* data) noexcept
+  choice_t(const char* data) noexcept
     : data{data}
   {
   }
@@ -46,3 +46,5 @@ public:
     return data != nullptr;
   }
 };
+
+// vim: sts=2 sw=2 et

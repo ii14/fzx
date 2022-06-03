@@ -31,7 +31,8 @@ public:
   choice_t insert(const char* s);
   /// free all allocated memory
   void clear();
-  size_t size() const { return pages.size(); }
+
+  size_t size() const { return idx; }
 };
 
 // vim: sts=2 sw=2 et

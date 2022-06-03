@@ -50,8 +50,8 @@ struct thread_match_t
 
     do {
       for (c.fetch(); c.pos < c.size(); ++c.pos) {
-        if (has_match(PATTERN.c_str(), c.get())) {
-          match(PATTERN.c_str(), c.get());
+        if (has_match(PATTERN.c_str(), c.get().value())) {
+          match(PATTERN.c_str(), c.get().value());
           p.push(c.get());
           ++matches;
         }
@@ -62,7 +62,7 @@ struct thread_match_t
     printf("exit #%d matches=%ld\n", id, matches);
   }
 
-  void push(const char* s)
+  void push(choice_t s)
   {
     p.push(s);
   }
@@ -75,7 +75,7 @@ struct thread_match_t
 
 static void merge_thread(vector<thread_match_t*>* threads)
 {
-  vector<const char*> results;
+  vector<choice_t> results;
   results.reserve(512);
   vector<thread_match_t*> ts {*threads};
   size_t selected = 0;
@@ -83,7 +83,7 @@ static void merge_thread(vector<thread_match_t*>* threads)
   while (!ts.empty()) {
     auto& c = ts[selected]->c;
     for (c.fetch(); c.pos < c.size(); ++c.pos)
-      results.emplace_back(c.get());
+      results.push_back(c.get());
     if (!c.next())
       ts.erase(ts.begin() + selected);
     else
@@ -97,30 +97,24 @@ static void merge_thread(vector<thread_match_t*>* threads)
 
 int main()
 {
-  allocator_t a;
-
-  vector<const char*> input;
-  // input.reserve(40000 * example.size());
-  for (size_t i = 0; i < 40000; ++i) {
-    for (const auto& choice : example) {
-      input.emplace_back(choice.c_str());
-      // a.insert(choice.c_str());
-    }
-  }
-  printf("%ld items\n", input.size());
+  allocator_t mem;
 
   vector<thread_match_t*> threads {};
   for (size_t i = 0; i < WORKERS; ++i)
-    threads.emplace_back(thread_match_t::create(i));
+    threads.push_back(thread_match_t::create(i));
   std::thread merge{merge_thread, &threads};
 
   size_t selected = 0;
-  for (auto s : input) {
-    auto w = threads[selected++];
-    if (selected >= threads.size())
-      selected = 0;
-    w->push(s);
+  for (size_t i = 0; i < 40000; ++i) {
+    for (const auto& choice : example) {
+      auto s = mem.insert(choice.c_str());
+      auto w = threads[selected++];
+      if (selected >= threads.size())
+        selected = 0;
+      w->push(s);
+    }
   }
+  printf("%ld items\n", mem.size());
 
   for (auto w : threads)
     w->stop();
