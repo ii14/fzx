@@ -4,36 +4,42 @@
 #include <mutex>
 #include <atomic>
 
-struct output_buffer_t
+#include "choice.hpp"
+
+struct results_buffer_t
 {
-  size_t pos {0};
-  size_t len {0};
-  size_t max {0};
-  const char** buf {nullptr};
+  size_t pos {0}; // current position
+  size_t max {0}; // total amout of items
+  std::vector<choice_t> buf; // output buffer
 };
 
 struct results_t
 {
-  static constexpr uint32_t MASKSIZE = 0x3FFFFFFF;
-  static constexpr uint32_t MASKSTOP = 0x80000000;
+  std::vector<choice_t> res; // TODO: btree
+  mutable std::mutex mut; // TODO: spinlock?
 
-  mutable std::mutex mut;
-  std::atomic<uint32_t> written;
-  std::vector<const char*> res;
-
-  void fetch(output_buffer_t& output, uint32_t pos, uint16_t len) const
+  void fetch(results_buffer_t& output, uint32_t pos, uint16_t len) const
   {
-    std::unique_lock<std::mutex> lock{mut};
-    const size_t size = written;
+    output.buf.clear();
+    output.buf.reserve(len);
 
+    mut.lock();
+    const size_t size = res.size();
     if (pos + len > size)
       pos = len > size ? size - len : 0;
+    for (size_t i = 0; i < len && pos + i < size; ++i)
+      output.buf.push_back(res[pos+i]);
+    mut.unlock();
 
-    for (size_t i = pos; i < pos + len; ++i)
-      output.buf[i] = i < size ? res[i] : nullptr;
     output.max = size;
     output.pos = pos;
-    output.len = len;
+  }
+
+  void insert(choice_t item)
+  {
+    mut.lock();
+    res.push_back(item);
+    mut.unlock();
   }
 };
 

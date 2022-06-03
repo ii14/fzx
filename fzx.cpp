@@ -10,6 +10,7 @@
 #include "match.hpp"
 #include "allocator.hpp"
 #include "choice.hpp"
+#include "results.hpp"
 
 using std::string;
 using std::vector;
@@ -62,29 +63,19 @@ struct thread_match_t
     printf("exit #%d matches=%ld\n", id, matches);
   }
 
-  void push(choice_t s)
-  {
-    p.push(s);
-  }
-
-  void stop()
-  {
-    p.stop();
-  }
+  void push(choice_t s) { p.push(s); }
+  void stop() { p.stop(); }
 };
 
-static void merge_thread(vector<thread_match_t*>* threads)
+static void merge_thread(vector<thread_match_t*>* threads, results_t* results)
 {
-  // TODO: implement btree
-  vector<choice_t> results;
-  results.reserve(512);
   vector<thread_match_t*> ts {*threads};
-  size_t selected = 0;
+  size_t selected = 0; // TODO: implement mpsc queue
 
   while (!ts.empty()) {
     auto& c = ts[selected]->c;
     for (c.fetch(); c.pos < c.size(); ++c.pos)
-      results.push_back(c.get());
+      results->insert(c.get());
     if (!c.next())
       ts.erase(ts.begin() + selected);
     else
@@ -93,31 +84,41 @@ static void merge_thread(vector<thread_match_t*>* threads)
       selected = 0;
   }
 
-  printf("results = %ld\n", results.size());
+  printf("done = %ld\n", results->res.size());
 }
 
 int main()
 {
   allocator_t mem;
+  results_t results;
 
-  // TODO: implement mpsc queue
   vector<thread_match_t*> threads {};
   for (size_t i = 0; i < WORKERS; ++i)
     threads.push_back(thread_match_t::create(i));
-  // TODO: implement spmc queue
-  std::thread merge{merge_thread, &threads};
+  std::thread merge{merge_thread, &threads, &results};
 
   size_t selected = 0;
   for (size_t i = 0; i < 40000; ++i) {
     for (const auto& choice : example) {
       auto s = mem.insert(choice.c_str());
       auto w = threads[selected++];
+      // TODO: implement spmc queue
       if (selected >= threads.size())
         selected = 0;
       w->push(s);
     }
   }
+
   printf("%ld items\n", mem.size());
+
+  // for (size_t i = 0; i < 6; ++i) {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(15));
+  //   results_buffer_t res;
+  //   results.fetch(res, 0, 10);
+  //   printf("items = %ld\n", res.max);
+  //   // for (auto item : res.buf)
+  //   //   printf("#%u %s\n", item.index(), item.value());
+  // }
 
   for (auto w : threads)
     w->stop();
