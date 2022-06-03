@@ -1,7 +1,7 @@
 TARGET   = fzx
 
-CXXSRCS  = fzx.cpp queue.cpp match.cpp allocator.cpp
-CSRCS    = bonus.c
+CXXSRCS  = src/fzx.cpp src/queue.cpp src/match.cpp src/allocator.cpp
+CSRCS    = src/bonus.c
 SRCS     = $(CXXSRCS) $(CSRCS)
 
 INCLUDE  =
@@ -14,7 +14,7 @@ COBJS    = $(addprefix build/,$(CSRCS:.c=.c.o))
 OBJS     = $(CXXOBJS) $(COBJS)
 DEPS     = $(OBJS:.o=.d)
 
-all: $(TARGET)
+all: $(TARGET) compile_commands.json
 
 build/%.cpp.o: %.cpp
 	@mkdir -p $(@D)
@@ -27,6 +27,9 @@ build/%.c.o: %.c
 $(TARGET): $(OBJS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LFLAGS)
+
+compile_commands.json: Makefile
+	command -v compiledb && compiledb -n make
 
 -include $(DEPS)
 
