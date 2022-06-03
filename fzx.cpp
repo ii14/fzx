@@ -75,6 +75,7 @@ struct thread_match_t
 
 static void merge_thread(vector<thread_match_t*>* threads)
 {
+  // TODO: implement btree
   vector<choice_t> results;
   results.reserve(512);
   vector<thread_match_t*> ts {*threads};
@@ -99,9 +100,11 @@ int main()
 {
   allocator_t mem;
 
+  // TODO: implement mpsc queue
   vector<thread_match_t*> threads {};
   for (size_t i = 0; i < WORKERS; ++i)
     threads.push_back(thread_match_t::create(i));
+  // TODO: implement spmc queue
   std::thread merge{merge_thread, &threads};
 
   size_t selected = 0;
