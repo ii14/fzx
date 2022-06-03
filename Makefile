@@ -1,6 +1,6 @@
 TARGET   = fzx
 
-CXXSRCS  = fzx.cpp queue.cpp match.cpp
+CXXSRCS  = fzx.cpp queue.cpp match.cpp allocator.cpp
 CSRCS    = bonus.c
 SRCS     = $(CXXSRCS) $(CSRCS)
 

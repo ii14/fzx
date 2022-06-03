@@ -5,7 +5,6 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdlib>
-#include <array>
 
 #include "match.hpp"
 #include "bonus.h"

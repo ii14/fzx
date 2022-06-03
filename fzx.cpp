@@ -8,6 +8,8 @@
 
 #include "queue.hpp"
 #include "match.hpp"
+#include "allocator.hpp"
+#include "choice.hpp"
 
 using std::string;
 using std::vector;
@@ -73,33 +75,38 @@ struct thread_match_t
 
 static void merge_thread(vector<thread_match_t*>* threads)
 {
-  vector<const char*> output;
-  output.reserve(512);
-  vector<thread_match_t*> results {*threads};
+  vector<const char*> results;
+  results.reserve(512);
+  vector<thread_match_t*> ts {*threads};
   size_t selected = 0;
 
-  while (!results.empty()) {
-    auto& c = results[selected]->c;
+  while (!ts.empty()) {
+    auto& c = ts[selected]->c;
     for (c.fetch(); c.pos < c.size(); ++c.pos)
-      output.emplace_back(c.get());
+      results.emplace_back(c.get());
     if (!c.next())
-      results.erase(results.begin() + selected);
+      ts.erase(ts.begin() + selected);
     else
       ++selected;
-    if (selected >= results.size())
+    if (selected >= ts.size())
       selected = 0;
   }
 
-  printf("results = %ld\n", output.size());
+  printf("results = %ld\n", results.size());
 }
 
 int main()
 {
+  allocator_t a;
+
   vector<const char*> input;
-  input.reserve(40000 * example.size());
-  for (size_t i = 0; i < 40000; ++i)
-    for (const auto& choice : example)
+  // input.reserve(40000 * example.size());
+  for (size_t i = 0; i < 40000; ++i) {
+    for (const auto& choice : example) {
       input.emplace_back(choice.c_str());
+      // a.insert(choice.c_str());
+    }
+  }
   printf("%ld items\n", input.size());
 
   vector<thread_match_t*> threads {};
