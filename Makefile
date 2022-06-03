@@ -1,17 +1,17 @@
-TARGET   = fzx
+TARGET   = lua/fzx.so
+
+INCLUDE  = $(shell pkg-config --cflags luajit) -Ideps/libuv/include
+FLAGS    = -fPIC -Wall -Wextra -O3
+CXXFLAGS = $(FLAGS) -std=c++14
+CFLAGS   = $(FLAGS) -std=c99
+LDFLAGS  = -pthread
 
 CXXSRCS  = src/fzx.cpp src/queue.cpp src/match.cpp src/allocator.cpp
 CSRCS    = src/bonus.c
+
 SRCS     = $(CXXSRCS) $(CSRCS)
-
-INCLUDE  =
-CXXFLAGS = -std=c++17 -Wall -Wextra -O3
-CFLAGS   = -std=c99 -Wall -Wextra -O3
-LFLAGS   = -pthread
-
-CXXOBJS  = $(addprefix build/,$(CXXSRCS:.cpp=.cpp.o))
-COBJS    = $(addprefix build/,$(CSRCS:.c=.c.o))
-OBJS     = $(CXXOBJS) $(COBJS)
+OBJS     = $(addprefix build/,$(CXXSRCS:.cpp=.cpp.o)) \
+	   $(addprefix build/,$(CSRCS:.c=.c.o))
 DEPS     = $(OBJS:.o=.d)
 
 all: $(TARGET) compile_commands.json
@@ -26,7 +26,7 @@ build/%.c.o: %.c
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LFLAGS)
+	$(CXX) $(CXXFLAGS) -shared -o $(TARGET) $(OBJS) $(LDFLAGS)
 
 compile_commands.json: Makefile
 	command -v compiledb && compiledb -n make
