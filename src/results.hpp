@@ -25,9 +25,10 @@ struct results_t
 
     mut.lock();
     const size_t size = res.size();
-    if (pos + len > size)
-      pos = len > size ? size - len : 0;
-    for (size_t i = 0; i < len && pos + i < size; ++i)
+    // TODO: snap position. code below doesn't work
+    // if (pos + len > size)
+    //   pos = len > size ? size - len : 0;
+    for (size_t i = 0; i < len && i + pos < size; ++i)
       output.buf.push_back(res[pos+i]);
     mut.unlock();
 

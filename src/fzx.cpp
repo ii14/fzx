@@ -31,7 +31,7 @@ vector<string> example {
 
 
 static constexpr size_t WORKERS = 3;
-const string PATTERN = "quid";
+const string PATTERN = "Testing";
 
 
 struct thread_match_t
@@ -83,6 +83,7 @@ struct ctx_t
   std::thread t_merge;
   std::thread t_main;
   std::atomic<bool> done {false};
+  std::atomic<size_t> total {0};
 
   void run();
   void merge();
@@ -99,8 +100,10 @@ void ctx_t::merge()
 
   while (!ts.empty()) {
     auto& c = ts[selected]->c;
-    for (c.fetch(); c.pos < c.size(); ++c.pos)
+    for (c.fetch(); c.pos < c.size(); ++c.pos) {
       results.insert(c.get());
+      update();
+    }
     if (!c.next())
       ts.erase(ts.begin() + selected);
     else
@@ -110,16 +113,7 @@ void ctx_t::merge()
   }
 }
 
-// for (size_t i = 0; i < 6; ++i) {
-//   std::this_thread::sleep_for(std::chrono::milliseconds(15));
-//   results_buffer_t res;
-//   results.fetch(res, 0, 10);
-//   printf("items = %ld\n", res.max);
-//   // for (auto item : res.buf)
-//   //   printf("#%u %s\n", item.index(), item.value());
-// }
-
-
+// just for testing
 void ctx_t::run()
 {
   for (size_t i = 0; i < WORKERS; ++i)
@@ -127,7 +121,7 @@ void ctx_t::run()
   t_merge = std::thread{&ctx_t::merge, this};
 
   size_t selected = 0;
-  for (size_t i = 0; i < 40000; ++i) {
+  for (size_t i = 0; i < 180000; ++i) {
     for (const auto& choice : example) {
       auto s = mem.insert(choice.c_str());
       auto w = threads[selected++];
@@ -135,6 +129,16 @@ void ctx_t::run()
       if (selected >= threads.size())
         selected = 0;
       w->push(s);
+      total += 1;
+      update();
+    }
+    if (i % 10000 == 0) {
+      auto s = mem.insert("Testing");
+      auto w = threads[selected++];
+      if (selected >= threads.size())
+        selected = 0;
+      w->push(s);
+      total += 1;
       update();
     }
   }
@@ -162,10 +166,12 @@ static int deferred_cb(lua_State* L)
   lua_pushboolean(L, ctx->done);
 
   results_buffer_t buf;
-  ctx->results.fetch(buf, 0, 10);
+  ctx->results.fetch(buf, 0, 20);
 
   lua_createtable(L, 0, 1);
   lua_pushnumber(L, buf.max);
+  lua_setfield(L, -2, "matches");
+  lua_pushnumber(L, ctx->total);
   lua_setfield(L, -2, "total");
 
   lua_createtable(L, 0, 1);
@@ -177,6 +183,7 @@ static int deferred_cb(lua_State* L)
   lua_setfield(L, -2, "items");
 
   ctx->signalled = false; // if it's after pcall ctx can be potentially destroyed
+
   if (lua_pcall(L, 2, 0, 0))
     lua_pop(L, 1);
   return 0;

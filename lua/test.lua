@@ -8,18 +8,14 @@ vim.opt_local.undofile = false
 
 local t
 t = fzx.start(function(done, res)
-  if not done then
-    local lines = { tostring(res.total) .. ' processing...', }
-    for _, item in ipairs(res.items) do
-      lines[#lines+1] = item
-    end
-    set_lines(0, 0, -1, false, lines)
-  else
-    local lines = { tostring(res.total) .. ' done', }
-    for _, item in ipairs(res.items) do
-      lines[#lines+1] = item
-    end
-    set_lines(0, 0, -1, false, lines)
+  local msg = done and ' done' or ' processing...'
+  local lines = { tostring(res.matches) .. '/' ..tostring(res.total) .. msg }
+  for _, item in ipairs(res.items) do
+    lines[#lines+1] = item
+  end
+  set_lines(0, 0, -1, false, lines)
+
+  if done then
     fzx.stop(t)
   end
 end)
