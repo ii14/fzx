@@ -1,10 +1,10 @@
 TARGET   = lua/fzx.so
 
-INCLUDE  = $(shell pkg-config --cflags luajit) -Ideps/libuv/include
+INCLUDE  = $(shell pkg-config --cflags luajit libuv) -Ideps/libuv/include
 FLAGS    = -fPIC -Wall -Wextra -O3
 CXXFLAGS = $(FLAGS) -std=c++14
 CFLAGS   = $(FLAGS) -std=c99
-LDFLAGS  = -pthread
+LDFLAGS  = -pthread $(shell pkg-config --libs libuv luajit libluv)
 
 CXXSRCS  = src/fzx.cpp src/queue.cpp src/match.cpp src/allocator.cpp
 CSRCS    = src/bonus.c
