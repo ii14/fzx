@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cstring>
 
 #include "fzx/match/fzy.hpp"
 
@@ -49,6 +50,52 @@ void Fzx::stop() noexcept
   mUpdate.fetch_or(Update::kStop, std::memory_order_release);
   mCv.notify_one();
   mThread.join();
+}
+
+uint32_t Fzx::scanFeed(std::string_view s)
+{
+  uint32_t count = 0;
+  const auto* it = s.begin();
+  for (;;) {
+    const auto* const nl = std::find(it, s.end(), '\n');
+    const auto len = std::distance(it, nl);
+    ASSUME(len >= 0);
+    if (nl == s.end()) {
+      if (len != 0) {
+        const auto size = mScanBuffer.size();
+        mScanBuffer.resize(size + len);
+        std::memcpy(mScanBuffer.data() + size, it, len);
+      }
+      return count;
+    } else if (len == 0) {
+      if (!mScanBuffer.empty()) {
+        mItems.push({ mScanBuffer.data(), mScanBuffer.size() });
+        mScanBuffer.clear();
+        ++count;
+      }
+    } else if (mScanBuffer.empty()) {
+      mItems.push({ it, size_t(len) });
+      ++count;
+    } else {
+      const auto size = mScanBuffer.size();
+      mScanBuffer.resize(size + len);
+      std::memcpy(mScanBuffer.data() + size, it, len);
+      mItems.push({ mScanBuffer.data(), mScanBuffer.size() });
+      mScanBuffer.clear();
+      ++count;
+    }
+    it += len + 1;
+  }
+}
+
+bool Fzx::scanEnd()
+{
+  const bool empty = mScanBuffer.empty();
+  if (!empty)
+    mItems.push({ mScanBuffer.data(), mScanBuffer.size() });
+  mScanBuffer.clear();
+  mScanBuffer.shrink_to_fit();
+  return !empty;
 }
 
 void Fzx::commitItems() noexcept

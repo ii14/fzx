@@ -31,7 +31,6 @@ struct TermApp
   LineEditor mLine;
 
   std::vector<char> mInputBuffer;
-  std::vector<char> mBuffer;
   uint32_t mScanPos { 0 };
 
   bool mQuit { false };

@@ -9,6 +9,8 @@ vim.bo.buftype = 'nofile'
 vim.bo.undolevels = -1
 vim.bo.undofile = false
 vim.bo.swapfile = false
+vim.opt_local.number = false
+vim.opt_local.relativenumber = false
 
 vim.cmd('new')
 vim.cmd('resize 1')
@@ -37,8 +39,22 @@ end)
 
 f:start()
 local lines = vim.fn.readfile(vim.env.HOME .. '/repos/neovim/src/nvim/main.c')
-f:push(lines)
-f:commit()
+if false then
+  coroutine.resume(coroutine.create(function()
+    local co = coroutine.running()
+    for _, line in ipairs(lines) do
+      f:push(line)
+      f:commit()
+      vim.defer_fn(function()
+        coroutine.resume(co)
+      end, 100)
+      coroutine.yield()
+    end
+  end))
+else
+  f:push(lines)
+  f:commit()
+end
 
 api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'TextChangedP' }, {
   buffer = prompt,

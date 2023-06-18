@@ -15,56 +15,25 @@ using namespace std::string_view_literals;
 
 namespace fzx {
 
-static constexpr auto kMaxInputSize = std::numeric_limits<uint32_t>::max();
 static constexpr auto kMaxInputBufferSize = 0x20000; // limit buffer size to 128kb max
 
 void TermApp::processInput()
 {
-  // TODO: last line is not included if there is no newline character
   auto len = read(mInput.fd(), mInputBuffer.data(), mInputBuffer.size());
   if (len > 0) {
-    const size_t pos = mBuffer.size();
-
+    if (mFzx.scanFeed({ mInputBuffer.data(), size_t(len) }) > 0)
+      mFzx.commitItems();
     // resize the buffer if data can be read in bigger chunks
     if (mInputBuffer.size() == size_t(len) && mInputBuffer.size() < kMaxInputBufferSize)
       mInputBuffer.resize(mInputBuffer.size() * 2);
-
-    // 4gb of input data max, offsets are stored as uint32s
-    if (pos + len >= kMaxInputSize) {
-      len -= ssize_t(kMaxInputSize - pos);
-      mInput.close();
-    }
-
-    // TODO: ItemList stores the entire thing already, this unnecessarily doubles memory usage.
-    // a small dynamic buffer should be used just to store single line that is currently parsed.
-    mBuffer.resize(pos + len);
-    std::memcpy(mBuffer.data() + pos, mInputBuffer.data(), len);
-
-    for (;;) {
-      const auto it = std::find(mBuffer.begin() + mScanPos, mBuffer.end(), '\n');
-      if (it == mBuffer.end())
-        break;
-      const auto size = std::distance(mBuffer.begin() + mScanPos, it);
-      if (size > 0) {
-        // TODO: indices should be stored and known for empty items too.
-        // the user can associate line index with some data outside of this program.
-        mFzx.pushItem({ mBuffer.data() + mScanPos, size_t(size) });
-      }
-      mScanPos += size + 1;
-    }
-
-    mFzx.commitItems();
-
     redraw();
   } else if (len == 0) {
     mInput.close();
-    redraw();
-    // free the input buffer
+    if (mFzx.scanEnd())
+      mFzx.commitItems();
     mInputBuffer.clear();
     mInputBuffer.shrink_to_fit();
-    // this one too, but this one shouldn't really be a thing in the first place
-    mBuffer.clear();
-    mBuffer.shrink_to_fit();
+    redraw();
   } else if (len == -1) {
     perror("read");
   }

@@ -59,10 +59,19 @@ struct Fzx
   void stop() noexcept;
   [[nodiscard]] int notifyFd() const noexcept { return mNotifyPipe[0]; }
 
+  // TODO: add overflow checks in pushItem and scanFeed/scanEnd
+
+  // Push string to the list of items.
   void pushItem(std::string_view s) { mItems.push(s); }
+  // Commit added items (wake up the fzx thread).
   void commitItems() noexcept;
   [[nodiscard]] size_t itemsSize() const noexcept { return mItems.size(); }
   [[nodiscard]] std::string_view getItem(size_t i) const noexcept { return mItems.at(i); }
+
+  // Feed bytes into the line scanner.
+  uint32_t scanFeed(std::string_view s);
+  // Finalize scanning - push any pending data that was left.
+  bool scanEnd();
 
   void setQuery(std::string query) noexcept;
 
@@ -76,6 +85,7 @@ private:
   ItemList mItems;
   TxValue<std::string> mQuery;
   TxValue<std::vector<Match>> mResults;
+  std::vector<char> mScanBuffer;
 
   int mNotifyPipe[2] { -1, -1 };
   std::atomic<bool> mNotifyActive { false };

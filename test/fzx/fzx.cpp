@@ -66,3 +66,72 @@ TEST_CASE("fzx::Fzx")
     f.stop();
   }
 }
+
+TEST_CASE("fzx::Fzx scan")
+{
+  fzx::Fzx f;
+
+  SECTION("") {
+    CHECK(f.scanFeed(""sv) == 0);
+    CHECK(f.scanFeed(""sv) == 0);
+    CHECK(f.scanEnd() == false);
+    REQUIRE(f.itemsSize() == 0);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("\n"sv) == 0);
+    CHECK(f.scanEnd() == false);
+    REQUIRE(f.itemsSize() == 0);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("\n\n\n"sv) == 0);
+    CHECK(f.scanEnd() == false);
+    REQUIRE(f.itemsSize() == 0);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("foo"sv) == 0);
+    CHECK(f.scanFeed("bar"sv) == 0);
+    CHECK(f.scanEnd() == true);
+    REQUIRE(f.itemsSize() == 1);
+    REQUIRE(f.getItem(0) == "foobar"sv);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("foo\n"sv) == 1);
+    CHECK(f.scanFeed("bar\n"sv) == 1);
+    CHECK(f.scanEnd() == false);
+    REQUIRE(f.itemsSize() == 2);
+    REQUIRE(f.getItem(0) == "foo"sv);
+    REQUIRE(f.getItem(1) == "bar"sv);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("\nfoo"sv) == 0);
+    CHECK(f.scanFeed("\nbar"sv) == 1);
+    CHECK(f.scanEnd() == true);
+    REQUIRE(f.itemsSize() == 2);
+    REQUIRE(f.getItem(0) == "foo"sv);
+    REQUIRE(f.getItem(1) == "bar"sv);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("fo"sv) == 0);
+    CHECK(f.scanFeed("o\nba"sv) == 1);
+    CHECK(f.scanFeed("r\n"sv) == 1);
+    CHECK(f.scanEnd() == false);
+    REQUIRE(f.itemsSize() == 2);
+    REQUIRE(f.getItem(0) == "foo"sv);
+    REQUIRE(f.getItem(1) == "bar"sv);
+  }
+
+  SECTION("") {
+    CHECK(f.scanFeed("foo\nbar\nbaz\n"sv) == 3);
+    CHECK(f.scanEnd() == false);
+    REQUIRE(f.itemsSize() == 3);
+    REQUIRE(f.getItem(0) == "foo"sv);
+    REQUIRE(f.getItem(1) == "bar"sv);
+    REQUIRE(f.getItem(2) == "baz"sv);
+  }
+}
