@@ -38,6 +38,7 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(fmt REQUIRED) # TODO: remove fmt dependency
+find_package(Lua 5.1 EXACT REQUIRED)
 if(BUILD_TESTS)
   find_package(Catch2 3 REQUIRED)
 endif()
@@ -90,7 +91,12 @@ file(GLOB_RECURSE TERM_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/term/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/term/*.hpp")
+file(GLOB_RECURSE NVIM_FILES CONFIGURE_DEPENDS RELATIVE
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/nvim/*.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/nvim/*.hpp")
 list(REMOVE_ITEM LIB_FILES "${TERM_FILES}")
+list(REMOVE_ITEM LIB_FILES "${NVIM_FILES}")
 
 add_library(libfzx STATIC "${LIB_FILES}")
 set_property(TARGET libfzx PROPERTY OUTPUT_NAME fzx)
@@ -99,6 +105,12 @@ target_link_libraries(libfzx PUBLIC Threads::Threads fmt::fmt)
 
 add_executable(fzx "${TERM_FILES}")
 target_link_libraries(fzx PRIVATE libfzx)
+
+add_library(fzxnvim SHARED "${NVIM_FILES}")
+set_property(TARGET fzxnvim PROPERTY OUTPUT_NAME fzx)
+set_property(TARGET fzxnvim PROPERTY PREFIX "")
+target_link_libraries(fzxnvim PRIVATE libfzx)
+target_include_directories(fzxnvim PRIVATE src "${LUA_INCLUDE_DIR}")
 
 if(BUILD_TESTS)
   file(GLOB_RECURSE TEST_FILES CONFIGURE_DEPENDS RELATIVE
