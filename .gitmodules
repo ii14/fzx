@@ -1,0 +1,9 @@
+[submodule "deps/Catch2"]
+	path = deps/Catch2
+	url = https://github.com/catchorg/Catch2.git
+[submodule "deps/fmt"]
+	path = deps/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "deps/benchmark"]
+	path = deps/benchmark
+	url = https://github.com/google/benchmark.git
