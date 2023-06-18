@@ -22,6 +22,10 @@ vim.bo.swapfile = false
 vim.opt_local.number = false
 vim.opt_local.relativenumber = false
 
+local ns = api.nvim_create_namespace('fzx')
+
+local query = ''
+
 local pending = false
 local poll = assert(uv.new_poll(f:fd()))
 poll:start('r', function(err)
@@ -37,9 +41,22 @@ poll:start('r', function(err)
     table.insert(lines, ('%d/%d'):format(res.matched, res.total))
     for _, item in ipairs(res.items) do
       table.insert(lines, item.text)
+      item.positions = fzx.match_positions(query, item.text).positions
     end
+
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     pending = false
+
+    api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+    for lnum, item in ipairs(res.items) do
+      for _, pos in ipairs(item.positions) do
+        api.nvim_buf_set_extmark(buf, ns, lnum, pos, {
+          end_row = lnum,
+          end_col = pos + 1,
+          hl_group = 'Search',
+        })
+      end
+    end
   end)
 end)
 
@@ -49,6 +66,7 @@ api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'TextChangedP' }, {
   buffer = prompt,
   callback = function()
     local line = api.nvim_buf_get_lines(prompt, 0, 1, false)[1]
+    query = line
     f:query(line)
   end,
 })

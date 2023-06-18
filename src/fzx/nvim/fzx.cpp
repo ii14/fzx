@@ -4,6 +4,7 @@ extern "C" {
 }
 
 #include "fzx/fzx.hpp"
+#include "fzx/match/fzy.hpp"
 
 namespace fzx {
 
@@ -191,6 +192,34 @@ static int luaScanEnd(lua_State* lstate)
   return 0;
 }
 
+static int luaMatchPositions(lua_State* lstate)
+{
+  size_t needleLen = 0;
+  const char* needleStr = luaL_checklstring(lstate, 1, &needleLen);
+  size_t haystackLen = 0;
+  const char* haystackStr = luaL_checklstring(lstate, 2, &haystackLen);
+  std::string_view needle { needleStr, needleLen };
+  std::string_view haystack { haystackStr, haystackLen };
+  std::array<size_t, kMatchMaxLen> positions {};
+  constexpr auto kInvalid = std::numeric_limits<size_t>::max();
+  std::fill(positions.begin(), positions.end(), kInvalid);
+  auto score = matchPositions(needle, haystack, &positions);
+
+  lua_createtable(lstate, 0, 2);
+  lua_pushnumber(lstate, score);
+  lua_setfield(lstate, -2, "score");
+  lua_createtable(lstate, int(needleLen), 0);
+  for (int i = 0; size_t(i) < positions.size(); ++i) {
+    auto pos = positions[i];
+    if (pos == kInvalid)
+      break;
+    lua_pushinteger(lstate, int(pos));
+    lua_rawseti(lstate, -2, i + 1);
+  }
+  lua_setfield(lstate, -2, "positions");
+  return 1;
+}
+
 } // namespace fzx
 
 // TODO: pushItem, itemsSize, getItem
@@ -227,8 +256,10 @@ extern "C" int luaopen_fzx(lua_State* lstate)
       lua_setfield(lstate, -2, "__tostring");
     lua_pop(lstate, 1);
 
-  lua_createtable(lstate, 0, 1);
+  lua_createtable(lstate, 0, 2);
     lua_pushcfunction(lstate, fzx::luaNew);
       lua_setfield(lstate, -2, "new");
+    lua_pushcfunction(lstate, fzx::luaMatchPositions);
+      lua_setfield(lstate, -2, "match_positions");
   return 1;
 }

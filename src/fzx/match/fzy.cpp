@@ -202,83 +202,84 @@ Score match(std::string_view needle, std::string_view haystack)
   return (*lastM)[match.mHaystackLen - 1];
 }
 
-// Score matchPositions(const char* needle, const char* haystack, size_t* positions)
-// {
-//   if (!*needle)
-//     return kScoreMin;
+Score matchPositions(
+    std::string_view needle,
+    std::string_view haystack,
+    std::array<size_t, kMatchMaxLen>* positions)
+{
+  if (needle.empty())
+    return kScoreMin;
 
-//   MatchStruct match { needle, haystack };
+  MatchStruct match { needle, haystack };
 
-//   const int n = match.mNeedleLen;
-//   const int m = match.mHaystackLen;
+  const int n = match.mNeedleLen;
+  const int m = match.mHaystackLen;
 
-//   if (m > kMatchMaxLen || n > m) {
-//     // Unreasonably large candidate: return no score
-//     // If it is a valid match it will still be returned, it will
-//     // just be ranked below any reasonably sized candidates
-//     return kScoreMin;
-//   } else if (n == m) {
-//     // Since this method can only be called with a haystack which
-//     // matches needle. If the lengths of the strings are equal the
-//     // strings themselves must also be equal (ignoring case).
-//     if (positions)
-//       for (int i = 0; i < n; ++i)
-//         positions[i] = i;
-//     return kScoreMax;
-//   }
+  if (m > kMatchMaxLen || n > m) {
+    // Unreasonably large candidate: return no score
+    // If it is a valid match it will still be returned, it will
+    // just be ranked below any reasonably sized candidates
+    return kScoreMin;
+  } else if (n == m) {
+    // Since this method can only be called with a haystack which
+    // matches needle. If the lengths of the strings are equal the
+    // strings themselves must also be equal (ignoring case).
+    if (positions)
+      for (int i = 0; i < n; ++i)
+        (*positions)[i] = i;
+    return kScoreMax;
+  }
 
-//   using ScoreTable = Score (*)[kMatchMaxLen];
-//   // D[][] Stores the best score for this position ending with a match.
-//   // M[][] Stores the best possible score at this position.
-//   auto* D = reinterpret_cast<ScoreTable>(new Score[kMatchMaxLen * n]);
-//   auto* M = reinterpret_cast<ScoreTable>(new Score[kMatchMaxLen * n]);
+  // D[][] Stores the best score for this position ending with a match.
+  // M[][] Stores the best possible score at this position.
+  std::vector<ScoreArray> D;
+  std::vector<ScoreArray> M;
+  D.resize(n);
+  M.resize(n);
 
-//   Score *lastD = nullptr;
-//   Score *lastM = nullptr;
-//   Score *currD = nullptr;
-//   Score *currM = nullptr;
+  ScoreArray *lastD = nullptr;
+  ScoreArray *lastM = nullptr;
+  ScoreArray *currD = nullptr;
+  ScoreArray *currM = nullptr;
 
-//   for (int i = 0; i < n; ++i) {
-//     currD = &D[i][0];
-//     currM = &M[i][0];
+  for (int i = 0; i < n; ++i) {
+    currD = &D[i];
+    currM = &M[i];
 
-//     match.matchRow(i, currD, currM, lastD, lastM);
+    match.matchRow(i, *currD, *currM, *lastD, *lastM);
 
-//     lastD = currD;
-//     lastM = currM;
-//   }
+    lastD = currD;
+    lastM = currM;
+  }
 
-//   // backtrace to find the positions of optimal matching
-//   if (positions) {
-//     bool matchRequired = false;
-//     for (int i = n - 1, j = m - 1; i >= 0; --i) {
-//       for (; j >= 0; --j) {
-//         // There may be multiple paths which result in
-//         // the optimal weight.
-//         //
-//         // For simplicity, we will pick the first one
-//         // we encounter, the latest in the candidate
-//         // string.
-//         if (D[i][j] != kScoreMin && (matchRequired || D[i][j] == M[i][j])) {
-//           // If this score was determined using
-//           // kScoreMatchConsecutive, the
-//           // previous character MUST be a match
-//           matchRequired =
-//               i && j &&
-//               M[i][j] == D[i - 1][j - 1] + kScoreMatchConsecutive;
-//           positions[i] = j--;
-//           break;
-//         }
-//       }
-//     }
-//   }
+  // backtrace to find the positions of optimal matching
+  if (positions) {
+    bool matchRequired = false;
+    for (int i = n - 1, j = m - 1; i >= 0; --i) {
+      for (; j >= 0; --j) {
+        // There may be multiple paths which result in
+        // the optimal weight.
+        //
+        // For simplicity, we will pick the first one
+        // we encounter, the latest in the candidate
+        // string.
+        if (D[i][j] != kScoreMin && (matchRequired || D[i][j] == M[i][j])) {
+          // If this score was determined using
+          // kScoreMatchConsecutive, the
+          // previous character MUST be a match
+          matchRequired =
+              i && j &&
+              M[i][j] == D[i - 1][j - 1] + kScoreMatchConsecutive;
+          (*positions)[i] = j--;
+          break;
+        }
+      }
+    }
+  }
 
-//   Score result = M[n - 1][m - 1];
+  Score result = M[n - 1][m - 1];
 
-//   delete[] M;
-//   delete[] D;
-
-//   return result;
-// }
+  return result;
+}
 
 } // namespace fzx
