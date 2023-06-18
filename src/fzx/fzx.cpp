@@ -6,6 +6,44 @@
 
 #include "fzx/match/fzy.hpp"
 
+#ifndef _GNU_SOURCE
+static int pipe2(int fildes[2], int flags)
+{
+  int ret = 0;
+
+  ret = pipe(fildes);
+  if (ret == -1) {
+    return ret;
+  }
+
+  if ((flags & O_CLOEXEC) != 0) {
+    ret = fcntl(fildes[0], F_SETFD, FD_CLOEXEC);
+    if (ret == -1) {
+      return ret;
+    }
+
+    ret = fcntl(fildes[1], F_SETFD, FD_CLOEXEC);
+    if (ret == -1) {
+      return ret;
+    }
+  }
+
+  if ((flags & O_NONBLOCK) != 0) {
+    ret = fcntl(fildes[0], F_SETFL, O_NONBLOCK);
+    if (ret == -1) {
+      return ret;
+    }
+
+    ret = fcntl(fildes[1], F_SETFL, O_NONBLOCK);
+    if (ret == -1) {
+      return ret;
+    }
+  }
+
+  return 0;
+}
+#endif
+
 using namespace std::string_view_literals;
 
 namespace fzx {
