@@ -4,7 +4,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <new>
 #include <string_view>
 
 #include "fzx/util.hpp"
@@ -46,6 +45,11 @@ struct ItemList
   void push(std::string_view s);
   void commit(std::memory_order memoryOrder = std::memory_order_release) noexcept;
 
+  [[nodiscard]] const ItemList::Item* data() const noexcept
+  {
+    return mBuffers[mWrite].mItemData;
+  }
+
   [[nodiscard]] size_t size() const noexcept
   {
     return mBuffers[mWrite].mItemSize;
@@ -55,8 +59,7 @@ struct ItemList
   {
     const auto& buf = mBuffers[mWrite];
     DEBUG_ASSERT(i < buf.mItemSize);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    const auto& item = *std::launder(reinterpret_cast<const ItemList::Item*>(buf.mItemData) + i);
+    const auto& item = data()[i];
     return std::string_view { buf.mStrData + item.mOffset, item.mLength };
   }
 
@@ -64,6 +67,9 @@ struct ItemList
   {
     return at(i);
   }
+
+  [[nodiscard]] auto begin() const noexcept { return data(); }
+  [[nodiscard]] auto end() const noexcept { return data() + size(); }
 
 private:
   void strRelease(char* ptr) const noexcept;
@@ -87,6 +93,11 @@ struct ItemReader
     mPtr->mRead = mPtr->mUnused.exchange(mPtr->mRead, memoryOrder);
   }
 
+  [[nodiscard]] const ItemList::Item* data() const noexcept
+  {
+    return mPtr->mBuffers[mPtr->mRead].mItemData;
+  }
+
   [[nodiscard]] size_t size() const noexcept
   {
     return mPtr->mBuffers[mPtr->mRead].mItemSize;
@@ -96,12 +107,17 @@ struct ItemReader
   {
     auto& buf = mPtr->mBuffers[mPtr->mRead];
     DEBUG_ASSERT(i < buf.mItemSize);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    const auto& item = *std::launder(reinterpret_cast<const ItemList::Item*>(buf.mItemData) + i);
+    const auto& item = data()[i];
     return std::string_view { buf.mStrData + item.mOffset, item.mLength };
   }
 
-  [[nodiscard]] std::string_view operator[](size_t i) const noexcept { return at(i); }
+  [[nodiscard]] std::string_view operator[](size_t i) const noexcept
+  {
+    return at(i);
+  }
+
+  [[nodiscard]] auto begin() const noexcept { return data(); }
+  [[nodiscard]] auto end() const noexcept { return data() + size(); }
 
 private:
   ItemList* mPtr { nullptr };

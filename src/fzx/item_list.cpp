@@ -3,8 +3,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <type_traits>
+#include <memory>
+#include <new>
 
 namespace fzx {
+
+static_assert(std::is_trivially_copyable_v<ItemList::Item>);
+static_assert(std::is_trivially_destructible_v<ItemList::Item>);
 
 ItemList::~ItemList() noexcept
 {
@@ -45,7 +51,7 @@ void ItemList::push(std::string_view s)
     buf.mStrCap = strCap;
 
     if (oldData != nullptr) {
-      std::memcpy(newData, oldData, buf.mStrSize);
+      std::uninitialized_copy_n(oldData, buf.mStrSize, newData);
       strRelease(oldData);
     }
   }
@@ -61,12 +67,12 @@ void ItemList::push(std::string_view s)
     buf.mItemCap = itemCap;
 
     if (oldData != nullptr) {
-      std::memcpy(newData, oldData, buf.mItemSize * sizeof(Item));
+      std::uninitialized_copy_n(oldData, buf.mItemSize, newData);
       itemRelease(oldData);
     }
   }
 
-  std::memcpy(buf.mStrData + buf.mStrSize, s.data(), s.size());
+  std::uninitialized_copy_n(s.data(), s.size(), buf.mStrData + buf.mStrSize);
   new (buf.mItemData + buf.mItemSize) Item { uint32_t(buf.mStrSize), uint32_t(s.size()) };
   buf.mStrSize += s.size();
   buf.mItemSize += 1;
