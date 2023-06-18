@@ -101,7 +101,7 @@ list(REMOVE_ITEM LIB_FILES "${NVIM_FILES}")
 add_library(libfzx STATIC "${LIB_FILES}")
 set_property(TARGET libfzx PROPERTY OUTPUT_NAME fzx)
 target_include_directories(libfzx PUBLIC src)
-target_link_libraries(libfzx PUBLIC Threads::Threads fmt::fmt)
+target_link_libraries(libfzx PUBLIC Threads::Threads fmt::fmt "${LUA_LIBRARY}")
 
 add_executable(fzx "${TERM_FILES}")
 target_link_libraries(fzx PRIVATE libfzx)
