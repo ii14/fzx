@@ -32,7 +32,13 @@ poll:start('r', function(err)
   pending = true
   vim.schedule(function()
     -- TODO: use window size
-    api.nvim_buf_set_lines(buf, 0, -1, false, f:results(60))
+    local res = f:results(60)
+    local lines = {}
+    table.insert(lines, ('%d/%d'):format(res.matched, res.total))
+    for _, item in ipairs(res.items) do
+      table.insert(lines, item.text)
+    end
+    api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     pending = false
   end)
 end)

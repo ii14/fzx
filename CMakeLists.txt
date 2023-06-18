@@ -102,15 +102,15 @@ add_library(libfzx STATIC "${LIB_FILES}")
 set_property(TARGET libfzx PROPERTY OUTPUT_NAME fzx)
 set_property(TARGET libfzx PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libfzx PUBLIC src)
-target_link_libraries(libfzx PUBLIC Threads::Threads fmt::fmt "${LUA_LIBRARY}")
+target_link_libraries(libfzx PUBLIC Threads::Threads)
 
 add_executable(fzx "${TERM_FILES}")
-target_link_libraries(fzx PRIVATE libfzx)
+target_link_libraries(fzx PRIVATE libfzx fmt::fmt)
 
 add_library(fzxnvim SHARED "${NVIM_FILES}")
 set_property(TARGET fzxnvim PROPERTY OUTPUT_NAME fzx)
 set_property(TARGET fzxnvim PROPERTY PREFIX "")
-target_link_libraries(fzxnvim PRIVATE libfzx)
+target_link_libraries(fzxnvim PRIVATE libfzx "${LUA_LIBRARY}")
 target_include_directories(fzxnvim PRIVATE src "${LUA_INCLUDE_DIR}")
 
 if(BUILD_TESTS)

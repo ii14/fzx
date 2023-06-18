@@ -112,12 +112,24 @@ static int luaResults(lua_State* lstate)
   if (lua_isnumber(lstate, 2))
     max = lua_tointeger(lstate, 2);
   size_t size = p->resultsSize();
+  lua_createtable(lstate, 0, 3);
+  lua_pushinteger(lstate, int(p->itemsSize()));
+  lua_setfield(lstate, -2, "total");
+  lua_pushinteger(lstate, int(p->resultsSize()));
+  lua_setfield(lstate, -2, "matched");
   lua_createtable(lstate, int(size), 0);
   for (size_t i = 0; i < size && int(i) < max; ++i) {
     auto item = p->getResult(i);
+    lua_createtable(lstate, 0, 3);
+    lua_pushnumber(lstate, int(i));
+    lua_setfield(lstate, -2, "index");
+    lua_pushnumber(lstate, item.mScore);
+    lua_setfield(lstate, -2, "score");
     lua_pushlstring(lstate, item.mLine.data(), item.mLine.size());
+    lua_setfield(lstate, -2, "text");
     lua_rawseti(lstate, -2, int(i + 1));
   }
+  lua_setfield(lstate, -2, "items");
   return 1;
 }
 
