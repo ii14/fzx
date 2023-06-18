@@ -38,23 +38,6 @@ poll:start('r', function(err)
 end)
 
 f:start()
-local lines = vim.fn.readfile(vim.env.HOME .. '/repos/neovim/src/nvim/main.c')
-if false then
-  coroutine.resume(coroutine.create(function()
-    local co = coroutine.running()
-    for _, line in ipairs(lines) do
-      f:push(line)
-      f:commit()
-      vim.defer_fn(function()
-        coroutine.resume(co)
-      end, 100)
-      coroutine.yield()
-    end
-  end))
-else
-  f:push(lines)
-  f:commit()
-end
 
 api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'TextChangedP' }, {
   buffer = prompt,
@@ -64,3 +47,43 @@ api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'TextChangedP' }, {
   end,
 })
 vim.cmd('startinsert')
+
+do
+  local stdout = uv.new_pipe()
+  local proc
+  proc = uv.spawn('rg', {
+    args = { '' },
+    stdio = { nil, stdout, nil }
+  }, function()
+    f:scan_end()
+    proc:close()
+  end)
+  stdout:read_start(function(err, data)
+    assert(not err, err)
+    if data then
+      f:scan_feed(data)
+    else
+      f:scan_end()
+      stdout:close()
+      print('end')
+    end
+  end)
+end
+
+-- local lines = vim.fn.readfile(vim.env.HOME .. '/repos/neovim/src/nvim/main.c')
+-- if false then
+--   coroutine.resume(coroutine.create(function()
+--     local co = coroutine.running()
+--     for _, line in ipairs(lines) do
+--       f:push(line)
+--       f:commit()
+--       vim.defer_fn(function()
+--         coroutine.resume(co)
+--       end, 100)
+--       coroutine.yield()
+--     end
+--   end))
+-- else
+--   f:push(lines)
+--   f:commit()
+-- end

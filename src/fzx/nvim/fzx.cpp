@@ -157,6 +157,28 @@ static int luaPush(lua_State* lstate)
   return 0;
 }
 
+static int luaScanFeed(lua_State* lstate)
+{
+  auto* p = *static_cast<Fzx**>(luaL_checkudata(lstate, 1, FZX_MT_INSTANCE));
+  if (p == nullptr)
+    return luaL_error(lstate, "fzx: null pointer");
+  size_t len = 0;
+  const char* str = luaL_checklstring(lstate, 2, &len);
+  if (p->scanFeed({ str, len }) > 0)
+    p->commitItems();
+  return 0;
+}
+
+static int luaScanEnd(lua_State* lstate)
+{
+  auto* p = *static_cast<Fzx**>(luaL_checkudata(lstate, 1, FZX_MT_INSTANCE));
+  if (p == nullptr)
+    return luaL_error(lstate, "fzx: null pointer");
+  if (p->scanEnd())
+    p->commitItems();
+  return 0;
+}
+
 } // namespace fzx
 
 // TODO: pushItem, itemsSize, getItem
@@ -167,7 +189,7 @@ extern "C" int luaopen_fzx(lua_State* lstate)
   luaL_newmetatable(lstate, FZX_MT_INSTANCE);
     lua_pushcfunction(lstate, fzx::luaGC);
       lua_setfield(lstate, -2, "__gc");
-    lua_createtable(lstate, 0, 8);
+    lua_createtable(lstate, 0, 10);
       lua_pushcfunction(lstate, fzx::luaNotifyFd);
         lua_setfield(lstate, -2, "fd");
       lua_pushcfunction(lstate, fzx::luaStart);
@@ -184,6 +206,10 @@ extern "C" int luaopen_fzx(lua_State* lstate)
         lua_setfield(lstate, -2, "results");
       lua_pushcfunction(lstate, fzx::luaPush);
         lua_setfield(lstate, -2, "push");
+      lua_pushcfunction(lstate, fzx::luaScanFeed);
+        lua_setfield(lstate, -2, "scan_feed");
+      lua_pushcfunction(lstate, fzx::luaScanEnd);
+        lua_setfield(lstate, -2, "scan_end");
       lua_setfield(lstate, -2, "__index");
     lua_pushcfunction(lstate, fzx::luaToString);
       lua_setfield(lstate, -2, "__tostring");
