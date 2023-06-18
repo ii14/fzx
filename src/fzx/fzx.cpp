@@ -159,7 +159,7 @@ struct Job
     for (size_t i = mStart; i < mEnd; ++i) {
       auto item = mReader->at(i);
       if (hasMatch(mQuery, item))
-        mResults.push_back({ i, match(mQuery, item) });
+        mResults.push_back({ uint32_t(i), float(match(mQuery, item)) });
     }
     std::sort(mResults.begin(), mResults.end());
   }

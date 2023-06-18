@@ -17,13 +17,13 @@ namespace fzx {
 struct Result
 {
   std::string_view mLine;
-  double mScore { 0 };
+  float mScore { 0 };
 };
 
 struct Match
 {
-  size_t mIndex { 0 };
-  double mScore { 0.0 };
+  uint32_t mIndex { 0 };
+  float mScore { 0.0 };
 
   friend bool operator==(const Match& a, const Match& b) noexcept
   {

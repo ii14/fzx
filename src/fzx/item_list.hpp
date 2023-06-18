@@ -76,7 +76,6 @@ private:
   std::atomic<uint8_t> mUnused { 2 };
 
   friend struct ItemReader;
-  friend struct ItemWriter;
 };
 
 struct ItemReader
