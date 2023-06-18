@@ -6,44 +6,6 @@
 
 #include "fzx/match/fzy.hpp"
 
-#ifndef _GNU_SOURCE
-static int pipe2(int fildes[2], int flags)
-{
-  int ret = 0;
-
-  ret = pipe(fildes);
-  if (ret == -1) {
-    return ret;
-  }
-
-  if ((flags & O_CLOEXEC) != 0) {
-    ret = fcntl(fildes[0], F_SETFD, FD_CLOEXEC);
-    if (ret == -1) {
-      return ret;
-    }
-
-    ret = fcntl(fildes[1], F_SETFD, FD_CLOEXEC);
-    if (ret == -1) {
-      return ret;
-    }
-  }
-
-  if ((flags & O_NONBLOCK) != 0) {
-    ret = fcntl(fildes[0], F_SETFL, O_NONBLOCK);
-    if (ret == -1) {
-      return ret;
-    }
-
-    ret = fcntl(fildes[1], F_SETFL, O_NONBLOCK);
-    if (ret == -1) {
-      return ret;
-    }
-  }
-
-  return 0;
-}
-#endif
-
 using namespace std::string_view_literals;
 
 namespace fzx {
@@ -55,11 +17,22 @@ enum Update : uint32_t {
   kQuery = 1U << 2,
 };
 
-Fzx::Fzx()
-{
-  if (pipe2(mNotifyPipe, O_NONBLOCK | O_CLOEXEC) == -1) {
-    perror("pipe2");
-    throw std::runtime_error { "pipe2 failed" };
+Fzx::Fzx() {
+  if (pipe(mNotifyPipe) == -1) {
+    perror("pipe");
+    throw std::runtime_error { "pipe failed" };
+  }
+
+  if ((fcntl(mNotifyPipe[0], F_SETFD, FD_CLOEXEC) == -1) ||
+      (fcntl(mNotifyPipe[1], F_SETFD, FD_CLOEXEC) == -1)) {
+    perror("fcntl");
+    throw std::runtime_error { "setting FD_CLOEXEC failed" };
+  }
+
+  if ((fcntl(mNotifyPipe[0], F_SETFL, O_NONBLOCK) == -1) ||
+      (fcntl(mNotifyPipe[1], F_SETFL, O_NONBLOCK) == -1)) {
+    perror("fcntl");
+    throw std::runtime_error { "setting O_NONBLOCK failed" };
   }
 }
 
