@@ -59,8 +59,7 @@ struct ItemList
   {
     const auto& buf = mBuffers[mWrite];
     DEBUG_ASSERT(i < buf.mItemSize);
-    const auto& item = data()[i];
-    return std::string_view { buf.mStrData + item.mOffset, item.mLength };
+    return getString(data()[i]);
   }
 
   [[nodiscard]] std::string_view operator[](size_t i) const noexcept
@@ -70,6 +69,13 @@ struct ItemList
 
   [[nodiscard]] auto begin() const noexcept { return data(); }
   [[nodiscard]] auto end() const noexcept { return data() + size(); }
+
+  [[nodiscard]] std::string_view getString(Item item) const noexcept
+  {
+    const auto& buf = mBuffers[mWrite];
+    DEBUG_ASSERT(size_t(item.mOffset) + size_t(item.mLength) <= buf.mStrSize);
+    return std::string_view { buf.mStrData + item.mOffset, item.mLength };
+  }
 
 private:
   void strRelease(char* ptr) const noexcept;
@@ -107,8 +113,7 @@ struct ItemReader
   {
     auto& buf = mPtr->mBuffers[mPtr->mRead];
     DEBUG_ASSERT(i < buf.mItemSize);
-    const auto& item = data()[i];
-    return std::string_view { buf.mStrData + item.mOffset, item.mLength };
+    return getString(data()[i]);
   }
 
   [[nodiscard]] std::string_view operator[](size_t i) const noexcept
@@ -118,6 +123,13 @@ struct ItemReader
 
   [[nodiscard]] auto begin() const noexcept { return data(); }
   [[nodiscard]] auto end() const noexcept { return data() + size(); }
+
+  [[nodiscard]] std::string_view getString(ItemList::Item item) const noexcept
+  {
+    const auto& buf = mPtr->mBuffers[mPtr->mRead];
+    DEBUG_ASSERT(size_t(item.mOffset) + size_t(item.mLength) <= buf.mStrSize);
+    return std::string_view { buf.mStrData + item.mOffset, item.mLength };
+  }
 
 private:
   ItemList* mPtr { nullptr };
