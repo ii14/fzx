@@ -45,6 +45,13 @@ static int toString(lua_State* lstate)
   return 1;
 }
 
+static int isNil(lua_State* lstate)
+{
+  auto* p = getUserdata(lstate);
+  lua_pushboolean(lstate, p == nullptr);
+  return 1;
+}
+
 static int getFd(lua_State* lstate)
 {
   auto* p = getUserdata(lstate);
@@ -261,6 +268,8 @@ extern "C" int luaopen_fzxlib(lua_State* lstate)
     lua_pushcfunction(lstate, fzx::lua::toString);
       lua_setfield(lstate, -2, "__tostring");
     lua_createtable(lstate, 0, 10);
+      lua_pushcfunction(lstate, fzx::lua::isNil);
+        lua_setfield(lstate, -2, "is_nil");
       lua_pushcfunction(lstate, fzx::lua::getFd);
         lua_setfield(lstate, -2, "get_fd");
       lua_pushcfunction(lstate, fzx::lua::start);

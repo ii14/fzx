@@ -43,12 +43,36 @@ function index:redraw()
 end
 
 function index:close()
-  self.fzx:stop()
-  self.poll:close()
+  if self.fzx and not self.fzx:is_nil() then
+    self.fzx:stop()
+  end
+  if self.poll and self.poll:is_active() and not self.poll:is_closing() then
+    self.poll:close()
+  end
 end
 
 function index:win_height()
   return api.nvim_win_get_height(self.display_win)
+end
+
+local function clamp(n, lower, upper)
+  if n < lower then
+    return lower
+  elseif n > upper then
+    return upper
+  else
+    return n
+  end
+end
+
+function index:scroll_relative(n)
+  self.offset = math.floor(clamp(self.offset + n, 0, require('fzxlib').MAX_OFFSET))
+  self:redraw()
+end
+
+function index:scroll_absolute(n)
+  self.offset = math.floor(clamp(n, 0, require('fzxlib').MAX_OFFSET))
+  self:redraw()
 end
 
 local mt = { __index = index }
@@ -110,29 +134,58 @@ local function new()
     end,
   })
 
+  vim.bo[self.display_buf].bufhidden = 'wipe'
+  vim.bo[self.prompt_buf].bufhidden = 'wipe'
+
+  api.nvim_create_autocmd('BufWipeout', {
+    callback = function()
+      self:close()
+      self.display_buf = nil
+      if self.prompt_buf and api.nvim_buf_is_valid(self.prompt_buf) then
+        api.nvim_buf_delete(self.prompt_buf, { force = true })
+      end
+    end,
+    buffer = self.display_buf,
+    nested = true,
+  })
+  api.nvim_create_autocmd('BufWipeout', {
+    callback = function()
+      self:close()
+      self.prompt_buf = nil
+      if self.display_buf and api.nvim_buf_is_valid(self.display_buf) then
+        api.nvim_buf_delete(self.display_buf, { force = true })
+      end
+    end,
+    buffer = self.prompt_buf,
+    nested = true,
+  })
+
   vim.keymap.set({ 'i', 'n' }, '<Down>', function()
-    self.offset = self.offset + 1
-    self:redraw()
+    self:scroll_relative(1)
   end, { buffer = self.prompt_buf })
   vim.keymap.set({ 'i', 'n' }, '<Up>', function()
-    self.offset = self.offset - 1
-    self:redraw()
+    self:scroll_relative(-1)
   end, { buffer = self.prompt_buf })
   vim.keymap.set({ 'i', 'n' }, '<Home>', function()
-    self.offset = 0
-    self:redraw()
+    self:scroll_absolute(0)
   end, { buffer = self.prompt_buf })
   vim.keymap.set({ 'i', 'n' }, '<End>', function()
-    self.offset = require('fzxlib').MAX_OFFSET
-    self:redraw()
+    self:scroll_absolute(math.huge)
   end, { buffer = self.prompt_buf })
   vim.keymap.set({ 'i', 'n' }, '<PageDown>', function()
-    self.offset = self.offset + self:win_height() / 2
-    self:redraw()
+    self:scroll_relative(self:win_height() / 2)
   end, { buffer = self.prompt_buf })
   vim.keymap.set({ 'i', 'n' }, '<PageUp>', function()
-    self.offset = self.offset - self:win_height() / 2
-    self:redraw()
+    self:scroll_relative(-(self:win_height() / 2))
+  end, { buffer = self.prompt_buf })
+
+  -- just close on enter for now
+  vim.keymap.set('n', '<Enter>', function()
+    api.nvim_buf_delete(self.prompt_buf, { force = true })
+  end, { buffer = self.prompt_buf })
+  vim.keymap.set('i', '<Enter>', function()
+    vim.cmd('stopinsert')
+    api.nvim_buf_delete(self.prompt_buf, { force = true })
   end, { buffer = self.prompt_buf })
 
   self.poll:start('r', function(err)
@@ -166,26 +219,7 @@ local function new()
 
   self.fzx:start()
 
-  do
-    local stdout = uv.new_pipe()
-    local proc
-    proc = uv.spawn('/bin/sh', {
-      args = { '-c', 'rg --line-number --column ""' },
-      stdio = { nil, stdout, nil }
-    }, function()
-      self.fzx:scan_end()
-      proc:close()
-    end)
-    stdout:read_start(function(err, data)
-      assert(not err, err)
-      if data then
-        self.fzx:scan_feed(data)
-      else
-        self.fzx:scan_end()
-        stdout:close()
-      end
-    end)
-  end
+  return self
 end
 
 return { new = new }
