@@ -1,6 +1,6 @@
 local uv = vim.loop
 local api = vim.api
-local fzx = require('fzx')
+local fzx = require('fzxlib')
 local f = fzx.new()
 
 vim.cmd('enew')

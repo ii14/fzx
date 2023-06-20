@@ -252,7 +252,7 @@ static int matchPositions(lua_State* lstate)
 // TODO: itemsSize, getItem
 
 // NOLINTNEXTLINE(readability-identifier-naming)
-extern "C" int luaopen_fzx(lua_State* lstate)
+extern "C" int luaopen_fzxlib(lua_State* lstate)
 {
   luaL_newmetatable(lstate, fzx::lua::kMetatable);
     lua_pushcfunction(lstate, fzx::lua::gc);
