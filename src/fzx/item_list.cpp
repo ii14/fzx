@@ -80,6 +80,7 @@ void ItemList::push(std::string_view s)
 
 void ItemList::commit(std::memory_order memoryOrder) noexcept
 {
+  mLastCommitSize = mBuffers[mWrite].mItemSize;
   auto prevIdx = mWrite;
   mWrite = mUnused.exchange(mWrite, memoryOrder);
 

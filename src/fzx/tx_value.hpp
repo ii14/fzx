@@ -46,6 +46,9 @@ struct TxValue
     return mTicks[mRead] > tick;
   }
 
+  [[nodiscard]] size_t writeTick() const noexcept { return mTicks[mWrite]; }
+  [[nodiscard]] size_t readTick() const noexcept { return mTicks[mRead]; }
+
 private:
   T mBuffers[3] {};
   size_t mTicks[3] {};

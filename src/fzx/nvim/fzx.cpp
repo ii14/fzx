@@ -166,7 +166,8 @@ static int loadResults(lua_State* lstate)
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
   lua_pushboolean(lstate, p->loadResults());
-  return 1;
+  lua_pushboolean(lstate, p->processing());
+  return 2;
 }
 
 static int getResults(lua_State* lstate)

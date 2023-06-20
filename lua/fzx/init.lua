@@ -19,8 +19,14 @@ function index:redraw()
   self.pending = false
 
   api.nvim_buf_clear_namespace(self.prompt_buf, ns, 0, -1)
+  local status
+  if self.processing then
+    status = ('processing... %d/%d'):format(res.matched, res.total)
+  else
+    status = ('%d/%d'):format(res.matched, res.total)
+  end
   api.nvim_buf_set_extmark(self.prompt_buf, ns, 0, 0, {
-    virt_text = {{ ('%d/%d'):format(res.matched, res.total), 'Comment' }},
+    virt_text = {{ status, 'Comment' }},
     virt_text_pos = 'right_align',
   })
 
@@ -64,6 +70,7 @@ local function new()
   self.poll = assert(uv.new_poll(self.fzx:get_fd()))
 
   self.pending = false
+  self.processing = false
   self.offset = 0
   self.query = ''
 
@@ -130,8 +137,10 @@ local function new()
 
   self.poll:start('r', function(err)
     assert(not err, err)
-    if self.fzx:load_results() and not self.pending then
+    local ok, processing = self.fzx:load_results()
+    if ok and not self.pending then
       self.pending = true
+      self.processing = processing
       vim.schedule(function()
         self:redraw()
       end)

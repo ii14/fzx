@@ -77,6 +77,8 @@ struct ItemList
     return std::string_view { buf.mStrData + item.mOffset, item.mLength };
   }
 
+  [[nodiscard]] size_t lastCommitSize() const noexcept { return mLastCommitSize; }
+
 private:
   void strRelease(char* ptr) const noexcept;
   void itemRelease(ItemList::Item* ptr) const noexcept;
@@ -86,6 +88,7 @@ private:
   uint8_t mWrite { 0 };
   uint8_t mRead { 1 };
   std::atomic<uint8_t> mUnused { 2 };
+  size_t mLastCommitSize { 0 };
 
   friend struct ItemReader;
 };

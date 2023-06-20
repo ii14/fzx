@@ -54,11 +54,14 @@ TEST_CASE("fzx::Fzx")
 
     f.setQuery("b"s);
 
-    // TODO: some way of waiting until everything is processed
-    std::this_thread::sleep_for(100ms);
+    for (unsigned i = 0; i < 2; ++i) {
+      REQUIRE(wait(f.notifyFd(), 100ms));
+      REQUIRE(f.loadResults());
+      if (!f.processing())
+        break;
+    }
+    REQUIRE(!f.processing());
 
-    REQUIRE(wait(f.notifyFd(), 500ms));
-    REQUIRE(f.loadResults());
     REQUIRE(f.resultsSize() == 2);
     REQUIRE(f.getResult(0).mLine == "bar"sv);
     REQUIRE(f.getResult(1).mLine == "baz"sv);

@@ -135,7 +135,7 @@ bool Fzx::loadResults() noexcept
 
 Result Fzx::getResult(size_t i) const noexcept
 {
-  const auto& matches = mResults.readBuffer();
+  const auto& matches = mResults.readBuffer().mResults;
   ASSERT(i < matches.size());
   const auto& match = matches[i];
   return { mItems.at(match.mIndex), match.mScore };
@@ -189,7 +189,7 @@ again:
   if (update != Update::kNone) {
     std::string_view query = mQuery.readBuffer();
     auto& res = mResults.writeBuffer();
-    res.clear();
+    res.mResults.clear();
 
 #if 1
     constexpr auto kThreads = 4;
@@ -236,7 +236,7 @@ again:
     std::vector<Match> r2;
     merge2(r1, jobs[0].mResults, jobs[1].mResults);
     merge2(r2, jobs[2].mResults, jobs[3].mResults);
-    merge2(res, r1, r2);
+    merge2(res.mResults, r1, r2);
 #else
     res.reserve(reader.size());
     constexpr auto kCheckUpdate = 0x2000;
@@ -257,6 +257,8 @@ again:
     std::sort(res.begin(), res.end(), matchCompare);
 #endif
 
+    res.mItemsTick = reader.size();
+    res.mQueryTick = mQuery.readTick();
     mResults.commit();
     if (!mNotifyActive.load(std::memory_order_relaxed) &&
         !mNotifyActive.exchange(true, std::memory_order_release)) {
