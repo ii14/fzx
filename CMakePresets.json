@@ -1,0 +1,121 @@
+{
+  "version": 6,
+
+  "configurePresets": [
+    {
+      "name": "conf-common",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+
+    {
+      "name": "gcc-common",
+      "hidden": true,
+      "inherits": "conf-common",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_C_COMPILER": "gcc"
+      }
+    },
+    {
+      "name": "clang-common",
+      "hidden": true,
+      "inherits": "conf-common",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_C_COMPILER": "clang"
+      }
+    },
+
+    {
+      "name": "release-common",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "debug-asan-common",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_ASAN": true,
+        "ENABLE_UBSAN": true,
+        "BUILD_TESTS": true
+      }
+    },
+    {
+      "name": "debug-tsan-common",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TSAN": true,
+        "BUILD_TESTS": true
+      }
+    },
+
+    {
+      "name": "release-gcc",
+      "displayName": "release, gcc",
+      "inherits": ["gcc-common", "release-common"]
+    },
+    {
+      "name": "release-clang",
+      "displayName": "release, clang",
+      "inherits": ["clang-common", "release-common"]
+    },
+    {
+      "name": "debug-asan-gcc",
+      "displayName": "debug, ASAN+UBSAN, gcc",
+      "inherits": ["gcc-common", "debug-asan-common"]
+    },
+    {
+      "name": "debug-asan-clang",
+      "displayName": "debug, ASAN+UBSAN, clang",
+      "inherits": ["clang-common", "debug-asan-common"]
+    },
+    {
+      "name": "debug-tsan-gcc",
+      "displayName": "debug, TSAN, gcc",
+      "inherits": ["gcc-common", "debug-tsan-common"]
+    },
+    {
+      "name": "debug-tsan-clang",
+      "displayName": "debug, TSAN, clang",
+      "inherits": ["clang-common", "debug-tsan-common"]
+    }
+  ],
+
+  "buildPresets": [
+    {
+      "name": "release-gcc",
+      "configurePreset": "release-gcc",
+      "displayName": "release, gcc"
+    },
+    {
+      "name": "release-clang",
+      "configurePreset": "release-clang",
+      "displayName": "release, clang"
+    },
+    {
+      "name": "debug-asan-gcc",
+      "configurePreset": "debug-asan-gcc",
+      "displayName": "debug, ASAN+UBSAN, gcc"
+    },
+    {
+      "name": "debug-asan-clang",
+      "configurePreset": "debug-asan-clang",
+      "displayName": "debug, ASAN+UBSAN, clang"
+    },
+    {
+      "name": "debug-tsan-gcc",
+      "configurePreset": "debug-tsan-gcc",
+      "displayName": "debug, TSAN, gcc"
+    },
+    {
+      "name": "debug-tsan-clang",
+      "configurePreset": "debug-tsan-clang",
+      "displayName": "debug, TSAN, clang"
+    }
+  ]
+}
