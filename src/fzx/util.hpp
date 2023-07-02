@@ -61,6 +61,16 @@
 # define ASSUME(x) (LIKELY(x) ? void(0) : ::fzx::detail::assumeFail(#x, __FILE__, __LINE__))
 #endif
 
+#if defined(FZX_OPTIMIZE)
+# if FZX_HAS_BUILTIN(__builtin_unreachable)
+#  define UNREACHABLE() __builtin_unreachable()
+# else
+#  define UNREACHABLE()
+# endif
+#else
+# define UNREACHABLE() ::fzx::detail::unreachableFail(__FILE__, __LINE__)
+#endif
+
 namespace fzx {
 
 template <typename T>
@@ -72,6 +82,8 @@ namespace detail {
 [[noreturn]] void assertFail(const char* expr, const char* file, unsigned long line);
 // NOLINTNEXTLINE(google-runtime-int)
 [[noreturn]] void assumeFail(const char* expr, const char* file, unsigned long line);
+// NOLINTNEXTLINE(google-runtime-int)
+[[noreturn]] void unreachableFail(const char* file, unsigned long line);
 
 } // namespace detail
 

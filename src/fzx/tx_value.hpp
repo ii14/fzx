@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cstddef>
 
+#include "fzx/util.hpp"
+
 namespace fzx {
 
 /// Single-producer, single-consumer value transaction.
@@ -52,9 +54,9 @@ struct TxValue
 private:
   T mBuffers[3] {};
   size_t mTicks[3] {};
-  uint8_t mWrite { 0 };
-  uint8_t mRead { 1 };
-  std::atomic<uint8_t> mUnused { 2 };
+  alignas(fzx::kCacheLine) uint8_t mWrite { 0 };
+  alignas(fzx::kCacheLine) uint8_t mRead { 1 };
+  alignas(fzx::kCacheLine) std::atomic<uint8_t> mUnused { 2 };
 };
 
 } // namespace fzx

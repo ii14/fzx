@@ -1,14 +1,15 @@
 #include <benchmark/benchmark.h>
 
-#include "fzx/lr.hpp"
-#include "fzx/thread.hpp"
-
 #include <shared_mutex>
 #include <mutex>
 
+#include "fzx/lr.hpp"
+#include "fzx/thread.hpp"
+#include "fzx/tx_value.hpp"
+
 static constexpr auto kIterations = 10'000;
 
-static void BM_full_baseline(benchmark::State& s)
+static void BM_spmc_full_baseline(benchmark::State& s)
 {
   const size_t threads = s.range(0);
   std::shared_mutex mx;
@@ -38,7 +39,7 @@ static void BM_full_baseline(benchmark::State& s)
   s.SetBytesProcessed(s.iterations() * kIterations);
 }
 
-static void BM_full_lr(benchmark::State& s)
+static void BM_spmc_full_lr(benchmark::State& s)
 {
   const size_t threads = s.range(0);
 
@@ -66,7 +67,7 @@ static void BM_full_lr(benchmark::State& s)
   s.SetBytesProcessed(s.iterations() * kIterations);
 }
 
-static void BM_reader_baseline(benchmark::State& s)
+static void BM_spmc_reader_baseline(benchmark::State& s)
 {
   const size_t threads = s.range(0);
   std::shared_mutex mx;
@@ -98,7 +99,7 @@ static void BM_reader_baseline(benchmark::State& s)
   s.SetBytesProcessed(s.iterations() * kIterations);
 }
 
-static void BM_reader_lr(benchmark::State& s)
+static void BM_spmc_reader_lr(benchmark::State& s)
 {
   const size_t threads = s.range(0);
 
@@ -129,9 +130,54 @@ static void BM_reader_lr(benchmark::State& s)
 }
 
 #define ARGS ->Arg(1)->Arg(2)->Arg(3)->Arg(4)
-BENCHMARK(BM_full_baseline) ARGS;
-BENCHMARK(BM_full_lr) ARGS;
-BENCHMARK(BM_reader_baseline) ARGS;
-BENCHMARK(BM_reader_lr) ARGS;
+BENCHMARK(BM_spmc_full_baseline) ARGS;
+BENCHMARK(BM_spmc_full_lr) ARGS;
+BENCHMARK(BM_spmc_reader_baseline) ARGS;
+BENCHMARK(BM_spmc_reader_lr) ARGS;
+
+static void BM_spsc_baseline(benchmark::State& s)
+{
+  std::mutex mx;
+  for ([[maybe_unused]] auto _ : s) {
+    size_t x = 0;
+    fzx::Thread reader { [&]{
+      for (size_t i = 0; i < kIterations; ++i) {
+        size_t c = 0;
+        {
+          std::unique_lock lk { mx };
+          c = x;
+        }
+        benchmark::DoNotOptimize(c);
+      }
+    } };
+    for (size_t i = 0; i < kIterations; ++i) {
+      std::unique_lock lk { mx };
+      x = i;
+    }
+  }
+  s.SetBytesProcessed(s.iterations() * kIterations);
+}
+
+static void BM_spsc_tx(benchmark::State& s)
+{
+  for ([[maybe_unused]] auto _ : s) {
+    fzx::TxValue<size_t> tx;
+    fzx::Thread reader { [&]{
+      for (size_t i = 0; i < kIterations; ++i) {
+        tx.load();
+        auto res = tx.readBuffer();
+        benchmark::DoNotOptimize(res);
+      }
+    } };
+    for (size_t i = 0; i < kIterations; ++i) {
+      tx.writeBuffer() = i;
+      tx.commit();
+    }
+  }
+  s.SetBytesProcessed(s.iterations() * kIterations);
+}
+
+BENCHMARK(BM_spsc_baseline);
+BENCHMARK(BM_spsc_tx);
 
 BENCHMARK_MAIN();

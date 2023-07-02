@@ -19,4 +19,11 @@ namespace fzx::detail {
   std::abort();
 }
 
+// NOLINTNEXTLINE(google-runtime-int)
+[[noreturn]] void unreachableFail(const char* file, unsigned long line)
+{
+  std::fprintf(stderr, "fzx: Reached unreachable code: %s:%lu\n", file, line);
+  std::abort();
+}
+
 } // namespace fzx::detail
