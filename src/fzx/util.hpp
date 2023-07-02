@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #define UNUSED(x) (::fzx::unused(x))
 
 #if defined(__has_attribute)
@@ -81,5 +83,10 @@ static constexpr auto roundPow2(T x) noexcept
     x |= x >> i;
   return ++x;
 }
+
+// TODO: generate it with cmake, on linux it's `getconf LEVEL1_DCACHE_LINESIZE`
+static constexpr auto kCacheLine = 64;
+
+using std::swap;
 
 } // namespace fzx
