@@ -24,7 +24,7 @@ struct TxValue
   void commit() noexcept
   {
     auto tick = ++mTicks[mWrite];
-    mWrite = mUnused.exchange(mWrite, std::memory_order_release);
+    mWrite = mUnused.exchange(mWrite, std::memory_order_acq_rel);
     mTicks[mWrite] = tick;
   }
 
@@ -41,10 +41,10 @@ struct TxValue
   bool load() noexcept
   {
     auto tick = mTicks[mRead];
-    mRead = mUnused.exchange(mRead, std::memory_order_acquire);
+    mRead = mUnused.exchange(mRead, std::memory_order_acq_rel);
     if (mTicks[mRead] > tick)
       return true;
-    mRead = mUnused.exchange(mRead, std::memory_order_acquire);
+    mRead = mUnused.exchange(mRead, std::memory_order_acq_rel);
     return mTicks[mRead] > tick;
   }
 
