@@ -14,7 +14,8 @@
       "inherits": "conf-common",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_C_COMPILER": "gcc"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_PREFIX_PATH": "${sourceDir}/build/deps-gcc/usr"
       }
     },
     {
@@ -23,7 +24,8 @@
       "inherits": "conf-common",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_C_COMPILER": "clang"
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_PREFIX_PATH": "${sourceDir}/build/deps-clang/usr"
       }
     },
 

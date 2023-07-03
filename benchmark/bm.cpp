@@ -177,6 +177,15 @@ static void BM_spsc_tx(benchmark::State& s)
   s.SetBytesProcessed(s.iterations() * kIterations);
 }
 
+// TODO: different results on different machines:
+//
+// Intel(R) Core(TM) i5-2520M CPU @ 2.50GHz
+// BM_spsc_baseline    1853533 ns      1795442 ns          396 bytes_per_second=5.31164M/s
+// BM_spsc_tx           387814 ns       317646 ns         2238 bytes_per_second=30.0232M/s
+//
+// AMD Ryzen 7 3700X 8-Core Processor
+// BM_spsc_baseline     672020 ns       527124 ns         1083 bytes_per_second=18.092M/s
+// BM_spsc_tx           944793 ns       901578 ns          781 bytes_per_second=10.5778M/s
 BENCHMARK(BM_spsc_baseline);
 BENCHMARK(BM_spsc_tx);
 
