@@ -10,6 +10,7 @@
 
 #include "fzx/item_list.hpp"
 #include "fzx/tx_value.hpp"
+#include "fzx/events.hpp"
 #include "fzx/util.hpp"
 
 namespace fzx {
@@ -25,24 +26,24 @@ struct Match
   uint32_t mIndex { 0 };
   float mScore { 0.0 };
 
-  friend bool operator==(const Match& a, const Match& b) noexcept
+  friend bool operator==(Match a, Match b) noexcept
   {
     return a.mIndex == b.mIndex && a.mScore == b.mScore;
   }
 
-  friend bool operator<(const Match& a, const Match& b) noexcept
+  friend bool operator<(Match a, Match b) noexcept
   {
     return a.mScore == b.mScore ? a.mIndex < b.mIndex : a.mScore > b.mScore;
   }
 
-  friend bool operator>(const Match& a, const Match& b) noexcept
+  friend bool operator>(Match a, Match b) noexcept
   {
     return a.mScore == b.mScore ? a.mIndex > b.mIndex : a.mScore < b.mScore;
   }
 
-  friend bool operator!=(const Match& a, const Match& b) noexcept { return !(a == b); }
-  friend bool operator<=(const Match& a, const Match& b) noexcept { return !(a > b); }
-  friend bool operator>=(const Match& a, const Match& b) noexcept { return !(a < b); }
+  friend bool operator!=(Match a, Match b) noexcept { return !(a == b); }
+  friend bool operator<=(Match a, Match b) noexcept { return !(a > b); }
+  friend bool operator>=(Match a, Match b) noexcept { return !(a < b); }
 };
 
 struct Results
@@ -95,6 +96,7 @@ struct Fzx
 private:
   void run();
 
+private:
   ItemList mItems;
   TxValue<std::string> mQuery;
   TxValue<Results> mResults;
@@ -103,10 +105,8 @@ private:
   int mNotifyPipe[2] { -1, -1 };
   std::atomic<bool> mNotifyActive { false };
 
-  mutable std::mutex mMutex;
-  mutable std::condition_variable mCv;
+  Events mEvents;
   std::thread mThread;
-  std::atomic<uint32_t> mUpdate { false };
   bool mRunning { false };
 };
 

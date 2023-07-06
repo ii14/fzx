@@ -11,13 +11,6 @@ using namespace std::string_view_literals;
 
 namespace fzx {
 
-enum Update : uint32_t {
-  kNone = 0,
-  kStop = 1U << 0,
-  kItems = 1U << 1,
-  kQuery = 1U << 2,
-};
-
 Fzx::Fzx()
 {
   if (pipe(mNotifyPipe) == -1) {
@@ -59,13 +52,7 @@ void Fzx::stop() noexcept
   if (!mRunning)
     return;
   mRunning = false;
-
-  {
-    std::unique_lock lock { mMutex };
-    mUpdate.fetch_or(Update::kStop, std::memory_order_release);
-  }
-
-  mCv.notify_one();
+  mEvents.post(Events::kStopEvent);
   if (mThread.joinable())
     mThread.join();
 }
@@ -119,26 +106,14 @@ bool Fzx::scanEnd()
 void Fzx::commitItems() noexcept
 {
   mItems.commit();
-
-  {
-    std::unique_lock lock { mMutex };
-    mUpdate.fetch_or(Update::kItems, std::memory_order_release);
-  }
-
-  mCv.notify_one();
+  mEvents.post(Events::kItemsEvent);
 }
 
 void Fzx::setQuery(std::string query) noexcept
 {
   mQuery.writeBuffer() = std::move(query);
   mQuery.commit();
-
-  {
-    std::unique_lock lock { mMutex };
-    mUpdate.fetch_or(Update::kQuery, std::memory_order_release);
-  }
-
-  mCv.notify_one();
+  mEvents.post(Events::kQueryEvent);
 }
 
 bool Fzx::loadResults() noexcept
@@ -184,105 +159,99 @@ struct Job
 
 void Fzx::run()
 {
+  // TODO: exception safety
   auto reader = mItems.reader();
 
   while (true) {
-    uint32_t update = mUpdate.exchange(Update::kNone, std::memory_order_acquire);
-    if (update == Update::kNone) {
-      std::unique_lock lock { mMutex };
-      mCv.wait(lock, [&] {
-        update = mUpdate.exchange(Update::kNone, std::memory_order_acquire);
-        return update != Update::kNone;
-      });
-    }
-
-    if (update & Update::kStop)
+// again:
+    uint32_t update = mEvents.wait();
+    if (update & Events::kStopEvent)
       return;
-    if (update & Update::kItems)
+    if (update & Events::kItemsEvent)
       reader.load();
-    if (update & Update::kQuery)
+    if (update & Events::kQueryEvent)
       if (!mQuery.load())
-        update &= ~Update::kQuery;
+        update &= ~Events::kQueryEvent;
+    if (update == Events::kNone)
+      continue;
 
-    if (update != Update::kNone) {
-      std::string_view query = mQuery.readBuffer();
-      auto& res = mResults.writeBuffer();
-      res.mResults.clear();
+    std::string_view query = mQuery.readBuffer();
+    auto& res = mResults.writeBuffer();
+    res.mResults.clear();
 
 #if 1
-      constexpr auto kThreads = 4;
-      const auto chunkSize = reader.size() / kThreads + 1;
-      std::array<Job, kThreads> jobs;
-      for (size_t n = 0; n < jobs.size(); ++n) {
-        auto& job = jobs[n];
-        job.mQuery = query;
-        job.mReader = &reader;
-        job.mStart = chunkSize * n;
-        job.mEnd = std::min(chunkSize * n + chunkSize, reader.size());
-        // TODO: make a thread pool instead of creating threads here
-        if (n > 0)
-          job.mThread = std::thread { &Job::run, &job };
-      }
+    constexpr auto kThreads = 4;
+    const auto chunkSize = reader.size() / kThreads + 1;
+    std::array<Job, kThreads> jobs;
+    for (size_t n = 0; n < jobs.size(); ++n) {
+      auto& job = jobs[n];
+      job.mQuery = query;
+      job.mReader = &reader;
+      job.mStart = chunkSize * n;
+      job.mEnd = std::min(chunkSize * n + chunkSize, reader.size());
+      // TODO: make a thread pool instead of creating threads here
+      if (n > 0)
+        job.mThread = std::thread { &Job::run, &job };
+    }
 
-      jobs[0].run();
-      for (size_t n = 1; n < jobs.size(); ++n)
-        jobs[n].mThread.join();
+    jobs[0].run();
+    for (size_t n = 1; n < jobs.size(); ++n)
+      jobs[n].mThread.join();
 
-      auto merge2 = [](
-          std::vector<Match>& out,
-          const std::vector<Match>& a,
-          const std::vector<Match>& b)
-      {
-        size_t ir = 0;
-        size_t ia = 0;
-        size_t ib = 0;
-        out.resize(a.size() + b.size());
-        while (ia < a.size() && ib < b.size()) {
-          if (a[ia] < b[ib]) {
-            out[ir++] = a[ia++];
-          } else {
-            out[ir++] = b[ib++];
-          }
-        }
-        while (ia < a.size())
+    auto merge2 = [](
+        std::vector<Match>& out,
+        const std::vector<Match>& a,
+        const std::vector<Match>& b)
+    {
+      size_t ir = 0;
+      size_t ia = 0;
+      size_t ib = 0;
+      out.resize(a.size() + b.size());
+      while (ia < a.size() && ib < b.size()) {
+        if (a[ia] < b[ib]) {
           out[ir++] = a[ia++];
-        while (ib < b.size())
+        } else {
           out[ir++] = b[ib++];
-      };
-
-      std::vector<Match> r1;
-      std::vector<Match> r2;
-      merge2(r1, jobs[0].mResults, jobs[1].mResults);
-      merge2(r2, jobs[2].mResults, jobs[3].mResults);
-      merge2(res.mResults, r1, r2);
-#else
-      res.reserve(reader.size());
-      constexpr auto kCheckUpdate = 0x2000;
-
-      size_t n = 0;
-      for (size_t i = 0; i < reader.size(); ++i) {
-        auto item = reader[i];
-        if (hasMatch(query, item))
-          res.push_back({ i, match(query, item) });
-        if (++n == kCheckUpdate) {
-          n = 0;
-          update = mUpdate.exchange(Update::None, std::memory_order_acquire);
-          if (update != Update::None)
-            goto again;
         }
       }
+      while (ia < a.size())
+        out[ir++] = a[ia++];
+      while (ib < b.size())
+        out[ir++] = b[ib++];
+    };
 
-      std::sort(res.begin(), res.end(), matchCompare);
+    std::vector<Match> r1;
+    std::vector<Match> r2;
+    merge2(r1, jobs[0].mResults, jobs[1].mResults);
+    merge2(r2, jobs[2].mResults, jobs[3].mResults);
+    merge2(res.mResults, r1, r2);
+#else
+    res.mResults.reserve(reader.size());
+    constexpr auto kCheckUpdate = 0x2000;
+
+    size_t n = 0;
+    for (size_t i = 0; i < reader.size(); ++i) {
+      auto item = reader[i];
+      if (hasMatch(query, item))
+        res.mResults.push_back({ uint32_t(i), float(fzx::match(query, item)) });
+      if (++n == kCheckUpdate) {
+        n = 0;
+        update = mEvents.get();
+        if (update != Events::kNone)
+          goto again;
+      }
+    }
+
+    std::sort(res.mResults.begin(), res.mResults.end());
 #endif
 
-      res.mItemsTick = reader.size();
-      res.mQueryTick = mQuery.readTick();
-      mResults.commit();
-      if (!mNotifyActive.load(std::memory_order_relaxed) &&
-          !mNotifyActive.exchange(true, std::memory_order_release)) {
-        const char c = 0;
-        UNUSED(write(mNotifyPipe[1], &c, 1));
-      }
+    res.mItemsTick = reader.size();
+    res.mQueryTick = mQuery.readTick();
+    mResults.commit();
+    if (!mNotifyActive.load(std::memory_order_relaxed) &&
+        !mNotifyActive.exchange(true, std::memory_order_release)) {
+      const char c = 0;
+      UNUSED(write(mNotifyPipe[1], &c, 1));
     }
   }
 }

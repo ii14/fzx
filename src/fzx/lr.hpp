@@ -29,22 +29,15 @@ public:
   {
     const Index lr = mLR.load(std::memory_order_relaxed);
     ASSUME(lr == 0 || lr == 1);
-    fzx::swap(mData[!lr], value);
+    swap(mData[!lr], value);
     mLR.store(!lr, std::memory_order_release);
 
-    const Index idx = mIndex.load(std::memory_order_acquire);
+    const Index idx = mIndex.load(std::memory_order_relaxed);
     ASSUME(idx == 0 || idx == 1);
 
-    std::atomic<Counter>& ncnt = idx == kLeft ? mRCnt : mLCnt;
-    std::atomic<Counter>& ccnt = idx == kLeft ? mLCnt : mRCnt;
-
-    while (ncnt.load(std::memory_order_acquire) != 0)
-      std::this_thread::yield();
-
+    wait(idx == kLeft ? mRCnt : mLCnt);
     mIndex.store(!idx, std::memory_order_release);
-
-    while (ccnt.load(std::memory_order_acquire) != 0)
-      std::this_thread::yield();
+    wait(idx == kLeft ? mLCnt : mRCnt);
   }
 
   void load(T& out) noexcept(std::is_nothrow_copy_assignable_v<T>)
@@ -79,6 +72,22 @@ private:
   private:
     std::atomic<Counter>* mCnt;
   };
+
+  void wait(std::atomic<Counter>& cnt)
+  {
+#if 1
+    while (cnt.load(std::memory_order_acquire) != 0)
+      std::this_thread::yield();
+#else
+    static const timespec kTs { 0, 1 };
+    for (int i = 0; cnt.load(std::memory_order_acquire) != 0; ++i) {
+      if (i == 8) {
+        i = 0;
+        nanosleep(&kTs, nullptr);
+      }
+    }
+#endif
+  }
 
 private:
   T mData[2] {};
