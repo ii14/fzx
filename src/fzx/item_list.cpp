@@ -73,7 +73,10 @@ void ItemList::push(std::string_view s)
   }
 
   std::uninitialized_copy_n(s.data(), s.size(), buf.mStrData + buf.mStrSize);
-  new (buf.mItemData + buf.mItemSize) Item { uint32_t(buf.mStrSize), uint32_t(s.size()) };
+  new (buf.mItemData + buf.mItemSize) Item {
+    static_cast<uint32_t>(buf.mStrSize),
+    static_cast<uint32_t>(s.size()),
+  };
   buf.mStrSize += s.size();
   buf.mItemSize += 1;
 }

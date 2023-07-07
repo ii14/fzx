@@ -236,13 +236,13 @@ static void BM_events(benchmark::State& s)
     fzx::Thread t { [&]{
       pinThread(1);
       while (true)
-        if (w.wait() & fzx::Events::kStopEvent)
+        if (w.wait() & 0x1)
           return;
     } };
 
     for (size_t i = 0; i < kIterations; ++i)
-      w.post(fzx::Events::kItemsEvent);
-    w.post(fzx::Events::kStopEvent);
+      w.post(0x2);
+    w.post(0x1);
   }
   s.SetItemsProcessed(s.iterations() * kIterations);
 }

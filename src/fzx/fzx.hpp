@@ -11,6 +11,8 @@
 #include "fzx/item_list.hpp"
 #include "fzx/tx_value.hpp"
 #include "fzx/events.hpp"
+#include "fzx/eventfd.hpp"
+#include "fzx/line_scanner.hpp"
 #include "fzx/util.hpp"
 
 namespace fzx {
@@ -65,7 +67,7 @@ struct Fzx
 
   void start();
   void stop() noexcept;
-  [[nodiscard]] int notifyFd() const noexcept { return mNotifyPipe[0]; }
+  [[nodiscard]] int notifyFd() const noexcept { return mEventFd.fd(); }
 
   // TODO: add overflow checks in pushItem and scanFeed/scanEnd
 
@@ -100,11 +102,8 @@ private:
   ItemList mItems;
   TxValue<std::string> mQuery;
   TxValue<Results> mResults;
-  std::vector<char> mScanBuffer;
-
-  int mNotifyPipe[2] { -1, -1 };
-  std::atomic<bool> mNotifyActive { false };
-
+  LineScanner mLineScanner;
+  EventFd mEventFd;
   Events mEvents;
   std::thread mThread;
   bool mRunning { false };

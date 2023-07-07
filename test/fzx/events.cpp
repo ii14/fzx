@@ -10,30 +10,36 @@ TEST_CASE("fzx::Events")
   size_t items = 0;
   size_t query = 0;
 
+  enum Event {
+    kStopEvent = 0x1,
+    kItemsEvent = 0x2,
+    kQueryEvent = 0x4,
+  };
+
   fzx::Thread t0 { [&] {
     while (true) {
       uint32_t evs = ev.wait();
-      if (evs & fzx::Events::kStopEvent)
+      if (evs & Event::kStopEvent)
         return;
-      if (evs & fzx::Events::kItemsEvent)
+      if (evs & Event::kItemsEvent)
         ++items;
-      if (evs & fzx::Events::kQueryEvent)
+      if (evs & Event::kQueryEvent)
         ++query;
     }
   } };
 
   fzx::Thread t1 { [&] {
     for (size_t i = 0; i < 100'000; ++i)
-      ev.post(fzx::Events::kItemsEvent);
+      ev.post(Event::kItemsEvent);
   } };
   fzx::Thread t2 { [&] {
     for (size_t i = 0; i < 100'000; ++i)
-      ev.post(fzx::Events::kQueryEvent);
+      ev.post(Event::kQueryEvent);
   } };
 
   t1.join();
   t2.join();
-  ev.post(fzx::Events::kStopEvent);
+  ev.post(Event::kStopEvent);
   t0.join();
 
   REQUIRE(items > 0);

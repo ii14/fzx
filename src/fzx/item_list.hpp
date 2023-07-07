@@ -73,7 +73,7 @@ struct ItemList
   [[nodiscard]] std::string_view getString(Item item) const noexcept
   {
     const auto& buf = mBuffers[mWrite];
-    DEBUG_ASSERT(size_t(item.mOffset) + size_t(item.mLength) <= buf.mStrSize);
+    DEBUG_ASSERT(static_cast<size_t>(item.mOffset) + static_cast<size_t>(item.mLength) <= buf.mStrSize);
     return std::string_view { buf.mStrData + item.mOffset, item.mLength };
   }
 
@@ -130,7 +130,7 @@ struct ItemReader
   [[nodiscard]] std::string_view getString(ItemList::Item item) const noexcept
   {
     const auto& buf = mPtr->mBuffers[mPtr->mRead];
-    DEBUG_ASSERT(size_t(item.mOffset) + size_t(item.mLength) <= buf.mStrSize);
+    DEBUG_ASSERT(static_cast<size_t>(item.mOffset) + static_cast<size_t>(item.mLength) <= buf.mStrSize);
     return std::string_view { buf.mStrData + item.mOffset, item.mLength };
   }
 

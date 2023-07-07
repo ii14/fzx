@@ -6,37 +6,28 @@
 #include <cstring>
 
 #include "fzx/match/fzy.hpp"
+#include "fzx/line_scanner.ipp"
 
 using namespace std::string_view_literals;
 
 namespace fzx {
 
+enum Event : uint32_t {
+  kNone = 0,
+  kStopEvent = 1U << 0,
+  kItemsEvent = 1U << 1,
+  kQueryEvent = 1U << 2,
+};
+
 Fzx::Fzx()
 {
-  if (pipe(mNotifyPipe) == -1) {
-    perror("pipe");
-    throw std::runtime_error { "pipe failed" };
-  }
-
-  if ((fcntl(mNotifyPipe[0], F_SETFD, FD_CLOEXEC) == -1) ||
-      (fcntl(mNotifyPipe[1], F_SETFD, FD_CLOEXEC) == -1)) {
-    perror("fcntl");
-    throw std::runtime_error { "setting FD_CLOEXEC failed" };
-  }
-
-  if ((fcntl(mNotifyPipe[0], F_SETFL, O_NONBLOCK) == -1) ||
-      (fcntl(mNotifyPipe[1], F_SETFL, O_NONBLOCK) == -1)) {
-    perror("fcntl");
-    throw std::runtime_error { "setting O_NONBLOCK failed" };
-  }
+  if (auto err = mEventFd.open(); !err.empty())
+    throw std::runtime_error { err };
 }
 
 Fzx::~Fzx() noexcept
 {
-  if (mNotifyPipe[0] >= 0)
-    close(mNotifyPipe[0]);
-  if (mNotifyPipe[1] >= 0)
-    close(mNotifyPipe[1]);
+  mEventFd.close();
   stop();
 }
 
@@ -52,76 +43,37 @@ void Fzx::stop() noexcept
   if (!mRunning)
     return;
   mRunning = false;
-  mEvents.post(Events::kStopEvent);
+  mEvents.post(Event::kStopEvent);
   if (mThread.joinable())
     mThread.join();
 }
 
 uint32_t Fzx::scanFeed(std::string_view s)
 {
-  uint32_t count = 0;
-  const auto* it = s.begin();
-  for (;;) {
-    const auto* const nl = std::find(it, s.end(), '\n');
-    const auto len = std::distance(it, nl);
-    ASSUME(len >= 0);
-    if (nl == s.end()) {
-      if (len != 0) {
-        const auto size = mScanBuffer.size();
-        mScanBuffer.resize(size + len);
-        std::memcpy(mScanBuffer.data() + size, it, len);
-      }
-      return count;
-    } else if (len == 0) {
-      if (!mScanBuffer.empty()) {
-        mItems.push({ mScanBuffer.data(), mScanBuffer.size() });
-        mScanBuffer.clear();
-        ++count;
-      }
-    } else if (mScanBuffer.empty()) {
-      mItems.push({ it, size_t(len) });
-      ++count;
-    } else {
-      const auto size = mScanBuffer.size();
-      mScanBuffer.resize(size + len);
-      std::memcpy(mScanBuffer.data() + size, it, len);
-      mItems.push({ mScanBuffer.data(), mScanBuffer.size() });
-      mScanBuffer.clear();
-      ++count;
-    }
-    it += len + 1;
-  }
+  return mLineScanner.feed(s, [this](std::string_view item) { mItems.push(item); });
 }
 
 bool Fzx::scanEnd()
 {
-  const bool empty = mScanBuffer.empty();
-  if (!empty)
-    mItems.push({ mScanBuffer.data(), mScanBuffer.size() });
-  mScanBuffer.clear();
-  mScanBuffer.shrink_to_fit();
-  return !empty;
+  return mLineScanner.finalize([this](std::string_view item) { mItems.push(item); });
 }
 
 void Fzx::commitItems() noexcept
 {
   mItems.commit();
-  mEvents.post(Events::kItemsEvent);
+  mEvents.post(Event::kItemsEvent);
 }
 
 void Fzx::setQuery(std::string query) noexcept
 {
   mQuery.writeBuffer() = std::move(query);
   mQuery.commit();
-  mEvents.post(Events::kQueryEvent);
+  mEvents.post(Event::kQueryEvent);
 }
 
 bool Fzx::loadResults() noexcept
 {
-  if (!mNotifyActive.exchange(false, std::memory_order_acquire))
-    return false;
-  char buf[32];
-  UNUSED(read(mNotifyPipe[0], buf, std::size(buf)));
+  mEventFd.consume();
   return mResults.load();
 }
 
@@ -151,7 +103,7 @@ struct Job
     for (size_t i = mStart; i < mEnd; ++i) {
       auto item = mReader->at(i);
       if (hasMatch(mQuery, item))
-        mResults.push_back({ uint32_t(i), float(match(mQuery, item)) });
+        mResults.push_back({ static_cast<uint32_t>(i), static_cast<float>(match(mQuery, item)) });
     }
     std::sort(mResults.begin(), mResults.end());
   }
@@ -165,14 +117,14 @@ void Fzx::run()
   while (true) {
 // again:
     uint32_t update = mEvents.wait();
-    if (update & Events::kStopEvent)
+    if (update & Event::kStopEvent)
       return;
-    if (update & Events::kItemsEvent)
+    if (update & Event::kItemsEvent)
       reader.load();
-    if (update & Events::kQueryEvent)
+    if (update & Event::kQueryEvent)
       if (!mQuery.load())
-        update &= ~Events::kQueryEvent;
-    if (update == Events::kNone)
+        update &= ~Event::kQueryEvent;
+    if (update == Event::kNone)
       continue;
 
     std::string_view query = mQuery.readBuffer();
@@ -237,7 +189,7 @@ void Fzx::run()
       if (++n == kCheckUpdate) {
         n = 0;
         update = mEvents.get();
-        if (update != Events::kNone)
+        if (update != Event::kNone)
           goto again;
       }
     }
@@ -248,11 +200,7 @@ void Fzx::run()
     res.mItemsTick = reader.size();
     res.mQueryTick = mQuery.readTick();
     mResults.commit();
-    if (!mNotifyActive.load(std::memory_order_relaxed) &&
-        !mNotifyActive.exchange(true, std::memory_order_release)) {
-      const char c = 0;
-      UNUSED(write(mNotifyPipe[1], &c, 1));
-    }
+    mEventFd.notify();
   }
 }
 
