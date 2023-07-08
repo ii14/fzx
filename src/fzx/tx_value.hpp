@@ -7,7 +7,7 @@
 
 namespace fzx {
 
-/// Single-producer, single-consumer value transaction.
+/// Single-producer, single-consumer, wait-free value transaction.
 template <typename T>
 struct TxValue
 {

@@ -70,6 +70,8 @@ TEST_CASE("fzx::LR")
 
     fzx::Thread t1 { reader };
     fzx::Thread t2 { reader };
+    fzx::Thread t3 { reader };
+    fzx::Thread t4 { reader };
 
     for (size_t i = 0; i < kIterations; ++i) {
       size_t x = i;

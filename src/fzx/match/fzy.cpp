@@ -34,7 +34,7 @@
 #include <strings.h>
 #include <utility>
 
-namespace fzx {
+namespace fzx::fzy {
 
 static constexpr auto kBonusStates = []{
   std::array<std::array<Score, 256>, 3> r {};
@@ -76,7 +76,7 @@ bool hasMatch(std::string_view needle, std::string_view haystack)
 {
   const char* it = haystack.begin();
   for (char ch : needle) {
-    char uch = char(toupper(ch));
+    char uch = static_cast<char>(toupper(ch));
     while (it != haystack.end() && (*it != ch && *it != uch))
       ++it;
     if (it == haystack.end())
@@ -120,16 +120,16 @@ struct MatchStruct
 };
 
 MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
-  : mNeedleLen(int(needle.size()))
-  , mHaystackLen(int(haystack.size()))
+  : mNeedleLen(static_cast<int>(needle.size()))
+  , mHaystackLen(static_cast<int>(haystack.size()))
 {
   if (mHaystackLen > kMatchMaxLen || mNeedleLen > mHaystackLen)
     return;
 
   for (int i = 0; i < mNeedleLen; ++i)
-    mLowerNeedle[i] = char(tolower(needle[i]));
+    mLowerNeedle[i] = static_cast<char>(tolower(needle[i]));
   for (int i = 0; i < mHaystackLen; ++i)
-    mLowerHaystack[i] = char(tolower(haystack[i]));
+    mLowerHaystack[i] = static_cast<char>(tolower(haystack[i]));
 
   precomputeBonus(haystack, mMatchBonus);
 }
@@ -202,10 +202,7 @@ Score match(std::string_view needle, std::string_view haystack)
   return (*lastM)[match.mHaystackLen - 1];
 }
 
-Score matchPositions(
-    std::string_view needle,
-    std::string_view haystack,
-    std::array<size_t, kMatchMaxLen>* positions)
+Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions)
 {
   if (needle.empty())
     return kScoreMin;
@@ -282,4 +279,4 @@ Score matchPositions(
   return result;
 }
 
-} // namespace fzx
+} // namespace fzx::fzy

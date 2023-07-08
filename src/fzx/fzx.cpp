@@ -1,14 +1,7 @@
 #include "fzx/fzx.hpp"
 
-#include <algorithm>
-#include <fcntl.h>
-#include <unistd.h>
-#include <cstring>
-
 #include "fzx/match/fzy.hpp"
 #include "fzx/line_scanner.ipp"
-
-using namespace std::string_view_literals;
 
 namespace fzx {
 
@@ -50,12 +43,16 @@ void Fzx::stop() noexcept
 
 uint32_t Fzx::scanFeed(std::string_view s)
 {
-  return mLineScanner.feed(s, [this](std::string_view item) { mItems.push(item); });
+  return mLineScanner.feed(s, [this](std::string_view item) {
+    mItems.push(item);
+  });
 }
 
 bool Fzx::scanEnd()
 {
-  return mLineScanner.finalize([this](std::string_view item) { mItems.push(item); });
+  return mLineScanner.finalize([this](std::string_view item) {
+    mItems.push(item);
+  });
 }
 
 void Fzx::commitItems() noexcept
@@ -102,8 +99,11 @@ struct Job
     mResults.reserve(mEnd - mStart);
     for (size_t i = mStart; i < mEnd; ++i) {
       auto item = mReader->at(i);
-      if (hasMatch(mQuery, item))
-        mResults.push_back({ static_cast<uint32_t>(i), static_cast<float>(match(mQuery, item)) });
+      if (fzy::hasMatch(mQuery, item))
+        mResults.push_back({
+          static_cast<uint32_t>(i),
+          static_cast<float>(fzy::match(mQuery, item)),
+        });
     }
     std::sort(mResults.begin(), mResults.end());
   }
@@ -184,8 +184,11 @@ void Fzx::run()
     size_t n = 0;
     for (size_t i = 0; i < reader.size(); ++i) {
       auto item = reader[i];
-      if (hasMatch(query, item))
-        res.mResults.push_back({ uint32_t(i), float(fzx::match(query, item)) });
+      if (fzy::hasMatch(query, item))
+        res.mResults.push_back({
+          static_cast<uint32_t>(i),
+          static_cast<float>(fzy::match(query, item)),
+        });
       if (++n == kCheckUpdate) {
         n = 0;
         update = mEvents.get();

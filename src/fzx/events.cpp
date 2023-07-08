@@ -14,6 +14,9 @@ static constexpr uint32_t kEventMask = ~kWaitFlag;
 // that they can throw should ever happen. We need noexcept because the post function
 // in particular can be called in a destructor.
 
+// TODO: try to weaken memory ordering. Events::get in particular is called often, and
+// acquire should be enough there.
+
 uint32_t Events::get() noexcept
 {
   return mState.exchange(0);

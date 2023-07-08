@@ -27,7 +27,7 @@
 #include <string_view>
 #include <array>
 
-namespace fzx {
+namespace fzx::fzy {
 
 using Score = double;
 
@@ -47,9 +47,8 @@ static constexpr auto kMatchMaxLen = 1024;
 
 bool hasMatch(std::string_view needle, std::string_view haystack);
 Score match(std::string_view needle, std::string_view haystack);
-Score matchPositions(
-    std::string_view needle,
-    std::string_view haystack,
-    std::array<size_t, kMatchMaxLen>* positions);
 
-} // namespace fzx
+using Positions = std::array<size_t, kMatchMaxLen>;
+Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions);
+
+} // namespace fzx::fzy
