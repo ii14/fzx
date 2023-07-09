@@ -36,7 +36,9 @@
 
 namespace fzx::fzy {
 
-static constexpr auto kBonusStates = []{
+namespace {
+
+constexpr auto kBonusStates = []{
   std::array<std::array<Score, 256>, 3> r {};
 
   r[1]['/'] = kScoreMatchSlash;
@@ -56,7 +58,7 @@ static constexpr auto kBonusStates = []{
   return r;
 }();
 
-static constexpr auto kBonusIndex = []{
+constexpr auto kBonusIndex = []{
   std::array<uint8_t, 256> r {};
   for (char i = 'A'; i <= 'Z'; ++i)
     r[i] = 2;
@@ -67,10 +69,12 @@ static constexpr auto kBonusIndex = []{
   return r;
 }();
 
-static constexpr Score computeBonus(uint8_t lastCh, uint8_t ch)
+constexpr Score computeBonus(uint8_t lastCh, uint8_t ch)
 {
   return kBonusStates[kBonusIndex[ch]][lastCh];
 }
+
+} // namespace
 
 bool hasMatch(std::string_view needle, std::string_view haystack)
 {
@@ -86,7 +90,9 @@ bool hasMatch(std::string_view needle, std::string_view haystack)
   return true;
 }
 
-static void precomputeBonus(std::string_view haystack, Score* matchBonus)
+namespace {
+
+void precomputeBonus(std::string_view haystack, Score* matchBonus)
 {
   // Which positions are beginning of words
   char lastCh = '/';
@@ -134,7 +140,7 @@ MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
   precomputeBonus(haystack, mMatchBonus);
 }
 
-inline void MatchStruct::matchRow(
+void MatchStruct::matchRow(
     int row,
     ScoreArray& currD,
     ScoreArray& currM,
@@ -163,6 +169,8 @@ inline void MatchStruct::matchRow(
     }
   }
 }
+
+} // namespace
 
 Score match(std::string_view needle, std::string_view haystack)
 {

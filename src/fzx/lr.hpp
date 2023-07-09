@@ -107,7 +107,7 @@ private:
   }
 
 private:
-  T mData[2] {};
+  T mData[2] { {}, {} };
   alignas(fzx::kCacheLine) std::atomic<Index> mDataIdx { 0 };
   alignas(fzx::kCacheLine) std::atomic<Index> mCountIdx { 0 };
   alignas(fzx::kCacheLine) std::atomic<Counter> mRCount1 { 0 };

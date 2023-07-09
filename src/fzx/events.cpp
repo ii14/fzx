@@ -7,8 +7,12 @@ namespace fzx {
 // for benchmarking
 // #define FZX_EVENTS_NO_ATOMICS
 
-static constexpr uint32_t kWaitFlag = 0x80000000;
-static constexpr uint32_t kEventMask = ~kWaitFlag;
+namespace {
+
+constexpr uint32_t kWaitFlag = 0x80000000;
+constexpr uint32_t kEventMask = ~kWaitFlag;
+
+} // namespace
 
 // std::mutex::lock and std::mutex::unlock are not noexcept, but none of the exceptions
 // that they can throw should ever happen. We need noexcept because the post function

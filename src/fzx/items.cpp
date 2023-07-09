@@ -29,6 +29,7 @@ struct Item
 };
 
 static_assert(std::is_trivial_v<Item>); // can memcpy, don't have to call a destructor
+static_assert(std::is_trivially_destructible_v<std::atomic<size_t>>);
 
 constexpr auto kStorageAlign = fzx::kCacheLine;
 static_assert(kStorageAlign >= sizeof(std::atomic<size_t>));

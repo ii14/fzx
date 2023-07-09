@@ -14,6 +14,7 @@
 #include "fzx/eventfd.hpp"
 #include "fzx/line_scanner.hpp"
 #include "fzx/util.hpp"
+#include "fzx/match.hpp"
 
 namespace fzx {
 
@@ -21,31 +22,6 @@ struct Result
 {
   std::string_view mLine;
   float mScore { 0 };
-};
-
-struct Match
-{
-  uint32_t mIndex { 0 };
-  float mScore { 0.0 };
-
-  friend bool operator==(Match a, Match b) noexcept
-  {
-    return a.mIndex == b.mIndex && a.mScore == b.mScore;
-  }
-
-  friend bool operator<(Match a, Match b) noexcept
-  {
-    return a.mScore == b.mScore ? a.mIndex < b.mIndex : a.mScore > b.mScore;
-  }
-
-  friend bool operator>(Match a, Match b) noexcept
-  {
-    return a.mScore == b.mScore ? a.mIndex > b.mIndex : a.mScore < b.mScore;
-  }
-
-  friend bool operator!=(Match a, Match b) noexcept { return !(a == b); }
-  friend bool operator<=(Match a, Match b) noexcept { return !(a > b); }
-  friend bool operator>=(Match a, Match b) noexcept { return !(a < b); }
 };
 
 struct Results
