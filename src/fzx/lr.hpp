@@ -18,7 +18,6 @@ template <typename T>
 class LR
 {
   static_assert(std::is_default_constructible_v<T>);
-  static_assert(std::is_nothrow_move_assignable_v<T>);
 
   using Counter = uint64_t;
   using Index = int_fast8_t;
@@ -26,14 +25,13 @@ class LR
 public:
   /// Store the new value on the writer thread.
   /// Calling this from multiple threads is a data race.
-  /// The new value is swapped with whatever value happened to be stored previously.
-  void store(T& value) noexcept
+  void store(const T& value) noexcept(std::is_nothrow_copy_assignable_v<T>)
   {
     // Only modified by this thread, so a relaxed load is okay.
     const Index idx = mDataIdx.load(std::memory_order_relaxed);
 
     // Swap the data and point new readers at it.
-    swap(mData[!idx], value);
+    mData[!idx] = value;
     mDataIdx.store(!idx, std::memory_order_seq_cst);
 
     auto wait = [](std::atomic<Counter>& counter) {

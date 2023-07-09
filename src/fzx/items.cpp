@@ -157,14 +157,14 @@ void Items::push(std::string_view s)
 template <typename T>
 void Items::reserve(char*& mptr, size_t& msize, size_t& mcap, size_t n)
 {
-  const size_t cap = roundPow2(msize + n);
-  if (cap <= mcap)
+  if (msize + n <= mcap)
     return;
+  const size_t cap = mcap == 0 ? 1024 : mcap * 2;
 
   // TODO: The size for aligned_alloc has to be rounded up to a power of two. Because the
   // reference count is stored alongside the data, this means that the actual allocated
   // storage can in reality store more items than the amount we save as capacity.
-  const size_t size = roundPow2(kStorageAlign + cap * sizeof(T));
+  size_t size = roundPow2(kStorageAlign + cap * sizeof(T));
   auto* const data = static_cast<char*>(std::aligned_alloc(kStorageAlign, size));
   if (data == nullptr)
     throw std::bad_alloc {};

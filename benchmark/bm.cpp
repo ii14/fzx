@@ -8,34 +8,19 @@
 #include "fzx/tx_value.hpp"
 #include "fzx/events.hpp"
 
-static void pinThread(int cpu)
-{
-  UNUSED(cpu);
-#if 0
-  if (cpu < 0)
-    return;
-
-  cpu_set_t cpuset;
-  CPU_ZERO(&cpuset);
-  CPU_SET(cpu, &cpuset);
-
-  pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-#endif
-}
-
 static constexpr auto kIterations = 1'000'000;
 
 static void BM_spmc_full_baseline(benchmark::State& s)
 {
   const size_t threads = s.range(0);
   std::shared_mutex mx;
-  pinThread(0);
+  fzx::Thread::pin(0);
 
   for ([[maybe_unused]] auto _ : s) {
     size_t r = 0;
 
     auto reader = [&r, &mx](int cpu) {
-      pinThread(cpu);
+      fzx::Thread::pin(cpu);
       size_t x = 0;
       for (size_t i = 0; i < kIterations; ++i) {
         std::shared_lock lk { mx };
@@ -60,13 +45,13 @@ static void BM_spmc_full_baseline(benchmark::State& s)
 static void BM_spmc_full_lr(benchmark::State& s)
 {
   const size_t threads = s.range(0);
-  pinThread(0);
+  fzx::Thread::pin(0);
 
   for ([[maybe_unused]] auto _ : s) {
     fzx::LR<size_t> lr;
 
     auto reader = [&lr](int cpu) {
-      pinThread(cpu);
+      fzx::Thread::pin(cpu);
       size_t x = 0;
       for (size_t i = 0; i < kIterations; ++i) {
         lr.load(x);
@@ -91,14 +76,14 @@ static void BM_spmc_reader_baseline(benchmark::State& s)
 {
   const size_t threads = s.range(0);
   std::shared_mutex mx;
-  pinThread(0);
+  fzx::Thread::pin(0);
 
   for ([[maybe_unused]] auto _ : s) {
     size_t r = 0;
     std::atomic<size_t> running { threads };
 
     auto reader = [&r, &mx, &running](int cpu) {
-      pinThread(cpu);
+      fzx::Thread::pin(cpu);
       size_t x = 0;
       for (size_t i = 0; i < kIterations; ++i) {
         std::shared_lock lk { mx };
@@ -124,14 +109,14 @@ static void BM_spmc_reader_baseline(benchmark::State& s)
 static void BM_spmc_reader_lr(benchmark::State& s)
 {
   const size_t threads = s.range(0);
-  pinThread(0);
+  fzx::Thread::pin(0);
 
   for ([[maybe_unused]] auto _ : s) {
     fzx::LR<size_t> lr;
     std::atomic<size_t> running { threads };
 
     auto reader = [&lr, &running](int cpu) {
-      pinThread(cpu);
+      fzx::Thread::pin(cpu);
       size_t x = 0;
       for (size_t i = 0; i < kIterations; ++i) {
         lr.load(x);
@@ -162,11 +147,11 @@ BENCHMARK(BM_spmc_reader_lr) ARGS;
 static void BM_spsc_baseline(benchmark::State& s)
 {
   std::mutex mx;
-  pinThread(0);
+  fzx::Thread::pin(0);
   for ([[maybe_unused]] auto _ : s) {
     size_t x = 0;
     fzx::Thread reader { [&]{
-      pinThread(1);
+      fzx::Thread::pin(1);
       for (size_t i = 0; i < kIterations; ++i) {
         size_t c = 0;
         {
@@ -186,12 +171,12 @@ static void BM_spsc_baseline(benchmark::State& s)
 
 static void BM_spsc_tx(benchmark::State& s)
 {
-  pinThread(0);
+  fzx::Thread::pin(0);
   for ([[maybe_unused]] auto _ : s) {
     fzx::TxValue<size_t> tx;
     fzx::Thread reader { [&]{
       for (size_t i = 0; i < kIterations; ++i) {
-        pinThread(1);
+        fzx::Thread::pin(1);
         tx.load();
         auto res = tx.readBuffer();
         benchmark::DoNotOptimize(res);
@@ -229,12 +214,12 @@ BENCHMARK(BM_spsc_tx);
 
 static void BM_events(benchmark::State& s)
 {
-  pinThread(0);
+  fzx::Thread::pin(0);
   for ([[maybe_unused]] auto _ : s) {
     fzx::Events w;
 
     fzx::Thread t { [&]{
-      pinThread(1);
+      fzx::Thread::pin(1);
       while (true)
         if (w.wait() & 0x1)
           return;

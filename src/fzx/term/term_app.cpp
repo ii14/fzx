@@ -80,18 +80,10 @@ void TermApp::redraw()
 
   ASSERT(mTTY.height() > 3);
   auto maxHeight = mTTY.height() - 2;
-  if (mLine.line().empty()) {
-    for (uint16_t i = 0; i < maxHeight && i < mFzx.itemsSize(); ++i) {
-      auto s = mFzx.getItem(i);
-      s = { s.data(), std::min(s.size(), size_t { 80 }) };
-      mTTY.put("\x1B[{};0H  {}", maxHeight - i, s);
-    }
-  } else {
-    for (uint16_t i = 0; i < maxHeight && i < mFzx.resultsSize(); ++i) {
-      auto s = mFzx.getResult(i).mLine;
-      s = { s.data(), std::min(s.size(), size_t { 80 }) };
-      mTTY.put("\x1B[{};0H  {}", maxHeight - i, s);
-    }
+  for (uint16_t i = 0; i < maxHeight && i < mFzx.resultsSize(); ++i) {
+    auto s = mFzx.getResult(i).mLine;
+    s = { s.data(), std::min(s.size(), size_t { 80 }) };
+    mTTY.put("\x1B[{};0H  {}", maxHeight - i, s);
   }
 
   mTTY.put("\x1B[{};0H{}/{}", mTTY.height() - 1, mFzx.resultsSize(), mFzx.itemsSize());

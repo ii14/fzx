@@ -91,7 +91,7 @@ template <typename T>
 static constexpr auto roundPow2(T x) noexcept
 {
   --x;
-  for (unsigned i = 1; i < sizeof(x); i *= 2)
+  for (unsigned i = 1; i < sizeof(x) * 8; i *= 2)
     x |= x >> i;
   return ++x;
 }

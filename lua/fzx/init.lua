@@ -4,6 +4,24 @@ local ns = api.nvim_create_namespace('fzx')
 
 local index = {}
 
+function index:redraw_prompt(res)
+  if not res then
+    res = self.fzx:get_results(0, 0)
+  end
+
+  api.nvim_buf_clear_namespace(self.prompt_buf, ns, 0, -1)
+  local status
+  if self.processing then
+    status = ('processing... %d/%d'):format(res.matched, res.total)
+  else
+    status = ('%d/%d'):format(res.matched, res.total)
+  end
+  api.nvim_buf_set_extmark(self.prompt_buf, ns, 0, 0, {
+    virt_text = {{ status, 'Comment' }},
+    virt_text_pos = 'right_align',
+  })
+end
+
 function index:redraw()
   local height = self:win_height()
   local res = self.fzx:get_results(height, self.offset)
@@ -18,17 +36,7 @@ function index:redraw()
   api.nvim_buf_set_lines(self.display_buf, 0, -1, false, lines)
   self.pending = false
 
-  api.nvim_buf_clear_namespace(self.prompt_buf, ns, 0, -1)
-  local status
-  if self.processing then
-    status = ('processing... %d/%d'):format(res.matched, res.total)
-  else
-    status = ('%d/%d'):format(res.matched, res.total)
-  end
-  api.nvim_buf_set_extmark(self.prompt_buf, ns, 0, 0, {
-    virt_text = {{ status, 'Comment' }},
-    virt_text_pos = 'right_align',
-  })
+  self:redraw_prompt(res)
 
   api.nvim_buf_clear_namespace(self.display_buf, ns, 0, -1)
   for lnum, item in ipairs(res.items) do
@@ -129,8 +137,10 @@ local function new()
     buffer = self.prompt_buf,
     callback = function()
       local line = api.nvim_buf_get_lines(self.prompt_buf, 0, 1, false)[1]
+      self.processing = true
       self.query = line
       self.fzx:set_query(line)
+      self:redraw_prompt()
     end,
   })
 
