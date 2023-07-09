@@ -22,6 +22,7 @@ struct EventFd
   void close() noexcept;
 
   /// Get the event file descriptor.
+  ///
   /// External event loops should listen for read events on
   /// this file descriptor to get notified about new activity.
   [[nodiscard]] int fd() const noexcept { return mPipe[0]; }
@@ -30,6 +31,9 @@ struct EventFd
   void consume() noexcept;
 
   /// Notify about new activity.
+  ///
+  /// Only one thread can do this. Calling this from multiple
+  /// threads at the same time can lock up the system.
   void notify() noexcept;
 
 private:

@@ -12,8 +12,8 @@ Fzx::Fzx()
 
 Fzx::~Fzx() noexcept
 {
-  mPool.mEventFd.close();
   stop();
+  mPool.mEventFd.close();
 }
 
 void Fzx::start()
