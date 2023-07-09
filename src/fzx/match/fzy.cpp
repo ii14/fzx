@@ -74,13 +74,26 @@ constexpr Score computeBonus(uint8_t lastCh, uint8_t ch)
   return kBonusStates[kBonusIndex[ch]][lastCh];
 }
 
+// because libc's toupper can't be inlined
+constexpr uint8_t toUpper(uint8_t ch)
+{
+  return ch >= 'a' && ch <= 'z' ? ch - 32 : ch;
+}
+
+// because libc's tolower can't be inlined
+constexpr uint8_t toLower(uint8_t ch)
+{
+  return ch >= 'A' && ch <= 'Z' ? ch + 32 : ch;
+}
+
 } // namespace
 
 bool hasMatch(std::string_view needle, std::string_view haystack)
 {
   const char* it = haystack.begin();
   for (char ch : needle) {
-    char uch = static_cast<char>(toupper(ch));
+    char uch = static_cast<char>(toUpper(ch));
+    // TODO: slow, can be vectorized by hand
     while (it != haystack.end() && (*it != ch && *it != uch))
       ++it;
     if (it == haystack.end())
@@ -98,6 +111,7 @@ void precomputeBonus(std::string_view haystack, Score* matchBonus)
   char lastCh = '/';
   for (size_t i = 0; i < haystack.size(); ++i) {
     char ch = haystack[i];
+    // TODO: try to vectorize this, it takes some time too
     matchBonus[i] = computeBonus(lastCh, ch);
     lastCh = ch;
   }
@@ -107,13 +121,13 @@ using ScoreArray = std::array<Score, kMatchMaxLen>;
 
 struct MatchStruct
 {
-  int mNeedleLen {};
-  int mHaystackLen {};
+  int mNeedleLen;
+  int mHaystackLen;
 
-  char mLowerNeedle[kMatchMaxLen] {};
-  char mLowerHaystack[kMatchMaxLen] {};
+  char mLowerNeedle[kMatchMaxLen];
+  char mLowerHaystack[kMatchMaxLen];
 
-  Score mMatchBonus[kMatchMaxLen] {};
+  Score mMatchBonus[kMatchMaxLen];
 
   MatchStruct(std::string_view needle, std::string_view haystack);
 
@@ -125,6 +139,9 @@ struct MatchStruct
     const ScoreArray& lastM);
 };
 
+// "initialize all your variables" they said.
+// and now memset takes up 20% of the runtime of your program.
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
   : mNeedleLen(static_cast<int>(needle.size()))
   , mHaystackLen(static_cast<int>(haystack.size()))
@@ -133,9 +150,9 @@ MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
     return;
 
   for (int i = 0; i < mNeedleLen; ++i)
-    mLowerNeedle[i] = static_cast<char>(tolower(needle[i]));
+    mLowerNeedle[i] = static_cast<char>(toLower(needle[i]));
   for (int i = 0; i < mHaystackLen; ++i)
-    mLowerHaystack[i] = static_cast<char>(tolower(haystack[i]));
+    mLowerHaystack[i] = static_cast<char>(toLower(haystack[i]));
 
   precomputeBonus(haystack, mMatchBonus);
 }
