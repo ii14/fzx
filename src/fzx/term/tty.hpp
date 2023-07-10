@@ -1,9 +1,11 @@
 #pragma once
 
-#include <vector>
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
-#include <optional>
+#include <vector>
+
 #include <fmt/core.h>
 
 namespace fzx {

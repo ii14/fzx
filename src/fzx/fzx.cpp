@@ -1,5 +1,7 @@
 #include "fzx/fzx.hpp"
 
+#include <stdexcept>
+
 #include "fzx/line_scanner.ipp"
 
 namespace fzx {
