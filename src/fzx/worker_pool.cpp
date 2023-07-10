@@ -125,7 +125,7 @@ void WorkerPool::run(uint32_t workerIndex)
   };
 
   // Check for a new job every N processed items
-  constexpr auto kCheckInterval = 0x400;
+  constexpr auto kCheckInterval = 0x8000;
 
   // TODO: Not sure how to express this control flow, so use gotos for now.
   // We can make it a proper clean code that is even harder to follow than gotos later.
