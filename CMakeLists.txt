@@ -21,6 +21,8 @@ option(ENABLE_TSAN "Enable thread sanitizer" OFF)
 if(ENABLE_ASAN AND ENABLE_TSAN)
   message(FATAL_ERROR "ASAN and TSAN are not compatible")
 endif()
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(SAVE_OPTIMIZATION_RECORDS "Save Clang optimization records" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -85,6 +87,27 @@ foreach(option ${compile_options})
     add_compile_options($<$<CONFIG:Debug>:${option}>)
   endif()
 endforeach()
+
+if(ENABLE_COVERAGE)
+  add_compile_options(--coverage)
+  add_link_options(--coverage)
+  add_custom_target(coverage
+    COMMAND cmake -E make_directory cov
+    COMMAND gcovr
+      --html-details cov/cov.html
+      --exclude-unreachable-branches
+      --gcov-ignore-parse-errors
+      --root "${CMAKE_CURRENT_SOURCE_DIR}"
+      --filter "${CMAKE_CURRENT_SOURCE_DIR}/src/.*"
+      .)
+  add_custom_target(coverage-clean
+    COMMAND gcovr --delete
+    COMMAND cmake -E rm -rf -- cov)
+endif()
+
+if(SAVE_OPTIMIZATION_RECORDS)
+  add_compile_options(-fsave-optimization-record=yaml)
+endif()
 
 # Disable DEBUG_ASSERT and enable ASSUME in release builds
 add_compile_definitions($<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>)

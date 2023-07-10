@@ -33,6 +33,9 @@
 #include <cstring>
 #include <strings.h>
 #include <utility>
+#include <vector>
+
+#include "fzx/util.hpp"
 
 namespace fzx::fzy {
 
@@ -94,7 +97,7 @@ bool hasMatch(std::string_view needle, std::string_view haystack)
   for (char ch : needle) {
     char uch = static_cast<char>(toUpper(ch));
     // TODO: slow, can be vectorized by hand
-    while (it != haystack.end() && (*it != ch && *it != uch))
+    while (it != haystack.end() && *it != ch && *it != uch)
       ++it;
     if (it == haystack.end())
       return false;
@@ -133,10 +136,10 @@ struct MatchStruct
 
   inline void matchRow(
     int row,
-    ScoreArray& currD,
-    ScoreArray& currM,
-    const ScoreArray& lastD,
-    const ScoreArray& lastM);
+    ScoreArray& RESTRICT currD,
+    ScoreArray& RESTRICT currM,
+    const ScoreArray& RESTRICT lastD,
+    const ScoreArray& RESTRICT lastM);
 };
 
 // "initialize all your variables" they said.
@@ -159,10 +162,10 @@ MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
 
 void MatchStruct::matchRow(
     int row,
-    ScoreArray& currD,
-    ScoreArray& currM,
-    const ScoreArray& lastD,
-    const ScoreArray& lastM)
+    ScoreArray& RESTRICT currD,
+    ScoreArray& RESTRICT currM,
+    const ScoreArray& RESTRICT lastD,
+    const ScoreArray& RESTRICT lastM)
 {
   Score prevScore = kScoreMin;
   Score gapScore = row == mNeedleLen - 1 ? kScoreGapTrailing : kScoreGapInner;

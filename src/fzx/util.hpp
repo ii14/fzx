@@ -22,6 +22,14 @@
 # define NOINLINE
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+# define RESTRICT __restrict__
+#elif defined(_MSC_VER)
+# define RESTRICT __restrict
+#else
+# define RESTRICT
+#endif
+
 #if defined(__has_builtin)
 # define FZX_HAS_BUILTIN(x) __has_builtin(x)
 #else
