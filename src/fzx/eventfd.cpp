@@ -63,10 +63,10 @@ void EventFd::close() noexcept
 
 void EventFd::consume() noexcept
 {
-  if (!isOpen() || !mActive.exchange(false, std::memory_order_seq_cst))
+  if (!mActive.exchange(false, std::memory_order_seq_cst) || !isOpen())
     return;
-  char buf[32];
-  UNUSED(::read(mPipe[0], buf, std::size(buf)));
+  char buf = 0;
+  UNUSED(::read(mPipe[0], &buf, 1));
 }
 
 void EventFd::notify() noexcept
@@ -74,7 +74,20 @@ void EventFd::notify() noexcept
   if (!isOpen() || mActive.exchange(true, std::memory_order_seq_cst))
     return;
   const char c = 0;
-  UNUSED(::write(mPipe[1], &c, 1));
+  for (size_t i = 0; i < 3; ++i) {
+    const auto r = ::write(mPipe[1], &c, 1);
+    if (r == 1)
+      return; // Success
+    if (r == 0)
+      continue; // Nothing was written, try again. Shouldn't happen, but just in case
+    ASSERT(r == -1);
+    if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
+      // Try again, hopefully it can succeed now.
+      // I don't think EAGAIN can happen, but handle it too, why not
+      continue;
+    break;
+  }
+  // TODO: If we got here, something went wrong. Kill everything
 }
 
 } // namespace fzx

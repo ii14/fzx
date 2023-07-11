@@ -85,6 +85,7 @@ constexpr uint8_t emptyMergedMask(uint32_t id, size_t size) noexcept
 
 void WorkerPool::run(uint32_t workerIndex)
 {
+  // TODO: exception safety
   ASSERT(workerIndex < 64); // Hard limit on 64 threads
 
   Thread::pin(static_cast<int>(workerIndex));

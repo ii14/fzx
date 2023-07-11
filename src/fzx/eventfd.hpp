@@ -27,13 +27,11 @@ struct EventFd
   /// this file descriptor to get notified about new activity.
   [[nodiscard]] int fd() const noexcept { return mPipe[0]; }
   /// After you've been notified about new activity,
-  /// you should call this before reading any data.
+  /// you should call this before processing any data.
   void consume() noexcept;
 
   /// Notify about new activity.
-  ///
-  /// Only one thread can do this. Calling this from multiple
-  /// threads at the same time can lock up the system.
+  /// No guarantees on what happens when you call this from multiple threads.
   void notify() noexcept;
 
 private:
