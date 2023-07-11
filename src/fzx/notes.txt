@@ -1,0 +1,30 @@
+Try to reuse already calculated results. If the query was changed in a way that can only
+narrow down the results, reuse them. And if new items have been added, don't discard
+previous results. It's going to be a bit more complicated than it sounds, because each
+thread has its own range of items to process, which changes according to the total item
+count.
+
+Store the size of the string inside the strings buffer. Right now the limit on a single
+item size is UINT32_MAX (only if you have a single item). Lower that to UINT16_MAX (max
+64kb per item) so it takes up just two bytes in memory. The max amount of items still
+stays at UINT32_MAX. What I hope this enables is that if we're just iterating over the
+items from start to end, we won't need to first load the {offset,length} pairs that's
+stored elsewhere to get to the item. Having {offset,length} is still necessary, but it
+then will be used only for getting results, or skipping to the right location when
+dividing the work into chunks for different threads.
+
+On linux, use mmap for allocating items. With mmap an existing allocation can be expanded
+in size, so you don't need to copy elements to the new memory. I doubt it will have any
+impact on performace, but that will keep down memory usage. I don't know in detail how
+virtual memory works, so the question here is if by doing so the memory gets fragmented in
+physical RAM and what are the implications of that. Also maybe try to be smart about it,
+so if doubling the memory size fails, try to allocate less memory? Is there some way of
+knowing how much can you allocate at a specific address without having to parse the /proc
+stuff?
+
+Vectorize sorting. Sorting takes up very roughly 5% of the runtime, so it's not worth
+spending any time on it right now. But in the case it goes up because of the improvements
+on the matching, it could make sense to try to somehow vectorize that. What needs to be
+sorted is the {u32,f32} pairs, together. Should be doable with pshufb on intel, and I have
+no idea if there is any equivalent instruction on neon. But realistically speaking, I'm
+probably not smart enough to actually do this.

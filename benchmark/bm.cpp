@@ -7,6 +7,7 @@
 #include "fzx/thread.hpp"
 #include "fzx/tx_value.hpp"
 #include "fzx/events.hpp"
+#include "fzx/match/fzy.hpp"
 
 static constexpr auto kIterations = 1'000'000;
 
@@ -232,5 +233,43 @@ static void BM_events(benchmark::State& s)
   s.SetItemsProcessed(s.iterations() * kIterations);
 }
 BENCHMARK(BM_events);
+
+static void BM_fzy(benchmark::State& s)
+{
+  srand(1);
+  const auto itemCount = s.range(0);
+
+  // generate random strings
+  std::vector<char> strings;
+  std::vector<std::string_view> items;
+  items.reserve(itemCount);
+  strings.reserve(itemCount * 1024 + 64);
+  for (int64_t i = 0; i < itemCount; ++i) {
+    size_t len = rand() % 1023 + 1; // random string length between 1-1024
+    auto start = strings.size();
+    for (size_t j = 0; j < len; ++j)
+      strings.push_back(static_cast<char>(rand() % 94 + 32)); // generate ascii characters
+    items.emplace_back(strings.data() + start, len);
+  }
+
+  const std::string_view query { "lmao" };
+  for ([[maybe_unused]] auto _ : s) {
+    for (const auto& item : items) {
+      if (fzx::fzy::hasMatch(query, item)) {
+        auto res = fzx::fzy::match(query, item);
+        benchmark::DoNotOptimize(res);
+      }
+    }
+  }
+
+  s.SetItemsProcessed(itemCount * s.iterations());
+}
+BENCHMARK(BM_fzy)
+  ->Arg(0x400)
+  ->Arg(0x1000)
+  ->Arg(0x10000)
+  ->Arg(0x20000)
+  ->Arg(0x40000)
+  ->Arg(0x80000);
 
 BENCHMARK_MAIN();
