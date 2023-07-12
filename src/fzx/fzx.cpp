@@ -93,14 +93,14 @@ Result Fzx::getResult(size_t i) const noexcept
       if (i >= out.mItems.size())
         return {};
       const auto& match = out.mItems[i];
-      return { mJob.mItems.at(match.mIndex), match.mScore };
+      return { mJob.mItems.at(match.mIndex), match.mIndex, match.mScore };
     }
   }
 
   DEBUG_ASSERT(i < mJob.mItems.size());
   if (i >= mJob.mItems.size())
     return {};
-  return { mJob.mItems.at(i), 0 };
+  return { mJob.mItems.at(i), static_cast<uint32_t>(i), 0 };
 }
 
 bool Fzx::processing() const noexcept

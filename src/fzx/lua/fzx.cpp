@@ -215,7 +215,7 @@ static int getResults(lua_State* lstate)
   for (size_t i = offset; i < end; ++i, ++n) {
     auto item = p->getResult(i);
     lua_createtable(lstate, 0, 3);
-    lua_pushinteger(lstate, lua_Integer(i));
+    lua_pushinteger(lstate, lua_Integer(item.mIndex));
     lua_setfield(lstate, -2, "index");
     lua_pushnumber(lstate, item.mScore);
     lua_setfield(lstate, -2, "score");

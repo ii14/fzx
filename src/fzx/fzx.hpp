@@ -20,6 +20,7 @@ namespace fzx {
 struct Result
 {
   std::string_view mLine;
+  uint32_t mIndex { 0 };
   float mScore { 0 };
 };
 
