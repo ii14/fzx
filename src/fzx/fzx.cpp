@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "fzx/line_scanner.ipp"
+#include "fzx/macros.hpp"
 
 namespace fzx {
 

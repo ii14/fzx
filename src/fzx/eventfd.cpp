@@ -8,7 +8,7 @@ extern "C" {
 #include <unistd.h>
 }
 
-#include "fzx/util.hpp"
+#include "fzx/macros.hpp"
 
 namespace fzx {
 

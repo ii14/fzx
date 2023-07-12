@@ -9,8 +9,8 @@
 #include "fzx/events.hpp"
 #include "fzx/items.hpp"
 #include "fzx/lr.hpp"
-#include "fzx/tx_value.hpp"
 #include "fzx/match.hpp"
+#include "fzx/tx.hpp"
 
 namespace fzx {
 
@@ -35,7 +35,7 @@ struct WorkerPool
   {
     std::thread mThread;
     Events mEvents;
-    TxValue<Output> mOutput;
+    Tx<Output> mOutput;
   };
 
   enum Event : uint32_t {

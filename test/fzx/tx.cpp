@@ -1,12 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
-#include "fzx/tx_value.hpp"
+#include "fzx/tx.hpp"
 #include "fzx/thread.hpp"
 
-TEST_CASE("fzx::TxValue")
+TEST_CASE("fzx::Tx")
 {
   SECTION("can store and load values")
   {
-    fzx::TxValue<size_t> tx;
+    fzx::Tx<size_t> tx;
 
     tx.writeBuffer() = 42;
     tx.commit();
@@ -26,7 +26,7 @@ TEST_CASE("fzx::TxValue")
 
   SECTION("has no data races")
   {
-    fzx::TxValue<size_t> tx;
+    fzx::Tx<size_t> tx;
     constexpr auto kIterations = 100'000;
 
     fzx::Thread reader { [&] {

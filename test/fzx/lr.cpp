@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "fzx/lr.hpp"
 #include "fzx/thread.hpp"
+#include "fzx/macros.hpp"
 #include <thread>
 
 TEST_CASE("fzx::LR")

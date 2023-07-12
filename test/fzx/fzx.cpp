@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "fzx/fzx.hpp"
+#include "fzx/macros.hpp"
 #include <unistd.h>
 #include <chrono>
 #include <iostream>

@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "fzx/term/key.hpp"
+#include "fzx/macros.hpp"
 
 using namespace std::string_view_literals;
 

@@ -31,15 +31,29 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <strings.h>
 #include <utility>
 #include <vector>
 
+#include "fzx/macros.hpp"
 #include "fzx/util.hpp"
 
 namespace fzx::fzy {
 
 namespace {
+
+constexpr Score kScoreGapLeading = -0.005;
+constexpr Score kScoreGapTrailing = -0.005;
+constexpr Score kScoreGapInner = -0.01;
+constexpr Score kScoreMatchConsecutive = 1.0;
+constexpr Score kScoreMatchSlash = 0.9;
+constexpr Score kScoreMatchWord = 0.8;
+constexpr Score kScoreMatchCapital = 0.7;
+constexpr Score kScoreMatchDot = 0.6;
+
+constexpr Score kScoreMax = std::numeric_limits<Score>::infinity();
+constexpr Score kScoreMin = -std::numeric_limits<Score>::infinity();
 
 constexpr auto kBonusStates = []{
   std::array<std::array<Score, 256>, 3> r {};
@@ -72,23 +86,6 @@ constexpr auto kBonusIndex = []{
   return r;
 }();
 
-constexpr Score computeBonus(uint8_t lastCh, uint8_t ch)
-{
-  return kBonusStates[kBonusIndex[ch]][lastCh];
-}
-
-// because libc's toupper can't be inlined
-constexpr uint8_t toUpper(uint8_t ch)
-{
-  return ch >= 'a' && ch <= 'z' ? ch - 32 : ch;
-}
-
-// because libc's tolower can't be inlined
-constexpr uint8_t toLower(uint8_t ch)
-{
-  return ch >= 'A' && ch <= 'Z' ? ch + 32 : ch;
-}
-
 } // namespace
 
 bool hasMatch(std::string_view needle, std::string_view haystack)
@@ -115,7 +112,7 @@ void precomputeBonus(std::string_view haystack, Score* matchBonus)
   for (size_t i = 0; i < haystack.size(); ++i) {
     char ch = haystack[i];
     // TODO: try to vectorize this, it takes some time too
-    matchBonus[i] = computeBonus(lastCh, ch);
+    matchBonus[i] = kBonusStates[kBonusIndex[ch]][lastCh];
     lastCh = ch;
   }
 }

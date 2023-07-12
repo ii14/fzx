@@ -5,7 +5,7 @@
 #include <thread>
 #include <type_traits>
 
-#include "fzx/util.hpp"
+#include "fzx/config.hpp"
 
 namespace fzx {
 

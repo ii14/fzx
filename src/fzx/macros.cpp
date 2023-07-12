@@ -1,4 +1,4 @@
-#include "fzx/util.hpp"
+#include "fzx/macros.hpp"
 
 #include <cstdio>
 #include <cstdlib>

@@ -5,7 +5,7 @@
 
 #include "fzx/lr.hpp"
 #include "fzx/thread.hpp"
-#include "fzx/tx_value.hpp"
+#include "fzx/tx.hpp"
 #include "fzx/events.hpp"
 #include "fzx/match/fzy.hpp"
 
@@ -174,7 +174,7 @@ static void BM_spsc_tx(benchmark::State& s)
 {
   fzx::Thread::pin(0);
   for ([[maybe_unused]] auto _ : s) {
-    fzx::TxValue<size_t> tx;
+    fzx::Tx<size_t> tx;
     fzx::Thread reader { [&]{
       for (size_t i = 0; i < kIterations; ++i) {
         fzx::Thread::pin(1);

@@ -2,9 +2,9 @@
 
 #include <algorithm>
 
-#include "fzx/thread.hpp"
+#include "fzx/macros.hpp"
 #include "fzx/match/fzy.hpp"
-#include "fzx/util.hpp"
+#include "fzx/thread.hpp"
 
 namespace fzx {
 

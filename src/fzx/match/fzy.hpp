@@ -23,25 +23,12 @@
 #pragma once
 
 #include <cstddef>
-#include <limits>
 #include <string_view>
 #include <array>
 
 namespace fzx::fzy {
 
 using Score = double;
-
-static constexpr auto kScoreGapLeading = -0.005;
-static constexpr auto kScoreGapTrailing = -0.005;
-static constexpr auto kScoreGapInner = -0.01;
-static constexpr auto kScoreMatchConsecutive = 1.0;
-static constexpr auto kScoreMatchSlash = 0.9;
-static constexpr auto kScoreMatchWord = 0.8;
-static constexpr auto kScoreMatchCapital = 0.7;
-static constexpr auto kScoreMatchDot = 0.6;
-
-static constexpr auto kScoreMax = std::numeric_limits<Score>::infinity();
-static constexpr auto kScoreMin = -std::numeric_limits<Score>::infinity();
 
 static constexpr auto kMatchMaxLen = 1024;
 

@@ -2,8 +2,10 @@
 
 #include <cstdio>
 
+extern "C" {
 #include <fcntl.h>
 #include <unistd.h>
+}
 
 namespace fzx {
 

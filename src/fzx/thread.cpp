@@ -1,5 +1,7 @@
 #include "fzx/thread.hpp"
 
+#include "fzx/macros.hpp"
+
 namespace fzx {
 
 void Thread::pin(int cpu)

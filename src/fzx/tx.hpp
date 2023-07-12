@@ -3,13 +3,13 @@
 #include <atomic>
 #include <cstddef>
 
-#include "fzx/util.hpp"
+#include "fzx/config.hpp"
 
 namespace fzx {
 
 /// Single-producer, single-consumer, wait-free value transaction.
 template <typename T>
-struct TxValue
+struct Tx
 {
   /// Write thread: Get write buffer.
   /// The returned reference is only valid up to the commit call.

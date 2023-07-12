@@ -3,12 +3,14 @@
 #include <cstdio>
 #include <cstring>
 
+extern "C" {
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+}
 
-#include "fzx/util.hpp"
+#include "fzx/macros.hpp"
 
 using namespace std::string_view_literals;
 

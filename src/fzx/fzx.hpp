@@ -8,12 +8,11 @@
 #include <thread>
 #include <vector>
 
-#include "fzx/tx_value.hpp"
-#include "fzx/events.hpp"
 #include "fzx/eventfd.hpp"
+#include "fzx/events.hpp"
 #include "fzx/line_scanner.hpp"
-#include "fzx/util.hpp"
 #include "fzx/match.hpp"
+#include "fzx/tx.hpp"
 #include "fzx/worker_pool.hpp"
 
 namespace fzx {

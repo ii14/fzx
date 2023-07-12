@@ -120,32 +120,32 @@ file(GLOB_RECURSE TERM_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/term/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/term/*.hpp")
-file(GLOB_RECURSE NVIM_FILES CONFIGURE_DEPENDS RELATIVE
+file(GLOB_RECURSE LUA_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/nvim/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/nvim/*.hpp")
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/lua/*.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/lua/*.hpp")
 list(REMOVE_ITEM LIB_FILES ${TERM_FILES})
-list(REMOVE_ITEM LIB_FILES ${NVIM_FILES})
+list(REMOVE_ITEM LIB_FILES ${LUA_FILES})
 
-add_library(libfzx STATIC "${LIB_FILES}")
+add_library(libfzx STATIC ${LIB_FILES})
 set_property(TARGET libfzx PROPERTY OUTPUT_NAME fzx)
 set_property(TARGET libfzx PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libfzx PUBLIC src)
 target_link_libraries(libfzx PUBLIC Threads::Threads)
 
 if(BUILD_EXECUTABLE)
-  add_executable(fzx "${TERM_FILES}")
+  add_executable(fzx ${TERM_FILES})
   target_link_libraries(fzx PRIVATE libfzx fmt::fmt)
 endif()
 
 if(BUILD_LUA_MODULE)
-  add_library(fzxnvim SHARED "${NVIM_FILES}")
-  set_property(TARGET fzxnvim PROPERTY OUTPUT_NAME fzxlib)
-  set_property(TARGET fzxnvim PROPERTY PREFIX "")
-  target_link_libraries(fzxnvim PRIVATE libfzx)
-  target_include_directories(fzxnvim PRIVATE src "${LUA_INCLUDE_DIR}")
+  add_library(fzxlua SHARED ${LUA_FILES})
+  set_property(TARGET fzxlua PROPERTY OUTPUT_NAME fzxlib)
+  set_property(TARGET fzxlua PROPERTY PREFIX "")
+  target_link_libraries(fzxlua PRIVATE libfzx)
+  target_include_directories(fzxlua PRIVATE src "${LUA_INCLUDE_DIR}")
   if(APPLE)
-    target_link_options(fzxnvim PRIVATE -undefined dynamic_lookup)
+    target_link_options(fzxlua PRIVATE -undefined dynamic_lookup)
   endif()
 endif()
 
@@ -154,7 +154,7 @@ if(BUILD_TESTS)
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/test/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/test/*.hpp")
-  add_executable(test "${TEST_FILES}")
+  add_executable(test ${TEST_FILES})
   target_link_libraries(test PRIVATE libfzx Catch2::Catch2)
 endif()
 
@@ -163,6 +163,6 @@ if(BUILD_BENCHMARKS)
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.hpp")
-  add_executable(benchmark "${BENCHMARK_FILES}")
+  add_executable(benchmark ${BENCHMARK_FILES})
   target_link_libraries(benchmark PRIVATE libfzx benchmark::benchmark)
 endif()

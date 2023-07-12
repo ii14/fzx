@@ -1,5 +1,5 @@
 #include "fzx/term/term_app.hpp"
-#include "fzx/util.hpp"
+#include "fzx/macros.hpp"
 
 #include <atomic>
 #include <cerrno>

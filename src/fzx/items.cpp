@@ -7,6 +7,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "fzx/config.hpp"
+#include "fzx/macros.hpp"
 #include "fzx/util.hpp"
 
 // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
