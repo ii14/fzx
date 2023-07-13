@@ -51,6 +51,7 @@ function mt.__index:redraw_prompt(res)
     res = self._fzx:get_results(0, 0)
   end
 
+  self._processing = res.processing
   api.nvim_buf_clear_namespace(self._ui._ibuf, ns, 0, -1)
   local status
   if self._processing then
@@ -76,10 +77,20 @@ function mt.__index:redraw_display()
   reverse(res.items)
   self._results = res
   self._offset = res.offset
+  self._processing = res.processing
+
+  self:redraw_prompt(res)
 
   if res.matched == 0 then
     self._ui:set_height(1)
-    api.nvim_buf_set_lines(self._ui._dbuf, 0, -1, false, { 'No results' })
+    api.nvim_buf_set_lines(self._ui._dbuf, 0, -1, false, { '-- No results --' })
+    api.nvim_buf_clear_namespace(self._ui._dbuf, ns, 0, -1)
+    api.nvim_buf_set_extmark(self._ui._dbuf, ns, 0, 0, {
+      end_row = 1,
+      end_col = 0,
+      hl_group = 'ErrorMsg',
+      priority = 100,
+    })
     return
   end
 
@@ -104,7 +115,6 @@ function mt.__index:redraw_display()
     end
   end
 
-  self:redraw_prompt(res)
   self:update_cursor()
 end
 
@@ -162,10 +172,9 @@ local function new(opts)
 
   self._poll:start('r', function(err)
     assert(not err, err)
-    local ok, processing = self._fzx:load_results()
+    local ok = self._fzx:load_results()
     if ok and not self._pending then
       self._pending = true
-      self._processing = processing
       vim.schedule(function()
         self:redraw_display()
       end)
@@ -236,7 +245,9 @@ local function new(opts)
     self:scroll_relative(self._ui:get_height() / 2)
   end, { buffer = self._ui._ibuf })
 
-  -- print out the result, for now
+  vim.keymap.set('n', 'q', function()
+    self:close()
+  end, { buffer = self._ui._ibuf, nowait = true })
   vim.keymap.set('n', '<Enter>', function()
     local items = self._results.items
     local item = items[#items - self._cursor]

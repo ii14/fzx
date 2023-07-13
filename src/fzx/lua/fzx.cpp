@@ -173,8 +173,7 @@ static int loadResults(lua_State* lstate)
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
   lua_pushboolean(lstate, p->loadResults());
-  lua_pushboolean(lstate, p->processing());
-  return 2;
+  return 1;
 }
 
 static int getResults(lua_State* lstate)
@@ -211,6 +210,8 @@ static int getResults(lua_State* lstate)
   lua_setfield(lstate, -2, "matched");
   lua_pushinteger(lstate, offset);
   lua_setfield(lstate, -2, "offset");
+  lua_pushboolean(lstate, p->processing());
+  lua_setfield(lstate, -2, "processing");
   lua_createtable(lstate, int(max), 0);
   for (size_t i = offset; i < end; ++i, ++n) {
     auto item = p->getResult(i);
