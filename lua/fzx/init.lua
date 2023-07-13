@@ -99,6 +99,7 @@ function mt.__index:redraw_display()
         end_row = lnum - 1,
         end_col = pos + 1,
         hl_group = 'Search',
+        priority = 150,
       })
     end
   end
@@ -131,10 +132,18 @@ function mt.__index:update_cursor()
     end_col = 0,
     hl_group = 'Visual',
     hl_eol = true,
+    priority = 10,
   })
 end
 
-local function new()
+local function new(opts)
+  opts = opts or {}
+  assert(type(opts) == 'table', 'opts has to be a table')
+  assert(opts.prompt == nil or (type(opts.prompt) == 'string' and #opts.prompt > 0),
+    'opts.prompt has to be a non empty string')
+  assert(opts.on_select == nil or type(opts.on_select) == 'function',
+    'opts.on_select has to be a function')
+
   local self = setmetatable({}, mt)
   self._fzx = require('fzxlib').new()
   self._poll = assert(uv.new_poll(self._fzx:get_fd()))
@@ -143,8 +152,9 @@ local function new()
   self._offset = 0
   self._cursor = 0
   self._query = ''
+  self._on_select = opts.on_select
   self._ui = require('fzx.ui').new({
-    prompt = 'fzx> ',
+    prompt = opts.prompt or 'fzx> ',
     on_close = function()
       self:close()
     end,
@@ -231,37 +241,22 @@ local function new()
     local items = self._results.items
     local item = items[#items - self._cursor]
     self:close()
-    if item then
-      print(('Selected %d: %s'):format(item.index, item.text))
+    if item and self._on_select then
+      self._on_select(item.text, item.index)
     end
   end, { buffer = self._ui._ibuf })
   vim.keymap.set('i', '<Enter>', function()
     local items = self._results.items
     local item = items[#items - self._cursor]
-    vim.cmd('stopinsert')
     self:close()
-    if item then
-      print(('Selected %d: %s'):format(item.index, item.text))
+    vim.cmd('stopinsert')
+    if item and self._on_select then
+      -- :stopinsert interferes with cursor position
+      vim.schedule(function()
+        self._on_select(item.text, item.index)
+      end)
     end
   end, { buffer = self._ui._ibuf })
-
-
-  api.nvim_buf_call(self._ui._dbuf, function()
-    vim.cmd([[
-      syn match fzxGrepFile     "^[^:]*"  nextgroup=fzxGrepFileSep
-      syn match fzxGrepFileSep  ":"       nextgroup=fzxGrepLine contained
-      syn match fzxGrepLine     "[^:]*"   nextgroup=fzxGrepLineSep contained
-      syn match fzxGrepLineSep  ":"       nextgroup=fzxGrepCol contained
-      syn match fzxGrepCol      "[^:]*"   nextgroup=fzxGrepColSep contained
-      syn match fzxGrepColSep   ":"       contained
-      hi def link fzxGrepFile     Directory
-      hi def link fzxGrepLine     String
-      hi def link fzxGrepCol      String
-      hi def link fzxGrepFileSep  Comment
-      hi def link fzxGrepLineSep  Comment
-      hi def link fzxGrepColSep   Comment
-    ]])
-  end)
 
   api.nvim_buf_call(self._ui._pbuf, function()
     vim.cmd([[

@@ -118,7 +118,7 @@ local function new(opts)
 
   self._on_close = opts.on_close
   self._prompt = opts.prompt or 'fzx> '
-  self._height = 99999
+  self._height = 1
 
   self._dbuf = create_buf() -- Display buffer
   self._pbuf = create_buf() -- Prompt buffer
@@ -129,12 +129,21 @@ local function new(opts)
   vim.bo[self._dbuf].undolevels = -1
   vim.bo[self._pbuf].undolevels = -1
 
+  local removing = false
+
   -- closing one window closes all of them
   for _, buf_var_name in ipairs({ '_dbuf', '_pbuf', '_ibuf' }) do
     api.nvim_create_autocmd('BufWipeout', {
       callback = function()
         self[buf_var_name] = nil
-        self:close()
+        if not removing then
+          removing = true
+          -- crashes nvim without vim.schedule
+          vim.schedule(function()
+            -- TODO: run on_close
+            self:close()
+          end)
+        end
       end,
       buffer = self[buf_var_name],
       nested = true,
@@ -156,6 +165,7 @@ local function new(opts)
   vim.wo[self._dwin].winhighlight = 'Normal:FzxNormal,CursorLine:FzxNormal'
   vim.wo[self._pwin].winhighlight = 'Normal:FzxPrompt,CursorLine:FzxPrompt'
   vim.wo[self._iwin].winhighlight = 'Normal:FzxPrompt,CursorLine:FzxPrompt'
+  vim.wo[self._dwin].winblend = 13
 
   vim.cmd('startinsert')
 

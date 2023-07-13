@@ -201,13 +201,13 @@ static int getResults(lua_State* lstate)
   const auto size = p->resultsSize();
   const auto maxoff = size > static_cast<size_t>(max) ? size - static_cast<size_t>(max) : 0;
   if (size_t(offset) > maxoff)
-    offset = lua_Integer(maxoff);
+    offset = static_cast<lua_Integer>(maxoff);
   const auto end = std::min(static_cast<size_t>(offset) + static_cast<size_t>(max), size);
 
   lua_createtable(lstate, 0, 4);
-  lua_pushinteger(lstate, lua_Integer(p->itemsSize()));
+  lua_pushinteger(lstate, static_cast<lua_Integer>(p->itemsSize()));
   lua_setfield(lstate, -2, "total");
-  lua_pushinteger(lstate, lua_Integer(p->resultsSize()));
+  lua_pushinteger(lstate, static_cast<lua_Integer>(p->resultsSize()));
   lua_setfield(lstate, -2, "matched");
   lua_pushinteger(lstate, offset);
   lua_setfield(lstate, -2, "offset");
@@ -215,7 +215,7 @@ static int getResults(lua_State* lstate)
   for (size_t i = offset; i < end; ++i, ++n) {
     auto item = p->getResult(i);
     lua_createtable(lstate, 0, 3);
-    lua_pushinteger(lstate, lua_Integer(item.mIndex));
+    lua_pushinteger(lstate, static_cast<lua_Integer>(item.mIndex));
     lua_setfield(lstate, -2, "index");
     lua_pushnumber(lstate, item.mScore);
     lua_setfield(lstate, -2, "score");
@@ -248,7 +248,7 @@ static int matchPositions(lua_State* lstate)
     auto pos = positions[i];
     if (pos == kInvalid)
       break;
-    lua_pushinteger(lstate, static_cast<int>(pos));
+    lua_pushinteger(lstate, static_cast<lua_Integer>(pos));
     lua_rawseti(lstate, -2, i + 1);
   }
   lua_setfield(lstate, -2, "positions");
@@ -256,8 +256,6 @@ static int matchPositions(lua_State* lstate)
 }
 
 } // namespace fzx::lua
-
-// TODO: itemsSize, getItem
 
 // NOLINTNEXTLINE(readability-identifier-naming)
 extern "C" int luaopen_fzxlib(lua_State* lstate)
