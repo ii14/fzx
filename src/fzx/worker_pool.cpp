@@ -167,18 +167,16 @@ start:
     // Prepare results. Start from scratch with a new item vector and "timestamp" the results.
     out.mItemsTick = job.mItems.size();
     out.mQueryTick = job.mQueryTick;
+    out.mQuery = job.mQuery;
     out.mItems.clear();
 
     // If there is no active query, publish empty results.
     if (!job.mQuery || job.mQuery->empty()) {
       // On the other side we need to know if we should just return the
       // items straight from the Items data structure, if query is empty.
-      out.mNoQuery = true;
       publish();
       goto wait;
     }
-
-    out.mNoQuery = false;
 
     // Each thread gets its own chunk of the items.
     const auto chunkSize = job.mItems.size() / mWorkers.size() + 1;

@@ -196,63 +196,61 @@ static int getResults(lua_State* lstate)
   }
 
   // TODO: use signed integers lol
-  int n = 1;
   const auto size = p->resultsSize();
   const auto maxoff = size > static_cast<size_t>(max) ? size - static_cast<size_t>(max) : 0;
-  if (size_t(offset) > maxoff)
+  if (static_cast<size_t>(offset) > maxoff)
     offset = static_cast<lua_Integer>(maxoff);
   const auto end = std::min(static_cast<size_t>(offset) + static_cast<size_t>(max), size);
 
-  lua_createtable(lstate, 0, 4);
+  const auto query = p->query();
+
+  lua_createtable(lstate, 0, 5);
+
   lua_pushinteger(lstate, static_cast<lua_Integer>(p->itemsSize()));
   lua_setfield(lstate, -2, "total");
+
   lua_pushinteger(lstate, static_cast<lua_Integer>(p->resultsSize()));
   lua_setfield(lstate, -2, "matched");
+
   lua_pushinteger(lstate, offset);
   lua_setfield(lstate, -2, "offset");
+
   lua_pushboolean(lstate, p->processing());
   lua_setfield(lstate, -2, "processing");
-  lua_createtable(lstate, int(max), 0);
+
+  lua_createtable(lstate, static_cast<int>(max), 0);
+  const int tableSize = query.empty() ? 3 : 4;
+  int n = 1;
   for (size_t i = offset; i < end; ++i, ++n) {
     auto item = p->getResult(i);
-    lua_createtable(lstate, 0, 3);
+    lua_createtable(lstate, 0, tableSize);
+
     lua_pushinteger(lstate, static_cast<lua_Integer>(item.mIndex));
     lua_setfield(lstate, -2, "index");
-    lua_pushnumber(lstate, item.mScore);
-    lua_setfield(lstate, -2, "score");
+
     lua_pushlstring(lstate, item.mLine.data(), item.mLine.size());
     lua_setfield(lstate, -2, "text");
+
+    lua_createtable(lstate, static_cast<int>(query.size()), 0);
+    if (!query.empty()) {
+      fzy::Positions positions;
+      constexpr auto kInvalid = std::numeric_limits<size_t>::max();
+      std::fill(positions.begin(), positions.end(), kInvalid);
+      fzy::matchPositions(query, item.mLine, &positions);
+
+      for (int i = 0; static_cast<size_t>(i) < positions.size() && positions[i] != kInvalid; ++i) {
+        lua_pushinteger(lstate, static_cast<lua_Integer>(positions[i]));
+        lua_rawseti(lstate, -2, i + 1);
+      }
+    }
+    lua_setfield(lstate, -2, "positions");
+
+    lua_pushnumber(lstate, item.mScore);
+    lua_setfield(lstate, -2, "score");
+
     lua_rawseti(lstate, -2, n);
   }
   lua_setfield(lstate, -2, "items");
-  return 1;
-}
-
-static int matchPositions(lua_State* lstate)
-{
-  size_t needleLen = 0;
-  const char* needleStr = luaL_checklstring(lstate, 1, &needleLen);
-  size_t haystackLen = 0;
-  const char* haystackStr = luaL_checklstring(lstate, 2, &haystackLen);
-  std::string_view needle { needleStr, needleLen };
-  std::string_view haystack { haystackStr, haystackLen };
-  fzy::Positions positions {};
-  constexpr auto kInvalid = std::numeric_limits<size_t>::max();
-  std::fill(positions.begin(), positions.end(), kInvalid);
-  auto score = fzy::matchPositions(needle, haystack, &positions);
-
-  lua_createtable(lstate, 0, 2);
-  lua_pushnumber(lstate, score);
-  lua_setfield(lstate, -2, "score");
-  lua_createtable(lstate, static_cast<int>(needleLen), 0);
-  for (int i = 0; static_cast<size_t>(i) < positions.size(); ++i) {
-    auto pos = positions[i];
-    if (pos == kInvalid)
-      break;
-    lua_pushinteger(lstate, static_cast<lua_Integer>(pos));
-    lua_rawseti(lstate, -2, i + 1);
-  }
-  lua_setfield(lstate, -2, "positions");
   return 1;
 }
 
@@ -295,8 +293,6 @@ extern "C" int luaopen_fzxlib(lua_State* lstate)
   lua_createtable(lstate, 0, 2);
     lua_pushcfunction(lstate, fzx::lua::create);
       lua_setfield(lstate, -2, "new");
-    lua_pushcfunction(lstate, fzx::lua::matchPositions);
-      lua_setfield(lstate, -2, "match_positions");
     lua_pushinteger(lstate, lua_Integer{std::numeric_limits<int>::max()});
       lua_setfield(lstate, -2, "MAX_OFFSET");
   return 1;

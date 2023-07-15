@@ -18,8 +18,8 @@ struct Output
 {
   std::vector<Match> mItems;
   size_t mItemsTick { 0 };
+  std::shared_ptr<std::string> mQuery;
   size_t mQueryTick { 0 };
-  bool mNoQuery { true };
 };
 
 struct Job

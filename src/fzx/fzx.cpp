@@ -66,6 +66,14 @@ void Fzx::setQuery(std::string query) noexcept
   mPool.notify();
 }
 
+[[nodiscard]] std::string_view Fzx::query() const
+{
+  if (const auto* master = mPool.master(); master != nullptr)
+    if (const auto& out = master->mOutput.readBuffer(); out.mQuery)
+      return *out.mQuery;
+  return {};
+}
+
 bool Fzx::loadResults() noexcept
 {
   mPool.mEventFd.consume();
@@ -76,19 +84,16 @@ bool Fzx::loadResults() noexcept
 
 size_t Fzx::resultsSize() const noexcept
 {
-  const auto* master = mPool.master();
-  if (master == nullptr)
-    return mJob.mItems.size();
-  const auto& out = master->mOutput.readBuffer();
-  if (out.mNoQuery)
-    return mJob.mItems.size();
-  return out.mItems.size();
+  if (const auto* master = mPool.master(); master != nullptr)
+    if (const auto& out = master->mOutput.readBuffer(); out.mQuery)
+      return out.mItems.size();
+  return mJob.mItems.size();
 }
 
 Result Fzx::getResult(size_t i) const noexcept
 {
   if (const auto* master = mPool.master(); master != nullptr) {
-    if (const auto& out = master->mOutput.readBuffer(); !out.mNoQuery) {
+    if (const auto& out = master->mOutput.readBuffer(); out.mQuery) {
       DEBUG_ASSERT(i < out.mItems.size());
       if (i >= out.mItems.size())
         return {};

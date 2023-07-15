@@ -52,7 +52,10 @@ struct Fzx
   /// Finalize scanning - push any pending data that was left.
   bool scanEnd();
 
+  /// Set query
   void setQuery(std::string query) noexcept;
+  /// Get active query (might not be in sync with what was just set with setQuery)
+  [[nodiscard]] std::string_view query() const;
 
   bool loadResults() noexcept;
   [[nodiscard]] size_t resultsSize() const noexcept;
