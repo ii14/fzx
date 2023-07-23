@@ -39,6 +39,13 @@
 #include "fzx/macros.hpp"
 #include "fzx/util.hpp"
 
+#if defined(FZX_SSE2)
+# include <emmintrin.h>
+#endif
+#if defined(FZX_AVX2)
+# include <immintrin.h>
+#endif
+
 namespace fzx::fzy {
 
 namespace {
@@ -86,6 +93,39 @@ constexpr auto kBonusIndex = []{
   return r;
 }();
 
+void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out)
+{
+  size_t i = 0;
+#if defined(FZX_AVX2)
+  for (; i + 31 < len; i += 32) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto s = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(in + i));
+    auto r = _mm256_and_si256(
+        _mm256_cmpgt_epi8(s, _mm256_set1_epi8('A' - 1)),
+        _mm256_cmpgt_epi8(_mm256_set1_epi8('Z' + 1), s));
+    r = _mm256_add_epi8(s, _mm256_and_si256(r, _mm256_set1_epi8(32)));
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(out + i), r);
+  }
+#elif defined(FZX_SSE2)
+  for (; i + 15 < len; i += 16) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto s = _mm_loadu_si128(reinterpret_cast<const __m128i*>(in + i));
+    auto r = _mm_and_si128(
+        _mm_cmpgt_epi8(s, _mm_set1_epi8('A' - 1)),
+        _mm_cmpgt_epi8(_mm_set1_epi8('Z' + 1), s));
+    r = _mm_add_epi8(s, _mm_and_si128(r, _mm_set1_epi8(32)));
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(out + i), r);
+  }
+#endif
+  // TODO: neon
+  // TODO: guarantee that buffers are overallocated, so we can read
+  // out of bounds with simd and the loop below can be removed
+  for (; i < len; ++i)
+    out[i] = static_cast<char>(toLower(in[i]));
+}
+
 } // namespace
 
 bool hasMatch(std::string_view needle, std::string_view haystack)
@@ -93,7 +133,6 @@ bool hasMatch(std::string_view needle, std::string_view haystack)
   const char* it = haystack.begin();
   for (char ch : needle) {
     char uch = static_cast<char>(toUpper(ch));
-    // TODO: slow, can be vectorized by hand
     while (it != haystack.end() && *it != ch && *it != uch)
       ++it;
     if (it == haystack.end())
@@ -111,7 +150,6 @@ void precomputeBonus(std::string_view haystack, Score* matchBonus)
   char lastCh = '/';
   for (size_t i = 0; i < haystack.size(); ++i) {
     char ch = haystack[i];
-    // TODO: try to vectorize this, it takes some time too
     matchBonus[i] = kBonusStates[kBonusIndex[ch]][lastCh];
     lastCh = ch;
   }
@@ -149,10 +187,9 @@ MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
   if (mHaystackLen > kMatchMaxLen || mNeedleLen > mHaystackLen)
     return;
 
-  for (int i = 0; i < mNeedleLen; ++i)
-    mLowerNeedle[i] = static_cast<char>(toLower(needle[i]));
-  for (int i = 0; i < mHaystackLen; ++i)
-    mLowerHaystack[i] = static_cast<char>(toLower(haystack[i]));
+  // TODO: needle can be preprocessed only once
+  toLowercase(needle.data(), mNeedleLen, mLowerNeedle);
+  toLowercase(haystack.data(), mHaystackLen, mLowerHaystack);
 
   precomputeBonus(haystack, mMatchBonus);
 }

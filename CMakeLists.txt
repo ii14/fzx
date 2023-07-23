@@ -13,6 +13,10 @@ option(BUILD_LUA_MODULE "Build Lua module" ON)
 option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
 
+# TODO: detect support
+option(ENABLE_SSE2 "Enable SSE2" OFF)
+option(ENABLE_AVX2 "Enable AVX2" OFF)
+
 option(ENABLE_LTO "Enable link time optimizations" ON)
 option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
 option(ENABLE_UBSAN "Enable undefined behavior sanitizer" OFF)
@@ -109,8 +113,12 @@ if(SAVE_OPTIMIZATION_RECORDS)
   add_compile_options(-fsave-optimization-record=yaml)
 endif()
 
-# Disable DEBUG_ASSERT and enable ASSUME in release builds
-add_compile_definitions($<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>)
+add_compile_definitions(
+  # Disable DEBUG_ASSERT and enable ASSUME in release builds
+  $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>
+  # Enable SIMD
+  $<$<BOOL:${ENABLE_SSE2}>:FZX_SSE2>
+  $<$<BOOL:${ENABLE_AVX2}>:FZX_AVX2>)
 
 file(GLOB_RECURSE LIB_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_SOURCE_DIR}"
