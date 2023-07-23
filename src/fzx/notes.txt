@@ -61,6 +61,18 @@ results.
 
 ------------------------------------------------------------------------------------------
 
+Work stealing. Measure the time each thread spends on processing items and see if the work
+is distributed fairly and if not, does it even matter at all. It's possible that all the
+items are ordered, the work is divided in equal ranges, but the query will only match the
+items for one thread, making it do all the heavy work on scoring that everyone has to wait
+for, while all other threads are doing nothing.
+
+------------------------------------------------------------------------------------------
+
+Compare against the stuff from <algorithm> and <execution>.
+
+------------------------------------------------------------------------------------------
+
 Vectorize sorting. Sorting takes up very roughly 5% of the runtime, so it's not worth
 spending any time on it right now. But in the case it goes up because of the improvements
 on the matching, it could make sense to try to somehow vectorize that. What needs to be

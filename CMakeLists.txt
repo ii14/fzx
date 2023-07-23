@@ -159,10 +159,5 @@ if(BUILD_TESTS)
 endif()
 
 if(BUILD_BENCHMARKS)
-  file(GLOB_RECURSE BENCHMARK_FILES CONFIGURE_DEPENDS RELATIVE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.hpp")
-  add_executable(benchmark ${BENCHMARK_FILES})
-  target_link_libraries(benchmark PRIVATE libfzx benchmark::benchmark)
+  add_subdirectory(benchmark)
 endif()
