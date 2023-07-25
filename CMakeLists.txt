@@ -13,19 +13,25 @@ option(BUILD_LUA_MODULE "Build Lua module" ON)
 option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
 
+option(ENABLE_NATIVE  "Optimize for the current architecture" ON)
+option(ENABLE_LTO     "Enable link time optimizations" ON)
 # TODO: detect support
-option(ENABLE_SSE2 "Enable SSE2" OFF)
-option(ENABLE_AVX2 "Enable AVX2" OFF)
+option(ENABLE_SSE2    "Enable SSE2 (x86_64)" OFF)
+option(ENABLE_SSE3    "Enable SSE3 (x86_64)" OFF) # unused
+option(ENABLE_SSSE3   "Enable SSSE3 (x86_64)" OFF) # unused
+option(ENABLE_SSE41   "Enable SSE4.1 (x86_64)" OFF) # unused
+option(ENABLE_AVX     "Enable AVX (x86_64)" OFF) # unused
+option(ENABLE_AVX2    "Enable AVX2 (x86_64)" OFF)
 
-option(ENABLE_LTO "Enable link time optimizations" ON)
-option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
-option(ENABLE_UBSAN "Enable undefined behavior sanitizer" OFF)
-option(ENABLE_ASAN "Enable address sanitizer" OFF)
-option(ENABLE_TSAN "Enable thread sanitizer" OFF)
+option(ENABLE_UBSAN   "Enable undefined behavior sanitizer" OFF)
+option(ENABLE_ASAN    "Enable address sanitizer" OFF)
+option(ENABLE_TSAN    "Enable thread sanitizer" OFF)
 if(ENABLE_ASAN AND ENABLE_TSAN)
   message(FATAL_ERROR "ASAN and TSAN are not compatible")
 endif()
+
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
 option(SAVE_OPTIMIZATION_RECORDS "Save Clang optimization records" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -36,6 +42,10 @@ if(ENABLE_LTO)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
 endif()
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 
 if(ENABLE_CLANG_TIDY)
   find_program(CLANG_TIDY clang-tidy)
@@ -74,13 +84,16 @@ if(ENABLE_TSAN)
   add_link_options(-fsanitize=thread)
 endif()
 
-add_compile_options(-Wall -Wextra -march=native)
+if(ENABLE_NATIVE)
+  add_compile_options(-march=native)
+endif()
+
+add_compile_options(-Wall -Wextra)
 set(compile_options
   -Werror=unused-result
-  -Werror=uninitialized
-  -Werror=maybe-uninitialized
   -Werror=strict-aliasing
   -Werror=pointer-arith
+  -Werror=char-subscripts
   -Werror=vla)
 include(CheckCXXCompilerFlag)
 foreach(option ${compile_options})
@@ -110,6 +123,9 @@ if(ENABLE_COVERAGE)
 endif()
 
 if(SAVE_OPTIMIZATION_RECORDS)
+  if(NOT "${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+    message(FATAL_ERROR "SAVE_OPTIMIZATION_RECORDS is supported only on Clang")
+  endif()
   add_compile_options(-fsave-optimization-record=yaml)
 endif()
 
@@ -118,52 +134,16 @@ add_compile_definitions(
   $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>
   # Enable SIMD
   $<$<BOOL:${ENABLE_SSE2}>:FZX_SSE2>
+  $<$<BOOL:${ENABLE_SSE3}>:FZX_SSE3>
+  $<$<BOOL:${ENABLE_SSSE3}>:FZX_SSSE3>
+  $<$<BOOL:${ENABLE_SSE41}>:FZX_SSE41>
+  $<$<BOOL:${ENABLE_AVX}>:FZX_AVX>
   $<$<BOOL:${ENABLE_AVX2}>:FZX_AVX2>)
 
-file(GLOB_RECURSE LIB_FILES CONFIGURE_DEPENDS RELATIVE
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/*.hpp")
-file(GLOB_RECURSE TERM_FILES CONFIGURE_DEPENDS RELATIVE
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/term/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/term/*.hpp")
-file(GLOB_RECURSE LUA_FILES CONFIGURE_DEPENDS RELATIVE
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/lua/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/fzx/lua/*.hpp")
-list(REMOVE_ITEM LIB_FILES ${TERM_FILES})
-list(REMOVE_ITEM LIB_FILES ${LUA_FILES})
-
-add_library(libfzx STATIC ${LIB_FILES})
-set_property(TARGET libfzx PROPERTY OUTPUT_NAME fzx)
-set_property(TARGET libfzx PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(libfzx PUBLIC src)
-target_link_libraries(libfzx PUBLIC Threads::Threads)
-
-if(BUILD_EXECUTABLE)
-  add_executable(fzx ${TERM_FILES})
-  target_link_libraries(fzx PRIVATE libfzx fmt::fmt)
-endif()
-
-if(BUILD_LUA_MODULE)
-  add_library(fzxlua SHARED ${LUA_FILES})
-  set_property(TARGET fzxlua PROPERTY OUTPUT_NAME fzxlib)
-  set_property(TARGET fzxlua PROPERTY PREFIX "")
-  target_link_libraries(fzxlua PRIVATE libfzx)
-  target_include_directories(fzxlua PRIVATE src "${LUA_INCLUDE_DIR}")
-  if(APPLE)
-    target_link_options(fzxlua PRIVATE -undefined dynamic_lookup)
-  endif()
-endif()
+add_subdirectory(src/fzx)
 
 if(BUILD_TESTS)
-  file(GLOB_RECURSE TEST_FILES CONFIGURE_DEPENDS RELATIVE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/test/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/test/*.hpp")
-  add_executable(test ${TEST_FILES})
-  target_link_libraries(test PRIVATE libfzx Catch2::Catch2)
+  add_subdirectory(test)
 endif()
 
 if(BUILD_BENCHMARKS)

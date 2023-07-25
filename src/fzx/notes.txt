@@ -29,6 +29,26 @@ so why bother.
 
 ------------------------------------------------------------------------------------------
 
+Depending on the input data and the query, some workers can have a significantly higher
+workload than others. Everyone has to wait for the thread with the highest workload to
+finish, so that's not good. It's easy to get cases where redistributing the work more
+fairly would mean that you get the results ~2x faster. And of course in theory you can get
+so unlucky that only one thread does all the work and you lose the entire benefit of
+multithreading.
+
+I initially was thinking about work stealing, where other threads would subtract from the
+range of still running threads, but this is stupid. This would make sense if workers were
+just doing their own work with no interruption. But we're already interrupting the work,
+and periodically checking if the worker should discard what it was doing and start over on
+new data.
+
+Instead of dividing the work upfront, an easier solution is to get each worker to just ask
+and reserve the work for itself in smaller chunks. Implementing work stealing would have
+to do more or less the same thing as this, but with few extra steps. This will be easier
+to implement, understand and easier to work with.
+
+------------------------------------------------------------------------------------------
+
 Store the size of the string inside the strings buffer. Right now the limit on a single
 item size is UINT32_MAX (only if you have a single item). Lower that to UINT16_MAX (max
 64kb per item) so it takes up just two bytes in memory. The max amount of items still
@@ -58,16 +78,6 @@ overhead from creating and joining threads, which doesn't happen in the actual l
 Second, use real input data. For testing and benchmarking the entire worker pool, EventFd
 should also provide a wait function, so we don't have to go through the OS to receive
 results.
-
-------------------------------------------------------------------------------------------
-
-Work stealing. Measure the time each thread spends on processing items and see if the work
-is distributed fairly and if not, does it even matter at all. It's possible that all the
-items are ordered, the work is divided in equal ranges, but the query will only match the
-items for one thread, making it do all the heavy work on scoring that everyone has to wait
-for, while all other threads are doing nothing.
-
-------------------------------------------------------------------------------------------
 
 Compare against the stuff from <algorithm> and <execution>.
 

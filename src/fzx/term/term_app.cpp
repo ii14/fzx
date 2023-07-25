@@ -16,7 +16,7 @@ using namespace std::string_view_literals;
 
 namespace fzx {
 
-static constexpr auto kMaxInputBufferSize = 0x20000; // limit buffer size to 128kb max
+static constexpr auto kMaxInputBufferSize = 0x40000; // limit buffer size to 256kb max
 
 void TermApp::processInput()
 {

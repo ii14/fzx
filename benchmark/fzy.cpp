@@ -68,6 +68,7 @@ static void readStdin()
 
 int main(int argc, char** argv)
 {
+  gQuery.reserve(gQuery.size() + 64);
   // TODO: add option for changing the query
   readStdin();
   benchmark::Initialize(&argc, argv);

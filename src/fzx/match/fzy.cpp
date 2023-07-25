@@ -38,6 +38,7 @@
 
 #include "fzx/macros.hpp"
 #include "fzx/util.hpp"
+#include "fzx/match/fzy_config.hpp"
 
 #if defined(FZX_SSE2)
 # include <emmintrin.h>
@@ -49,18 +50,6 @@
 namespace fzx::fzy {
 
 namespace {
-
-constexpr Score kScoreGapLeading = -0.005;
-constexpr Score kScoreGapTrailing = -0.005;
-constexpr Score kScoreGapInner = -0.01;
-constexpr Score kScoreMatchConsecutive = 1.0;
-constexpr Score kScoreMatchSlash = 0.9;
-constexpr Score kScoreMatchWord = 0.8;
-constexpr Score kScoreMatchCapital = 0.7;
-constexpr Score kScoreMatchDot = 0.6;
-
-constexpr Score kScoreMax = std::numeric_limits<Score>::infinity();
-constexpr Score kScoreMin = -std::numeric_limits<Score>::infinity();
 
 constexpr auto kBonusStates = []{
   std::array<std::array<Score, 256>, 3> r {};
@@ -147,9 +136,9 @@ namespace {
 void precomputeBonus(std::string_view haystack, Score* matchBonus)
 {
   // Which positions are beginning of words
-  char lastCh = '/';
+  uint8_t lastCh = '/';
   for (size_t i = 0; i < haystack.size(); ++i) {
-    char ch = haystack[i];
+    uint8_t ch = haystack[i];
     matchBonus[i] = kBonusStates[kBonusIndex[ch]][lastCh];
     lastCh = ch;
   }
@@ -171,10 +160,10 @@ struct MatchStruct
 
   inline void matchRow(
     int row,
-    ScoreArray& RESTRICT currD,
-    ScoreArray& RESTRICT currM,
-    const ScoreArray& RESTRICT lastD,
-    const ScoreArray& RESTRICT lastM);
+    Score* RESTRICT currD,
+    Score* RESTRICT currM,
+    const Score* RESTRICT lastD,
+    const Score* RESTRICT lastM);
 };
 
 // "initialize all your variables" they said.
@@ -196,10 +185,10 @@ MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
 
 void MatchStruct::matchRow(
     int row,
-    ScoreArray& RESTRICT currD,
-    ScoreArray& RESTRICT currM,
-    const ScoreArray& RESTRICT lastD,
-    const ScoreArray& RESTRICT lastM)
+    Score* RESTRICT currD,
+    Score* RESTRICT currM,
+    const Score* RESTRICT lastD,
+    const Score* RESTRICT lastM)
 {
   Score prevScore = kScoreMin;
   Score gapScore = row == mNeedleLen - 1 ? kScoreGapTrailing : kScoreGapInner;
@@ -250,18 +239,18 @@ Score match(std::string_view needle, std::string_view haystack)
   ScoreArray D[2];
   ScoreArray M[2];
 
-  ScoreArray* lastD = &D[0];
-  ScoreArray* lastM = &M[0];
-  ScoreArray* currD = &D[1];
-  ScoreArray* currM = &M[1];
+  Score* lastD = D[0].data();
+  Score* lastM = M[0].data();
+  Score* currD = D[1].data();
+  Score* currM = M[1].data();
 
   for (int i = 0; i < match.mNeedleLen; ++i) {
-    match.matchRow(i, *currD, *currM, *lastD, *lastM);
+    match.matchRow(i, currD, currM, lastD, lastM);
     std::swap(currD, lastD);
     std::swap(currM, lastM);
   }
 
-  return (*lastM)[match.mHaystackLen - 1];
+  return lastM[match.mHaystackLen - 1];
 }
 
 Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions)
@@ -296,16 +285,16 @@ Score matchPositions(std::string_view needle, std::string_view haystack, Positio
   D.resize(n);
   M.resize(n);
 
-  ScoreArray *lastD = nullptr;
-  ScoreArray *lastM = nullptr;
-  ScoreArray *currD = nullptr;
-  ScoreArray *currM = nullptr;
+  Score* lastD = nullptr;
+  Score* lastM = nullptr;
+  Score* currD = nullptr;
+  Score* currM = nullptr;
 
   for (int i = 0; i < n; ++i) {
-    currD = &D[i];
-    currM = &M[i];
+    currD = D[i].data();
+    currM = M[i].data();
 
-    match.matchRow(i, *currD, *currM, *lastD, *lastM);
+    match.matchRow(i, currD, currM, lastD, lastM);
 
     lastD = currD;
     lastM = currM;
