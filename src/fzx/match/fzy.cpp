@@ -89,10 +89,10 @@ void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out)
   for (; i + 31 < len; i += 32) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto s = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(in + i));
-    auto r = _mm256_and_si256(
-        _mm256_cmpgt_epi8(s, _mm256_set1_epi8('A' - 1)),
-        _mm256_cmpgt_epi8(_mm256_set1_epi8('Z' + 1), s));
-    r = _mm256_add_epi8(s, _mm256_and_si256(r, _mm256_set1_epi8(32)));
+    auto a = _mm256_add_epi8(s, _mm256_set1_epi8(63)); // offset so that A == SCHAR_MIN
+    auto c = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), a); // lower or equal Z
+    auto b = _mm256_and_si256(c, _mm256_set1_epi8(32));
+    auto r = _mm256_add_epi8(s, b);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(out + i), r);
   }
@@ -100,10 +100,10 @@ void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out)
   for (; i + 15 < len; i += 16) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto s = _mm_loadu_si128(reinterpret_cast<const __m128i*>(in + i));
-    auto r = _mm_and_si128(
-        _mm_cmpgt_epi8(s, _mm_set1_epi8('A' - 1)),
-        _mm_cmpgt_epi8(_mm_set1_epi8('Z' + 1), s));
-    r = _mm_add_epi8(s, _mm_and_si128(r, _mm_set1_epi8(32)));
+    auto a = _mm_add_epi8(s, _mm_set1_epi8(63)); // offset so that A == SCHAR_MIN
+    auto c = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), a); // lower or equal Z
+    auto b = _mm_and_si128(c, _mm_set1_epi8(32));
+    auto r = _mm_add_epi8(s, b);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     _mm_storeu_si128(reinterpret_cast<__m128i*>(out + i), r);
   }
