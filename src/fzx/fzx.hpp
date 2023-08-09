@@ -38,8 +38,6 @@ struct Fzx
   void stop() noexcept;
   [[nodiscard]] int notifyFd() const noexcept { return mPool.mEventFd.fd(); }
 
-  // TODO: add overflow checks in pushItem and scanFeed/scanEnd
-
   /// Push string to the list of items.
   void pushItem(std::string_view s) { mJob.mItems.push(s); }
   /// Commit added items (wake up the fzx thread).

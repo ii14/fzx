@@ -47,7 +47,7 @@ struct WorkerPool
 
   void start(uint32_t workers);
   void stop();
-  void notify();
+  void notify() noexcept;
 
   [[nodiscard]] Worker* master()
   {

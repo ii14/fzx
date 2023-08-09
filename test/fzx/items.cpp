@@ -32,6 +32,16 @@ TEST_CASE("fzx::Items")
     REQUIRE(items.at(2) == "baz"sv);
   }
 
+  SECTION("pushing a lot of items") {
+    fzx::Items items;
+    constexpr auto kSize = 0x10000;
+    for (size_t i = 0; i < kSize; ++i)
+      items.push("0123456789abcdef"sv);
+    REQUIRE(items.size() == kSize);
+    for (size_t i = 0; i < kSize; ++i)
+      REQUIRE(items.at(i) == "0123456789abcdef"sv);
+  }
+
   SECTION("clearing empty vector does nothing") {
     fzx::Items items;
     items.clear();

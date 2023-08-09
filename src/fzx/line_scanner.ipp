@@ -10,7 +10,7 @@
 namespace fzx {
 
 template <typename Push>
-uint32_t LineScanner::feed(std::string_view str, Push&& push, char ch)
+inline uint32_t LineScanner::feed(std::string_view str, Push&& push, char ch)
 {
   uint32_t count = 0;
   const auto* it = str.begin();
@@ -47,7 +47,7 @@ uint32_t LineScanner::feed(std::string_view str, Push&& push, char ch)
 }
 
 template <typename Push>
-bool LineScanner::finalize(Push&& push)
+inline bool LineScanner::finalize(Push&& push)
 {
   const bool empty = mBuf.empty();
   if (!empty)

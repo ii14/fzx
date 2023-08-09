@@ -24,17 +24,17 @@ struct Items
   void clear() noexcept;
 
   [[nodiscard]] size_t size() const noexcept { return mItemsSize; }
+
+  /// Get the item at given index.
+  ///
+  /// NOTE: Accessing an item out of range is undefined behavior.
   [[nodiscard]] std::string_view at(size_t n) const noexcept;
 
   /// Push a new string into the vector.
-  /// NOTE: Only the most up-to-date instance can do this.
+  ///
+  /// NOTE: Internal storage is shared between the copies. Only the most up-to-date
+  /// copy can call this method. Otherwise it's undefined behavior (data race).
   void push(std::string_view s);
-
-private:
-  template <typename T>
-  void reserve(char*& mptr, size_t& msize, size_t& mcap, size_t n);
-  static void incRef(char* p) noexcept;
-  static void decRef(char* p) noexcept;
 
 private:
   char* mStrsPtr { nullptr };

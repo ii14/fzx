@@ -1,3 +1,9 @@
+Minimal requirements for the first release:
+[X] Bounds checking in Fzx::pushItem. String buffer and item count can't overflow uint32_t
+[ ] WorkerPool exception safety. std::thread calls std::terminate on unhandled exceptions
+
+------------------------------------------------------------------------------------------
+
 Try to reuse already calculated results. If the query was changed in a way that can only
 narrow down the results, reuse them. And if new items have been added, don't discard
 previous results. It's going to be a bit more complicated than it sounds, because each

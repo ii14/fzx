@@ -30,7 +30,7 @@ void WorkerPool::stop()
   mWorkers.clear();
 }
 
-void WorkerPool::notify()
+void WorkerPool::notify() noexcept
 {
   for (auto& worker : mWorkers)
     worker->mEvents.post(kJob);
@@ -39,26 +39,24 @@ void WorkerPool::notify()
 namespace {
 
 void merge2(
-    std::vector<Match>& out,
-    const std::vector<Match>& a,
-    const std::vector<Match>& b)
+    std::vector<Match>& RESTRICT out,
+    const std::vector<Match>& RESTRICT a,
+    const std::vector<Match>& RESTRICT b)
 {
-  size_t ir = 0;
-  size_t ia = 0;
-  size_t ib = 0;
   out.clear();
   out.resize(a.size() + b.size());
-  while (ia < a.size() && ib < b.size()) {
-    if (a[ia] < b[ib]) {
-      out[ir++] = a[ia++];
-    } else {
-      out[ir++] = b[ib++];
-    }
-  }
-  while (ia < a.size())
-    out[ir++] = a[ia++];
-  while (ib < b.size())
-    out[ir++] = b[ib++];
+  const auto ae = a.end();
+  const auto be = b.end();
+  auto ai = a.begin();
+  auto bi = b.begin();
+  auto ri = out.begin();
+  while (ai != ae && bi != be)
+    *ri++ = *ai < *bi ? *ai++ : *bi++;
+  while (ai != ae)
+    *ri++ = *ai++;
+  while (bi != be)
+    *ri++ = *bi++;
+  DEBUG_ASSERT(ri == out.end());
 }
 
 // TODO: try to avoid __builtin functions

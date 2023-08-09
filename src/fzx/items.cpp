@@ -3,7 +3,9 @@
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
@@ -14,10 +16,6 @@
 // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
 
 namespace fzx {
-
-// TODO: check for overflows. max size of the string storage is UINT32_MAX in total, same for items
-// TODO: make Items::push return false on allocation failure or when max capacity was reached
-// TODO: make the initial allocation have some predefined, bigger size
 
 // "Faster, but more UB" or "Slower, but more correct" selector
 // #define FZX_USE_MEMCPY
@@ -30,14 +28,57 @@ struct Item
   uint32_t mLength;
 };
 
-static_assert(std::is_trivial_v<Item>); // can memcpy, don't have to call a destructor
-static_assert(std::is_trivially_destructible_v<std::atomic<size_t>>);
+// can memcpy, don't have to call a destructor
+static_assert(std::is_trivial_v<Item>);
+static_assert(std::is_trivial_v<std::atomic<size_t>>);
 
 constexpr auto kStorageAlign = fzx::kCacheLine;
+static_assert(isPow2(kStorageAlign), "not a power of two");
 static_assert(kStorageAlign >= sizeof(std::atomic<size_t>));
 static_assert(kStorageAlign >= alignof(std::atomic<size_t>));
 static_assert(kStorageAlign >= sizeof(Item));
 static_assert(kStorageAlign >= alignof(Item));
+
+void incRef(char* p) noexcept
+{
+  if (p == nullptr)
+    return;
+  auto* refCount = std::launder(reinterpret_cast<std::atomic<size_t>*>(p));
+  refCount->fetch_add(1, std::memory_order_relaxed);
+}
+
+void decRef(char* p) noexcept
+{
+  if (p == nullptr)
+    return;
+  auto* refCount = std::launder(reinterpret_cast<std::atomic<size_t>*>(p));
+  if (refCount->fetch_sub(1, std::memory_order_acq_rel) == 1)
+    std::free(p);
+}
+
+template <typename T>
+void resize(char*& mptr, size_t psize, size_t nsize)
+{
+  DEBUG_ASSERT(nsize > kStorageAlign);
+  DEBUG_ASSERT(isMulOf<kStorageAlign>(nsize));
+  auto* const data = static_cast<char*>(std::aligned_alloc(kStorageAlign, nsize));
+  if (data == nullptr)
+    throw std::bad_alloc {};
+
+  new (data) std::atomic<size_t> { 1 };
+  if (psize != 0) {
+    auto* src = std::launder(reinterpret_cast<const T*>(mptr + kStorageAlign));
+    auto* dst = std::launder(reinterpret_cast<T*>(data + kStorageAlign));
+#ifndef FZX_USE_MEMCPY
+    std::uninitialized_copy_n(src, psize, dst);
+#else
+    std::memcpy(dst, src, psize * sizeof(T));
+#endif
+  }
+
+  decRef(mptr);
+  mptr = data;
+}
 
 } // namespace
 
@@ -143,72 +184,42 @@ void Items::push(std::string_view s)
   if (s.empty())
     return;
 
-  reserve<char>(mStrsPtr, mStrsSize, mStrsCap, s.size());
-  reserve<Item>(mItemsPtr, mItemsSize, mItemsCap, 1);
+  constexpr auto kMaxSize = static_cast<size_t>(std::numeric_limits<uint32_t>::max());
+  const size_t strsSize = mStrsSize + s.size();
+  const size_t itemsSize = mItemsSize + 1;
+  // Item index and string offset can no longer be represented as uint32_t.
+  if (strsSize > kMaxSize || itemsSize > kMaxSize)
+    throw std::length_error { "max storage size reached" };
+
+  if (strsSize > mStrsCap) {
+    // Space for the control block + overallocate 64 bytes for reading out of bounds with SIMD
+    constexpr auto kSpace = kStorageAlign + 64;
+    const size_t size = mStrsCap == 0 ? 1024 : roundPow2(kSpace + mStrsCap + s.size());
+    DEBUG_ASSERT(size > kSpace);
+    DEBUG_ASSERT(size - kSpace > mStrsCap);
+    resize<char>(mStrsPtr, mStrsSize, size);
+    mStrsCap = size - kSpace;
+  }
+
+  if (itemsSize > mItemsCap) {
+    // Space for the control block
+    constexpr auto kSpace = kStorageAlign;
+    const size_t size = mItemsCap == 0 ? 1024 : (kSpace + mItemsCap * sizeof(Item)) * 2;
+    DEBUG_ASSERT(size > kSpace);
+    DEBUG_ASSERT(size - kSpace > mItemsCap);
+    resize<Item>(mItemsPtr, mItemsSize, size);
+    mItemsCap = (size - kSpace) / sizeof(Item);
+  }
 
   std::memcpy(mStrsPtr + kStorageAlign + mStrsSize, s.data(), s.size());
+
   new (mItemsPtr + kStorageAlign + mItemsSize * sizeof(Item)) Item {
     static_cast<uint32_t>(mStrsSize),
     static_cast<uint32_t>(s.size()),
   };
 
-  mStrsSize += s.size();
-  mItemsSize += 1;
-}
-
-template <typename T>
-void Items::reserve(char*& mptr, size_t& msize, size_t& mcap, size_t n)
-{
-  if (msize + n <= mcap)
-    return;
-  const size_t cap = mcap == 0 ? 1024 : mcap * 2;
-
-  // TODO: The size for aligned_alloc has to be rounded up to a power of two. Because the
-  // reference count is stored alongside the data, this means that the actual allocated
-  // storage can in reality store more items than the amount we save as capacity.
-  size_t size = roundPow2(kStorageAlign + cap * sizeof(T));
-  auto* const data = static_cast<char*>(std::aligned_alloc(kStorageAlign, size));
-  if (data == nullptr)
-    throw std::bad_alloc {};
-
-  new (data) std::atomic<size_t> { 1 };
-  if (msize != 0) {
-    auto* src = std::launder(reinterpret_cast<const T*>(mptr + kStorageAlign));
-    // dst points to uninitialized storage, so std::launder probably isn't doing anything? Not
-    // sure how that works here, but std::uninitialized_copy_n demands these to be the same type,
-    // so std::launder it just because we can.
-    auto* dst = std::launder(reinterpret_cast<T*>(data + kStorageAlign));
-
-#ifndef FZX_USE_MEMCPY
-    // Compiles down to memmove.
-    std::uninitialized_copy_n(src, msize, dst);
-#else
-    // Technically UB in standard C++, because memcpy doesn't
-    // start the object lifetime, but might be faster.
-    std::memcpy(dst, src, msize * sizeof(T));
-#endif
-  }
-
-  decRef(mptr);
-  mptr = data;
-  mcap = cap;
-}
-
-void Items::incRef(char* p) noexcept
-{
-  if (p == nullptr)
-    return;
-  auto* refCount = std::launder(reinterpret_cast<std::atomic<size_t>*>(p));
-  refCount->fetch_add(1, std::memory_order_relaxed);
-}
-
-void Items::decRef(char* p) noexcept
-{
-  if (p == nullptr)
-    return;
-  auto* refCount = std::launder(reinterpret_cast<std::atomic<size_t>*>(p));
-  if (refCount->fetch_sub(1, std::memory_order_acq_rel) == 1)
-    std::free(p);
+  mStrsSize = strsSize;
+  mItemsSize = itemsSize;
 }
 
 } // namespace fzx

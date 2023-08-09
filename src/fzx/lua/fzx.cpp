@@ -61,20 +61,18 @@ static int getFd(lua_State* lstate)
   return 1;
 }
 
-static int start(lua_State* lstate)
+static int start(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  try {
-    p->start();
-  } catch (const std::exception& e) {
-    return luaL_error(lstate, "fzx: %s", e.what());
-  }
+  p->start();
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int stop(lua_State* lstate)
+static int stop(lua_State* lstate) try
 {
   auto*& p = getUserdata(lstate);
   if (p == nullptr)
@@ -83,9 +81,11 @@ static int stop(lua_State* lstate)
   delete p;
   p = nullptr;
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int push(lua_State* lstate)
+static int push(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
@@ -94,34 +94,28 @@ static int push(lua_State* lstate)
   if (type == LUA_TSTRING) {
     size_t len = 0;
     const char* str = lua_tolstring(lstate, 2, &len);
-    try {
-      p->pushItem({ str, len });
-    } catch (const std::exception& e) {
-      return luaL_error(lstate, "fzx: %s", e.what());
-    }
+    p->pushItem({ str, len });
   } else if (type == LUA_TTABLE) {
-    try {
-      for (int i = 1;; ++i) {
-        lua_rawgeti(lstate, 2, i);
-        if (lua_isnil(lstate, -1))
-          return 0;
-        if (!lua_isstring(lstate, -1))
-          return luaL_error(lstate, "fzx: invalid type passed to push function");
-        size_t len = 0;
-        const char* str = lua_tolstring(lstate, -1, &len);
-        p->pushItem({ str, len });
-        lua_pop(lstate, 1);
-      }
-    } catch (const std::exception& e) {
-      return luaL_error(lstate, "fzx: %s", e.what());
+    for (int i = 1;; ++i) {
+      lua_rawgeti(lstate, 2, i);
+      if (lua_isnil(lstate, -1))
+        return 0;
+      if (!lua_isstring(lstate, -1))
+        return luaL_error(lstate, "fzx: invalid type passed to push function");
+      size_t len = 0;
+      const char* str = lua_tolstring(lstate, -1, &len);
+      p->pushItem({ str, len });
+      lua_pop(lstate, 1);
     }
   } else {
     return luaL_error(lstate, "fzx: invalid type passed to push function");
   }
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int scanFeed(lua_State* lstate)
+static int scanFeed(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
@@ -131,9 +125,11 @@ static int scanFeed(lua_State* lstate)
   if (p->scanFeed({ str, len }) > 0)
     p->commitItems();
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int scanEnd(lua_State* lstate)
+static int scanEnd(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
@@ -141,6 +137,8 @@ static int scanEnd(lua_State* lstate)
   if (p->scanEnd())
     p->commitItems();
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
 static int commit(lua_State* lstate)
@@ -152,19 +150,17 @@ static int commit(lua_State* lstate)
   return 0;
 }
 
-static int setQuery(lua_State* lstate)
+static int setQuery(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
   size_t len = 0;
   const char* str = luaL_checklstring(lstate, 2, &len);
-  try {
     p->setQuery({ str, len });
-  } catch (const std::exception& e) {
-    return luaL_error(lstate, "fzx: %s", e.what());
-  }
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
 static int loadResults(lua_State* lstate)
@@ -176,7 +172,7 @@ static int loadResults(lua_State* lstate)
   return 1;
 }
 
-static int getResults(lua_State* lstate)
+static int getResults(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
@@ -252,6 +248,8 @@ static int getResults(lua_State* lstate)
   }
   lua_setfield(lstate, -2, "items");
   return 1;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
 } // namespace fzx::lua
