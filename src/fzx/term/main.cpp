@@ -4,10 +4,13 @@
 #include <atomic>
 #include <cerrno>
 #include <csignal>
+#include <thread>
 
+extern "C" {
 #include <sys/select.h>
 #include <sys/types.h>
 #include <unistd.h>
+}
 
 static std::atomic<bool> gQuitSignal { false };
 static std::atomic<bool> gResizeSignal { false };
@@ -39,6 +42,9 @@ int main(int argc, char** argv)
     return 1;
   if (!app.mTTY.open())
     return 1;
+
+  // TODO: command line option
+  app.mFzx.setThreads(std::thread::hardware_concurrency());
 
   // TODO: handle SIGTERM, SIGQUIT, SIGHUP
   struct sigaction sa {};

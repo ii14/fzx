@@ -19,9 +19,24 @@ static Fzx*& getUserdata(lua_State* lstate)
 
 static int create(lua_State* lstate)
 {
+  unsigned threads = 1;
+  if (!lua_isnil(lstate, 1)) {
+    if (!lua_istable(lstate, 1))
+      return luaL_error(lstate, "fzx: expected table");
+
+    lua_getfield(lstate, 1, "threads");
+    if (!lua_isnil(lstate, -1)) {
+      if (lua_type(lstate, -1) != LUA_TNUMBER)
+        return luaL_error(lstate, "fzx: 'threads' has to be a number");
+      threads = std::clamp(lua_tointeger(lstate, -1), lua_Integer{1}, lua_Integer{64});
+    }
+    lua_pop(lstate, 1);
+  }
+
   auto*& p = *static_cast<Fzx**>(lua_newuserdata(lstate, sizeof(Fzx*)));
   try {
     p = new Fzx();
+    p->setThreads(threads);
   } catch (const std::exception& e) {
     return luaL_error(lstate, "fzx: %s", e.what());
   }

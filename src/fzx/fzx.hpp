@@ -34,6 +34,8 @@ struct Fzx
   Fzx(Fzx&&) = delete;
   Fzx& operator=(Fzx&&) = delete;
 
+  void setThreads(unsigned threads) noexcept;
+
   void start();
   void stop() noexcept;
   [[nodiscard]] int notifyFd() const noexcept { return mPool.mEventFd.fd(); }
@@ -67,6 +69,7 @@ private:
   LineScanner mLineScanner;
   size_t mLastItemsSize { 0 };
   bool mRunning { false };
+  unsigned mThreads { 1 };
 };
 
 } // namespace fzx

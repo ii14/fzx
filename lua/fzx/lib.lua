@@ -76,7 +76,9 @@ local function new(opts)
 
   local on_update = opts.on_update
   local self = setmetatable({}, mt)
-  self.fzx = require('fzxlib').new()
+  self.fzx = require('fzxlib').new({
+    threads = vim.loop.available_parallelism(),
+  })
   self._poll = assert(vim.loop.new_poll(self.fzx:get_fd()))
   self._poll:start('r', function(err)
     if err then

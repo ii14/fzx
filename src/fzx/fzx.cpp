@@ -19,11 +19,16 @@ Fzx::~Fzx() noexcept
   mPool.mEventFd.close();
 }
 
+void Fzx::setThreads(unsigned threads) noexcept
+{
+  mThreads = std::clamp(threads, 1U, 64U);
+}
+
 void Fzx::start()
 {
   ASSERT(!mRunning);
   mRunning = true;
-  mPool.start(4); // TODO: configurable thread count
+  mPool.start(mThreads);
 }
 
 void Fzx::stop() noexcept
