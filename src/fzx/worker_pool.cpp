@@ -12,8 +12,7 @@ namespace fzx {
 
 namespace {
 
-/// Check for a new job every N processed items
-constexpr auto kCheckInterval = 0x8000;
+constexpr auto kChunkSize = 0x400;
 
 // Results from each worker are merged using this dependency
 // tree, where each vertical lane represents one worker thread:
@@ -141,10 +140,9 @@ void WorkerPool::notify() noexcept
     worker->mEvents.post(kJob);
 }
 
+// TODO: exception safety
 void WorkerPool::run(const uint32_t workerIndex)
 {
-  // TODO: exception safety
-
   ASSERT(workerIndex < kMaxWorkers);
   ASSERT(mWorkers.size() <= kMaxWorkers);
 
@@ -203,10 +201,7 @@ start:
       ev |= kJob;
     }
 
-    // TODO: If the query didn't change, results should't have to be recalculated,
-    // not fully at least. Only the new items can be matched, sorted and then sort
-    // everything again. What can make it slightly more complicated is the fact that
-    // the items are evenly split across workers.
+    // TODO: If the query didn't change, results should't have to be recalculated.
     if (lastItemsTick < job.mItems.size()) {
       lastItemsTick = job.mItems.size();
       ev |= kJob;
@@ -228,21 +223,32 @@ start:
 
     // If there is no active query, publish empty results.
     if (!job.mQuery || job.mQuery->empty()) {
-      // On the other side we need to know if we should just return the
-      // items straight from the Items data structure, if query is empty.
       publish();
       goto wait;
     }
 
-    // Each thread gets its own chunk of the items.
-    const auto chunkSize = job.mItems.size() / mWorkers.size() + 1;
-    const size_t start = std::min(chunkSize * workerIndex, job.mItems.size());
-    const size_t end = std::min(start + chunkSize, job.mItems.size());
-    if (start < end) {
+    ASSERT(job.mReserved);
+    out.mItems.reserve(job.mItems.size());
+    for (;;) {
+      // Reserve a chunk of items.
+      //
+      // We're not splitting the work evenly upfront, because some threads can have higher
+      // workloads and take more time in total to process all items. The easiest way to work
+      // around this problem is to just get items in fixed sized chunks in a loop. We're paying
+      // with L1 cache misses here, but in the end it's insignificant compared to the disaster
+      // that calculating the score is, so it's still an overall improvement for some cases.
+      //
+      // Right now reserve is an atomic fetch-add, that can set the shared counter to an out of
+      // bounds value. This is fine for the time being, but if we want to reuse already calculated
+      // items, it will have to be changed to a CAS loop, to guarantee we were within the previous
+      // boundaries when new items are appended.
+      const size_t start = std::min(job.mReserved->reserve(kChunkSize), job.mItems.size());
+      const size_t end = std::min(start + kChunkSize, job.mItems.size());
+      if (start >= end)
+        break;
+
       // Match items and calculate scores
-      out.mItems.reserve(end - start);
       const std::string_view query { *job.mQuery };
-      size_t n = 0;
       for (size_t i = start; i < end; ++i) {
         auto item = job.mItems.at(i);
         if (!fzy::hasMatch(query, item))
@@ -251,52 +257,52 @@ start:
           static_cast<uint32_t>(i),
           static_cast<float>(fzy::match(query, item)),
         });
-
-        // Periodically look for a new job.
-        if (++n == kCheckInterval) {
-          n = 0;
-          // Ignore kMerge events, we don't care about them at this stage.
-          if (ev = events.get(); ev & (kStop | kJob))
-            goto start;
-        }
       }
 
-      // Sort the local batch of items.
-      std::sort(out.mItems.begin(), out.mItems.end());
+      // Ignore kMerge events from other workers, we don't care about
+      // them at this stage, as we don't even have out own results yet.
+      if (ev = events.get(); ev & (kStop | kJob))
+        goto start;
     }
+
+    // Sort the local batch of items.
+    std::sort(out.mItems.begin(), out.mItems.end());
   }
 
   // Merge results from other threads.
   if (merged != 0) {
     auto& out = output.writeBuffer();
-
     for (uint8_t i = 0; i < kChildrenCount; ++i) {
       const uint8_t id = nthChild(workerIndex, i);
       const uint8_t mask = nthChildMask(i);
 
-      // Already got results from this worker.
+      // Already got results from this worker, try the next one.
       if (!(merged & mask))
         continue;
 
       mWorkers[id]->mOutput.load();
       const auto& cres = mWorkers[id]->mOutput.readBuffer();
 
-      if (cres.mItemsTick > out.mItemsTick || cres.mQueryTick > out.mQueryTick) {
-        // We've received results with a newer timestamp than ours, so that has to mean there
-        // is a new job. We know something's up, but we can't read the events here, because even
-        // though the other worker was notified and did its thing, there is no guarantee that
-        // _we_ were notified yet, as workers are not notified simultaneously. We have to wait.
-        // I mean I guess we could, but we have to process all events again anyway, just in case.
+      // We've received results with a newer timestamp than ours, so that has to mean there
+      // is a new job. We know something's up, but we can't read the events here, because even
+      // though the other worker was notified and did its thing, there is no guarantee that
+      // _we_ were notified yet, as workers are not notified simultaneously. We have to wait.
+      // I mean I guess we could, but we have to process all events again anyway, just in case.
+      if (cres.mItemsTick > out.mItemsTick || cres.mQueryTick > out.mQueryTick)
         goto wait;
-      } else if (cres.mItemsTick == out.mItemsTick && cres.mQueryTick == out.mQueryTick) {
-        // We agree on the timestamp, the results can be merged.
-        merge2(tmp, out.mItems, cres.mItems); // TODO: merge in place?
-        swap(tmp, out.mItems);
+
+      // We agree on the timestamp, results from the child can be merged with our own.
+      if (cres.mItemsTick == out.mItemsTick && cres.mQueryTick == out.mQueryTick) {
+        // Avoid unnecessary copies
+        if (!cres.mItems.empty()) {
+          merge2(tmp, out.mItems, cres.mItems); // TODO: merge in place?
+          swap(tmp, out.mItems);
+        }
         merged &= ~mask; // Mark this worker as merged.
       }
     }
 
-    // Not all results have been merged yet, we have to wait for someone.
+    // Not all results have been merged yet, we're still waiting for someone.
     if (merged != 0)
       goto wait;
   }

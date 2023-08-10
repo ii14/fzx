@@ -65,6 +65,7 @@ private:
   Job mJob;
   WorkerPool mPool;
   LineScanner mLineScanner;
+  size_t mLastItemsSize { 0 };
   bool mRunning { false };
 };
 

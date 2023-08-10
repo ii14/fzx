@@ -1,9 +1,10 @@
 #pragma once
 
 #include <array>
+#include <atomic>
+#include <memory>
 #include <thread>
 #include <vector>
-#include <memory>
 
 #include "fzx/eventfd.hpp"
 #include "fzx/events.hpp"
@@ -24,9 +25,16 @@ struct Output
 
 struct Job
 {
+  struct Reserved
+  {
+    alignas(kCacheLine) std::atomic<size_t> mReserved { 0 };
+    size_t reserve(size_t n) noexcept { return mReserved.fetch_add(n); }
+  };
+
   Items mItems;
   size_t mQueryTick { 0 };
   std::shared_ptr<std::string> mQuery;
+  std::shared_ptr<Reserved> mReserved;
 };
 
 struct WorkerPool

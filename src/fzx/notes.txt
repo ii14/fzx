@@ -6,9 +6,7 @@ Minimal requirements for the first release:
 
 Try to reuse already calculated results. If the query was changed in a way that can only
 narrow down the results, reuse them. And if new items have been added, don't discard
-previous results. It's going to be a bit more complicated than it sounds, because each
-thread has its own range of items to process, which changes according to the total item
-count.
+previous results.
 
 ------------------------------------------------------------------------------------------
 
@@ -32,26 +30,6 @@ lookup by index anyway. Now that I think about it, maybe caching all results can
 combined into two levels of cache, with separate space limits. But it doesn't actually
 solve the problems of the cache from the paragraph above, and it would rarely be useful,
 so why bother.
-
-------------------------------------------------------------------------------------------
-
-Depending on the input data and the query, some workers can have a significantly higher
-workload than others. Everyone has to wait for the thread with the highest workload to
-finish, so that's not good. It's easy to get cases where redistributing the work more
-fairly would mean that you get the results ~2x faster. And of course in theory you can get
-so unlucky that only one thread does all the work and you lose the entire benefit of
-multithreading.
-
-I initially was thinking about work stealing, where other threads would subtract from the
-range of still running threads, but this is stupid. This would make sense if workers were
-just doing their own work with no interruption. But we're already interrupting the work,
-and periodically checking if the worker should discard what it was doing and start over on
-new data.
-
-Instead of dividing the work upfront, an easier solution is to get each worker to just ask
-and reserve the work for itself in smaller chunks. Implementing work stealing would have
-to do more or less the same thing as this, but with few extra steps. This will be easier
-to implement, understand and easier to work with.
 
 ------------------------------------------------------------------------------------------
 

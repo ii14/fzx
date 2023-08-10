@@ -23,7 +23,7 @@ void Fzx::start()
 {
   ASSERT(!mRunning);
   mRunning = true;
-  mPool.start(4);
+  mPool.start(4); // TODO: configurable thread count
 }
 
 void Fzx::stop() noexcept
@@ -50,6 +50,16 @@ bool Fzx::scanEnd()
 
 void Fzx::commitItems() noexcept
 {
+  // Suppress unnecessary notifications
+  if (mJob.mItems.size() <= mLastItemsSize)
+    return;
+  mLastItemsSize = mJob.mItems.size();
+
+  // If there is an active query, we're considering this to be a new job
+  // and the counter has to be reset, and all workers can start over.
+  if (mJob.mQuery)
+    mJob.mReserved = std::make_shared<Job::Reserved>();
+
   mPool.mJob.store(mJob);
   mPool.notify();
 }
@@ -58,10 +68,13 @@ void Fzx::setQuery(std::string query) noexcept
 {
   if (!query.empty()) {
     mJob.mQuery = std::make_shared<std::string>(std::move(query));
+    mJob.mReserved = std::make_shared<Job::Reserved>();
   } else {
     mJob.mQuery.reset();
+    mJob.mReserved.reset();
   }
   mJob.mQueryTick += 1;
+
   mPool.mJob.store(mJob);
   mPool.notify();
 }
