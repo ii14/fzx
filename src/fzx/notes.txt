@@ -98,6 +98,4 @@ probably not smart enough to actually do this.
 
 ------------------------------------------------------------------------------------------
 
-Windows support. EventFd class probably needs Windows specific code. Also __builtin_*
-functions are used in WorkerPool, which isn't going to work on MSVC. For that maybe just
-make a precomputed lookup table to define a dependency tree between the threads.
+Windows support. EventFd class probably needs Windows specific code.

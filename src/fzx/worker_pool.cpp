@@ -10,8 +10,113 @@ namespace fzx {
 
 // TODO: it's a mess, refactor this
 
+namespace {
+
+/// Check for a new job every N processed items
+constexpr auto kCheckInterval = 0x8000;
+
+// Results from each worker are merged using this dependency
+// tree, where each vertical lane represents one worker thread:
+//
+//   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+//   |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+//   +--+  +--+  +--+  +--+  +--+  +--+  +--+  +--+
+//   |  .  |  .  |  .  |  .  |  .  |  .  |  .  |  .
+//   +-----+  .  +-----+  .  +-----+  .  +-----+  .
+//   |  .  .  .  |  .  .  .  |  .  .  .  |  .  .  .
+//   +-----------+  .  .  .  +-----------+  .  .  .
+//   |  .  .  .  .  .  .  .  |  .  .  .  .  .  .  .
+//   +-----------------------+  .  .  .  .  .  .  .
+//   |  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+//
+// At each step the parent worker merges its results with the
+// results from all the workers under it, until the full results
+// end up in the worker 0, that then notifies the main thread.
+
+/// Hard limit on 64 threads
+constexpr auto kMaxWorkers = 64;
+constexpr auto kMaxChildren = 6;
+
+/// Map of worker index to the parent worker index. The parent is responsible for
+/// merging your results. It has to be notified about results being ready to merge.
+constexpr std::array<uint8_t, kMaxWorkers> kParentMap {
+  // 0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
+  0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x04, 0x06, 0x00, 0x08, 0x08, 0x0A, 0x08, 0x0C, 0x0C, 0x0E,
+  0x00, 0x10, 0x10, 0x12, 0x10, 0x14, 0x14, 0x16, 0x10, 0x18, 0x18, 0x1A, 0x18, 0x1C, 0x1C, 0x1E,
+  0x00, 0x20, 0x20, 0x22, 0x20, 0x24, 0x24, 0x26, 0x20, 0x28, 0x28, 0x2A, 0x28, 0x2C, 0x2C, 0x2E,
+  0x20, 0x30, 0x30, 0x32, 0x30, 0x34, 0x34, 0x36, 0x30, 0x38, 0x38, 0x3A, 0x38, 0x3C, 0x3C, 0x3E,
+};
+
+/// Map of worker index to max children count.
+constexpr std::array<uint8_t, kMaxWorkers> kMaxChildrenMap {
+  6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+  4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+  5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+  4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+};
+
+/// Get child worker index.
+constexpr uint8_t nthChild(uint8_t id, uint8_t n) noexcept
+{
+  DEBUG_ASSERT(id < kMaxWorkers);
+  DEBUG_ASSERT(n <= kMaxChildren);
+  return id + (1U << n);
+}
+
+/// Get child merge mask.
+constexpr uint8_t nthChildMask(uint8_t n) noexcept
+{
+  DEBUG_ASSERT(n <= kMaxChildren);
+  return 1U << n;
+}
+
+/// Get children count.
+constexpr uint8_t childrenCount(uint8_t id, uint8_t total) noexcept
+{
+  DEBUG_ASSERT(id < kMaxWorkers);
+  DEBUG_ASSERT(total <= kMaxWorkers);
+  uint8_t i = 0;
+  while (i < kMaxChildrenMap[id] && nthChild(id, i) < total)
+    ++i;
+  DEBUG_ASSERT(i <= kMaxChildren);
+  return i;
+}
+
+/// Get empty merge mask.
+constexpr uint8_t childrenMask(uint8_t count) noexcept
+{
+  DEBUG_ASSERT(count <= kMaxChildren);
+  return ~(0xFFU << count);
+}
+
+/// Merge results from sorted vectors `a` and `b` into the output vector `r`.
+/// `r` is an in/out parameter to reuse previously allocated memory.
+void merge2(
+    std::vector<Match>& RESTRICT r,
+    const std::vector<Match>& RESTRICT a,
+    const std::vector<Match>& RESTRICT b)
+{
+  r.clear();
+  r.resize(a.size() + b.size());
+  const auto ae = a.end();
+  const auto be = b.end();
+  auto ai = a.begin();
+  auto bi = b.begin();
+  auto ri = r.begin();
+  while (ai != ae && bi != be)
+    *ri++ = *ai < *bi ? *ai++ : *bi++;
+  while (ai != ae)
+    *ri++ = *ai++;
+  while (bi != be)
+    *ri++ = *bi++;
+  DEBUG_ASSERT(ri == r.end());
+}
+
+} // namespace
+
 void WorkerPool::start(uint32_t workers)
 {
+  ASSERT(workers <= kMaxWorkers);
   for (size_t i = 0; i < workers; ++i)
     mWorkers.emplace_back(std::make_unique<Worker>());
   for (size_t i = 0; i < mWorkers.size(); ++i) {
@@ -36,55 +141,12 @@ void WorkerPool::notify() noexcept
     worker->mEvents.post(kJob);
 }
 
-namespace {
-
-void merge2(
-    std::vector<Match>& RESTRICT out,
-    const std::vector<Match>& RESTRICT a,
-    const std::vector<Match>& RESTRICT b)
-{
-  out.clear();
-  out.resize(a.size() + b.size());
-  const auto ae = a.end();
-  const auto be = b.end();
-  auto ai = a.begin();
-  auto bi = b.begin();
-  auto ri = out.begin();
-  while (ai != ae && bi != be)
-    *ri++ = *ai < *bi ? *ai++ : *bi++;
-  while (ai != ae)
-    *ri++ = *ai++;
-  while (bi != be)
-    *ri++ = *bi++;
-  DEBUG_ASSERT(ri == out.end());
-}
-
-// TODO: try to avoid __builtin functions
-
-constexpr uint8_t emptyMergedMask(uint32_t id, size_t size) noexcept
-{
-  // TODO: document what this does
-
-  uint32_t max = [&] {
-    if (id != 0)
-      return __builtin_ffs(static_cast<int>(id)) - 1;
-    static_assert(sizeof(int) == 4);
-    // Shifting in 1, because the result for 0 is different on different CPUs. thank you intel, very cool
-    return 31 - __builtin_clz((static_cast<int>(size) << 1) | 1);
-  }();
-
-  uint32_t r = 0;
-  for (uint32_t i = 0; i < max && (id | (1U << i)) < size; ++i)
-    ++r;
-  return ~(0xFF << r);
-}
-
-} // namespace
-
-void WorkerPool::run(uint32_t workerIndex)
+void WorkerPool::run(const uint32_t workerIndex)
 {
   // TODO: exception safety
-  ASSERT(workerIndex < 64); // Hard limit on 64 threads
+
+  ASSERT(workerIndex < kMaxWorkers);
+  ASSERT(mWorkers.size() <= kMaxWorkers);
 
   Thread::pin(static_cast<int>(workerIndex));
 
@@ -98,9 +160,12 @@ void WorkerPool::run(uint32_t workerIndex)
 
   // Temporary vector for merging results
   std::vector<Match> tmp;
+
+  const uint8_t kParentIndex = kParentMap[workerIndex];
+  const uint8_t kChildrenCount = childrenCount(workerIndex, mWorkers.size());
   // Keep track of what results have been merged
-  const uint8_t kEmptyMergedMask = emptyMergedMask(workerIndex, mWorkers.size());
-  uint8_t mergedMask = kEmptyMergedMask;
+  const uint8_t kChildrenMask = childrenMask(kChildrenCount);
+  uint8_t merged = kChildrenMask;
 
   bool published = false;
   // Commit results and notify whoever is responsible for handling them.
@@ -115,16 +180,9 @@ void WorkerPool::run(uint32_t workerIndex)
       mEventFd.notify();
     } else {
       // For all other workers, notify the worker that is responsible for merging our results.
-      // credits to sean's leetcode skills for figuring this one out
-      // TODO: document what this does
-      const int fs = __builtin_ffs(static_cast<int>(workerIndex));
-      const uint32_t id = workerIndex & ~(1U << (fs - 1));
-      mWorkers[id]->mEvents.post(kMerge);
+      mWorkers[kParentIndex]->mEvents.post(kMerge);
     }
   };
-
-  // Check for a new job every N processed items
-  constexpr auto kCheckInterval = 0x8000;
 
   // TODO: Not sure how to express this control flow, so use gotos for now.
   // We can make it a proper clean code that is even harder to follow than gotos later.
@@ -158,7 +216,7 @@ start:
   if (ev & kJob) {
     // A new job invalidates any merged results we got so far.
     published = false;
-    mergedMask = kEmptyMergedMask;
+    merged = kChildrenMask;
 
     auto& out = output.writeBuffer();
 
@@ -209,19 +267,15 @@ start:
   }
 
   // Merge results from other threads.
-  if (mergedMask != 0) {
+  if (merged != 0) {
     auto& out = output.writeBuffer();
 
-    // TODO: document what this does
-    const uint32_t max = workerIndex == 0
-      ? mWorkers.size()
-      : 1U << (__builtin_ffs(static_cast<int>(workerIndex)) - 1);
-    for (uint32_t i = 0, n = 1; n < max && (workerIndex | n) < mWorkers.size(); ++i, n <<= 1) {
-      const uint32_t id = workerIndex | n;
-      const uint8_t mask = 1U << i;
+    for (uint8_t i = 0; i < kChildrenCount; ++i) {
+      const uint8_t id = nthChild(workerIndex, i);
+      const uint8_t mask = nthChildMask(i);
 
       // Already got results from this worker.
-      if (!(mergedMask & mask))
+      if (!(merged & mask))
         continue;
 
       mWorkers[id]->mOutput.load();
@@ -232,18 +286,18 @@ start:
         // is a new job. We know something's up, but we can't read the events here, because even
         // though the other worker was notified and did its thing, there is no guarantee that
         // _we_ were notified yet, as workers are not notified simultaneously. We have to wait.
-        // I mean I guess we could, but we have to process all events again anyway.
+        // I mean I guess we could, but we have to process all events again anyway, just in case.
         goto wait;
       } else if (cres.mItemsTick == out.mItemsTick && cres.mQueryTick == out.mQueryTick) {
         // We agree on the timestamp, the results can be merged.
         merge2(tmp, out.mItems, cres.mItems); // TODO: merge in place?
         swap(tmp, out.mItems);
-        mergedMask &= ~mask; // Mark this worker as merged.
+        merged &= ~mask; // Mark this worker as merged.
       }
     }
 
     // Not all results have been merged yet, we have to wait for someone.
-    if (mergedMask != 0)
+    if (merged != 0)
       goto wait;
   }
 
