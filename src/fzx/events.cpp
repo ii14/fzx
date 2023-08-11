@@ -4,9 +4,6 @@
 
 namespace fzx {
 
-// for benchmarking
-// #define FZX_EVENTS_NO_ATOMICS
-
 namespace {
 
 constexpr uint32_t kWaitFlag = 0x80000000;
@@ -28,7 +25,6 @@ uint32_t Events::get() noexcept
 
 uint32_t Events::wait() noexcept
 {
-#ifndef FZX_EVENTS_NO_ATOMICS
   // Signal to other threads with kWaitFlag flag that
   // we're out of work to do, and we might go to sleep.
   if ((mState.fetch_or(kWaitFlag) & kEventMask) != 0)
@@ -37,10 +33,6 @@ uint32_t Events::wait() noexcept
     // sure if without it you can guarantee the correctness with post function.
     // I haven't thought about it too much though, so maybe you can. TODO: do the thinking
     return mState.exchange(0);
-#else
-  if (uint32_t state = mState.exchange(0); state != 0)
-    return state;
-#endif
 
   {
     std::unique_lock lock { mMutex };
@@ -60,7 +52,6 @@ void Events::post(uint32_t flags) noexcept
   DEBUG_ASSERT(flags != 0); // No flags set
 
   uint32_t state = mState.fetch_or(flags) | flags; // Add new flags
-#ifndef FZX_EVENTS_NO_ATOMICS
   if (!(state & kWaitFlag)) // Thread is not waiting, don't have to wake it up
     return;
 
@@ -71,13 +62,10 @@ void Events::post(uint32_t flags) noexcept
   while (!mState.compare_exchange_weak(state, state & kEventMask))
     if ((state & kEventMask) == 0 || !(state & kWaitFlag))
       return;
-#endif
 
-  {
-    // std::condition_variable::notify_* requires locking a
-    // mutex first, even if it doesn't actually do anything.
-    std::unique_lock lock { mMutex };
-  }
+  // std::condition_variable::notify_* requires locking a
+  // mutex first, even if it doesn't actually do anything.
+  std::unique_lock { mMutex }; // NOLINT(bugprone-unused-raii)
   mCv.notify_one();
 }
 

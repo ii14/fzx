@@ -32,21 +32,11 @@ public:
 
     // Swap the data and point new readers at it.
     mData[!idx] = value;
-    mDataIdx.store(!idx, std::memory_order_seq_cst);
+    mDataIdx.store(!idx);
 
     auto wait = [](std::atomic<Counter>& counter) {
-#if 1
-      while (counter.load(std::memory_order_seq_cst) != 0)
+      while (counter.load() != 0)
         std::this_thread::yield();
-#else
-      static const timespec kTs { 0, 1 };
-      for (int i = 0; counter.load(std::memory_order_seq_cst) != 0; ++i) {
-        if (i == 8) {
-          i = 0;
-          nanosleep(&kTs, nullptr);
-        }
-      }
-#endif
     };
 
     // Reusing idx for the reference count index below can be misleading,
@@ -58,7 +48,7 @@ public:
     // it can be exposed it again.
     wait(readerCount(!idx));
     // Redirect new readers to use the new reference counter.
-    mCountIdx.store(!idx, std::memory_order_seq_cst);
+    mCountIdx.store(!idx);
     // Now also wait for any remaining readers on the previous reference
     // counter, to make sure no one has the access to the previous data,
     // and everyone has moved to the just stored data index.
@@ -70,10 +60,10 @@ public:
   {
     // Get the current reference counter index and tell the world that
     // we're now reading it.
-    const Index cidx = mCountIdx.load(std::memory_order_seq_cst);
+    const Index cidx = mCountIdx.load();
     Lock lock { readerCount(cidx) };
 
-    const Index didx = mDataIdx.load(std::memory_order_seq_cst);
+    const Index didx = mDataIdx.load();
     out = mData[didx];
   }
 
@@ -82,12 +72,12 @@ private:
   {
     Lock(std::atomic<Counter>& cnt) noexcept : mReaderCount(&cnt)
     {
-      mReaderCount->fetch_add(1, std::memory_order_seq_cst);
+      mReaderCount->fetch_add(1);
     }
 
     ~Lock() noexcept
     {
-      mReaderCount->fetch_sub(1, std::memory_order_release);
+      mReaderCount->fetch_sub(1);
     }
 
     Lock(const Lock&) = delete;

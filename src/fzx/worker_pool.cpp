@@ -46,47 +46,75 @@ constexpr std::array<uint8_t, kMaxWorkers> kParentMap {
   0x20, 0x30, 0x30, 0x32, 0x30, 0x34, 0x34, 0x36, 0x30, 0x38, 0x38, 0x3A, 0x38, 0x3C, 0x3C, 0x3E,
 };
 
-/// Map of worker index to max children count.
-constexpr std::array<uint8_t, kMaxWorkers> kMaxChildrenMap {
-  6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-  4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-  5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-  4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+/// Keep track of results from what workers have been merged in a bitset.
+struct MergeState
+{
+  MergeState(const uint8_t workerIndex, const size_t workersCount) noexcept
+    : mIndex(workerIndex)
+  {
+    ASSERT(workerIndex < kMaxWorkers);
+    ASSERT(workersCount <= kMaxWorkers);
+
+    // Map of worker index to max possible children count
+    static constexpr std::array<uint8_t, kMaxWorkers> kMaxChildrenMap {
+      6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+      4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+      5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+      4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    };
+
+    while (mCount < kMaxChildrenMap[workerIndex] && workerIndex + (1U << mCount) < workersCount)
+      ++mCount;
+    ASSERT(mCount <= kMaxChildren);
+
+    mMask = ~(0xFFU << mCount);
+    mState = mMask;
+  }
+
+  // Get children count.
+  [[nodiscard]] uint8_t size() const noexcept
+  {
+    return mCount;
+  }
+
+  [[nodiscard]] uint8_t at(uint8_t child) const noexcept
+  {
+    DEBUG_ASSERT(child < mCount);
+    return mIndex + (1U << child);
+  }
+
+  // Reset state.
+  void reset() noexcept
+  {
+    mState = mMask;
+  }
+
+  // Mark nth child as merged.
+  void set(uint8_t child) noexcept
+  {
+    DEBUG_ASSERT(child < mCount);
+    mState &= ~(1U << child);
+  }
+
+  // Check if results from all children were merged.
+  [[nodiscard]] bool done() const noexcept
+  {
+    return mState == 0;
+  }
+
+  // Check if results from nth child were merged.
+  [[nodiscard]] bool contains(uint8_t child) const noexcept
+  {
+    DEBUG_ASSERT(child < mCount);
+    return !(mState & (1U << child));
+  }
+
+private:
+  uint8_t mIndex { 0 }; ///< Current worker index
+  uint8_t mCount { 0 }; ///< Children count
+  uint8_t mMask { 0 }; ///< Children mask
+  uint8_t mState { 0 }; ///< Merge state
 };
-
-/// Get child worker index.
-constexpr uint8_t nthChild(uint8_t id, uint8_t n) noexcept
-{
-  DEBUG_ASSERT(id < kMaxWorkers);
-  DEBUG_ASSERT(n <= kMaxChildren);
-  return id + (1U << n);
-}
-
-/// Get child merge mask.
-constexpr uint8_t nthChildMask(uint8_t n) noexcept
-{
-  DEBUG_ASSERT(n <= kMaxChildren);
-  return 1U << n;
-}
-
-/// Get children count.
-constexpr uint8_t childrenCount(uint8_t id, uint8_t total) noexcept
-{
-  DEBUG_ASSERT(id < kMaxWorkers);
-  DEBUG_ASSERT(total <= kMaxWorkers);
-  uint8_t i = 0;
-  while (i < kMaxChildrenMap[id] && nthChild(id, i) < total)
-    ++i;
-  DEBUG_ASSERT(i <= kMaxChildren);
-  return i;
-}
-
-/// Get empty merge mask.
-constexpr uint8_t childrenMask(uint8_t count) noexcept
-{
-  DEBUG_ASSERT(count <= kMaxChildren);
-  return ~(0xFFU << count);
-}
 
 /// Merge results from sorted vectors `a` and `b` into the output vector `r`.
 /// `r` is an in/out parameter to reuse previously allocated memory.
@@ -120,7 +148,7 @@ void WorkerPool::start(uint32_t workers)
     mWorkers.emplace_back(std::make_unique<Worker>());
   for (size_t i = 0; i < mWorkers.size(); ++i) {
     auto& worker = mWorkers[i];
-    worker->mThread = std::thread { &WorkerPool::run, this, static_cast<uint32_t>(i) };
+    worker->mThread = std::thread { &WorkerPool::run, this, static_cast<uint8_t>(i) };
   }
 }
 
@@ -141,7 +169,7 @@ void WorkerPool::notify() noexcept
 }
 
 // TODO: exception safety
-void WorkerPool::run(const uint32_t workerIndex)
+void WorkerPool::run(const uint8_t workerIndex)
 {
   ASSERT(workerIndex < kMaxWorkers);
   ASSERT(mWorkers.size() <= kMaxWorkers);
@@ -160,10 +188,7 @@ void WorkerPool::run(const uint32_t workerIndex)
   std::vector<Match> tmp;
 
   const uint8_t kParentIndex = kParentMap[workerIndex];
-  const uint8_t kChildrenCount = childrenCount(workerIndex, mWorkers.size());
-  // Keep track of what results have been merged
-  const uint8_t kChildrenMask = childrenMask(kChildrenCount);
-  uint8_t merged = kChildrenMask;
+  MergeState mergeState { workerIndex, mWorkers.size() };
 
   bool published = false;
   // Commit results and notify whoever is responsible for handling them.
@@ -174,7 +199,7 @@ void WorkerPool::run(const uint32_t workerIndex)
     output.commit();
 
     if (workerIndex == 0) {
-      // Worker 0 is the main thread, publish results globally
+      // Worker 0 is the main thread, publish results globally.
       mEventFd.notify();
     } else {
       // For all other workers, notify the worker that is responsible for merging our results.
@@ -211,7 +236,7 @@ start:
   if (ev & kJob) {
     // A new job invalidates any merged results we got so far.
     published = false;
-    merged = kChildrenMask;
+    mergeState.reset();
 
     auto& out = output.writeBuffer();
 
@@ -228,6 +253,8 @@ start:
     }
 
     ASSERT(job.mReserved);
+    auto& reserved = *job.mReserved;
+    const std::string_view query { *job.mQuery };
     out.mItems.reserve(job.mItems.size());
     for (;;) {
       // Reserve a chunk of items.
@@ -242,13 +269,12 @@ start:
       // bounds value. This is fine for the time being, but if we want to reuse already calculated
       // items, it will have to be changed to a CAS loop, to guarantee we were within the previous
       // boundaries when new items are appended.
-      const size_t start = std::min(job.mReserved->reserve(kChunkSize), job.mItems.size());
+      const size_t start = std::min(reserved.reserve(kChunkSize), job.mItems.size());
       const size_t end = std::min(start + kChunkSize, job.mItems.size());
       if (start >= end)
         break;
 
-      // Match items and calculate scores
-      const std::string_view query { *job.mQuery };
+      // Match items and calculate scores.
       for (size_t i = start; i < end; ++i) {
         auto item = job.mItems.at(i);
         if (!fzy::hasMatch(query, item))
@@ -270,40 +296,40 @@ start:
   }
 
   // Merge results from other threads.
-  if (merged != 0) {
+  if (!mergeState.done()) {
     auto& out = output.writeBuffer();
-    for (uint8_t i = 0; i < kChildrenCount; ++i) {
-      const uint8_t id = nthChild(workerIndex, i);
-      const uint8_t mask = nthChildMask(i);
-
+    for (uint8_t i = 0; i < mergeState.size(); ++i) {
       // Already got results from this worker, try the next one.
-      if (!(merged & mask))
+      if (mergeState.contains(i))
         continue;
 
+      // Load the results from this worker.
+      const uint8_t id = mergeState.at(i);
       mWorkers[id]->mOutput.load();
       const auto& cres = mWorkers[id]->mOutput.readBuffer();
 
-      // We've received results with a newer timestamp than ours, so that has to mean there
-      // is a new job. We know something's up, but we can't read the events here, because even
-      // though the other worker was notified and did its thing, there is no guarantee that
-      // _we_ were notified yet, as workers are not notified simultaneously. We have to wait.
-      // I mean I guess we could, but we have to process all events again anyway, just in case.
-      if (cres.mItemsTick > out.mItemsTick || cres.mQueryTick > out.mQueryTick)
+      // We've received results with a newer timestamp than ours, so that has to mean
+      // there is a new job that we weren't aware about. Properly wait for new events
+      // and process all of them, just in case.
+      if (cres.newerThan(out))
         goto wait;
 
+      // No agreement on the timestamp, these results are from some older job, and we
+      // don't want to merge unrelated results. Skip this worker for now.
+      if (!cres.sameTick(out))
+        continue;
+
       // We agree on the timestamp, results from the child can be merged with our own.
-      if (cres.mItemsTick == out.mItemsTick && cres.mQueryTick == out.mQueryTick) {
-        // Avoid unnecessary copies
-        if (!cres.mItems.empty()) {
-          merge2(tmp, out.mItems, cres.mItems); // TODO: merge in place?
-          swap(tmp, out.mItems);
-        }
-        merged &= ~mask; // Mark this worker as merged.
+      if (!cres.mItems.empty()) { // Avoid unnecessary copies
+        merge2(tmp, out.mItems, cres.mItems); // TODO: merge in place?
+        swap(tmp, out.mItems);
       }
+
+      mergeState.set(i); // Mark this worker as merged.
     }
 
     // Not all results have been merged yet, we're still waiting for someone.
-    if (merged != 0)
+    if (!mergeState.done())
       goto wait;
   }
 

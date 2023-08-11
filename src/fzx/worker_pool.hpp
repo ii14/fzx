@@ -18,9 +18,19 @@ namespace fzx {
 struct Output
 {
   std::vector<Match> mItems;
-  size_t mItemsTick { 0 };
   std::shared_ptr<std::string> mQuery;
+  size_t mItemsTick { 0 };
   size_t mQueryTick { 0 };
+
+  [[nodiscard]] bool newerThan(const Output& b) const noexcept
+  {
+    return mItemsTick > b.mItemsTick || mQueryTick > b.mQueryTick;
+  }
+
+  [[nodiscard]] bool sameTick(const Output& b) const noexcept
+  {
+    return mItemsTick == b.mItemsTick && mQueryTick == b.mQueryTick;
+  }
 };
 
 struct Job
@@ -35,6 +45,11 @@ struct Job
   size_t mQueryTick { 0 };
   std::shared_ptr<std::string> mQuery;
   std::shared_ptr<Reserved> mReserved;
+
+  [[nodiscard]] bool sameTick(const Output& b) const noexcept
+  {
+    return mItems.size() == b.mItemsTick && mQueryTick == b.mQueryTick;
+  }
 };
 
 struct WorkerPool
@@ -68,7 +83,7 @@ struct WorkerPool
   }
 
 private:
-  void run(uint32_t workerIndex);
+  void run(uint8_t workerIndex);
 
 public:
   LR<Job> mJob;

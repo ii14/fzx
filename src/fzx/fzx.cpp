@@ -130,11 +130,9 @@ bool Fzx::processing() const noexcept
 {
   if (!mJob.mQuery)
     return false;
-  const auto* master = mPool.master();
-  if (master == nullptr)
-    return false;
-  const auto& out = master->mOutput.readBuffer();
-  return mJob.mItems.size() != out.mItemsTick || mJob.mQueryTick != out.mQueryTick;
+  if (const auto* master = mPool.master(); master != nullptr)
+    return !mJob.sameTick(master->mOutput.readBuffer());
+  return false;
 }
 
 } // namespace fzx
