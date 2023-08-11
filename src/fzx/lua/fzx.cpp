@@ -229,6 +229,9 @@ static int getResults(lua_State* lstate) try
   lua_pushboolean(lstate, p->processing());
   lua_setfield(lstate, -2, "processing");
 
+  lua_pushnumber(lstate, p->progress());
+  lua_setfield(lstate, -2, "progress");
+
   lua_createtable(lstate, static_cast<int>(max), 0);
   const int tableSize = query.empty() ? 3 : 4;
   int n = 1;

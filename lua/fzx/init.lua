@@ -22,6 +22,9 @@ function mt.__index:destroy()
     self._ui:destroy()
     self._ui = nil
   end
+  if self._timer then
+    self._timer:close()
+  end
 end
 
 function mt.__index:redraw_prompt(res)
@@ -36,9 +39,15 @@ function mt.__index:redraw_prompt(res)
   self._processing = res.processing
   local status
   if self._processing then
-    status = ('processing... %d/%d '):format(res.matched, res.total)
+    status = ('%.f%% %d/%d '):format(res.progress * 100, res.matched, res.total)
+    self._timer:start(75, 0, function()
+      vim.schedule(function()
+        self:redraw_prompt()
+      end)
+    end)
   else
     status = ('%d/%d '):format(res.matched, res.total)
+    self._timer:stop()
   end
   self._extmark_prompt = api.nvim_buf_set_extmark(self._ui.input.buf, ns, 0, 0, {
     id = self._extmark_prompt,
@@ -158,6 +167,8 @@ local function new(opts)
       self:destroy()
     end,
   })
+
+  self._timer = uv.new_timer()
 
   self._fzx:start()
 

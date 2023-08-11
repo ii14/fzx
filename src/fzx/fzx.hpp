@@ -62,6 +62,8 @@ struct Fzx
   [[nodiscard]] Result getResult(size_t i) const noexcept;
 
   [[nodiscard]] bool processing() const noexcept;
+  /// Return approximated progress, value between 0.0 and 1.0
+  [[nodiscard]] double progress() const noexcept;
 
 private:
   Job mJob;

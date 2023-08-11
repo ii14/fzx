@@ -135,4 +135,15 @@ bool Fzx::processing() const noexcept
   return false;
 }
 
+double Fzx::progress() const noexcept
+{
+  if (!mJob.mReserved)
+    return 1.0;
+  // This atomic counter can include items that are about to be processed. Also
+  // this doesn't include sorting. It's fine though, this is just an approximation.
+  const size_t processed = mJob.mReserved->mReserved.load(std::memory_order_relaxed);
+  const size_t total = mJob.mItems.size();
+  return static_cast<double>(std::min(processed, total)) / static_cast<double>(total);
+}
+
 } // namespace fzx

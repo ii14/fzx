@@ -171,14 +171,11 @@ void WorkerPool::notify() noexcept
 // TODO: exception safety
 void WorkerPool::run(const uint8_t workerIndex)
 {
-  ASSERT(workerIndex < kMaxWorkers);
+  ASSERT(workerIndex < mWorkers.size());
   ASSERT(mWorkers.size() <= kMaxWorkers);
 
-  Thread::pin(static_cast<int>(workerIndex));
-
-  auto& worker = mWorkers[workerIndex];
-  auto& output = worker->mOutput;
-  auto& events = worker->mEvents;
+  auto& output = mWorkers[workerIndex]->mOutput;
+  auto& events = mWorkers[workerIndex]->mEvents;
 
   Job job;
   size_t lastItemsTick = 0;
@@ -215,32 +212,30 @@ start:
   if (ev & kStop)
     return;
 
+  bool itemsChanged = false;
+  bool queryChanged = false;
+
   if (ev & kJob) {
     mJob.load(job);
 
-    // Temporarily unset kJob event, and reenable it if we actually have a new job.
-    ev &= ~kJob;
+    if (lastItemsTick < job.mItems.size()) {
+      lastItemsTick = job.mItems.size();
+      itemsChanged = true;
+    }
 
     if (lastQueryTick < job.mQueryTick) {
       lastQueryTick = job.mQueryTick;
-      ev |= kJob;
-    }
-
-    // TODO: If the query didn't change, results should't have to be recalculated.
-    if (lastItemsTick < job.mItems.size()) {
-      lastItemsTick = job.mItems.size();
-      ev |= kJob;
+      queryChanged = true;
     }
   }
 
-  if (ev & kJob) {
+  if (queryChanged || itemsChanged) {
     // A new job invalidates any merged results we got so far.
     published = false;
     mergeState.reset();
 
-    auto& out = output.writeBuffer();
-
     // Prepare results. Start from scratch with a new item vector and "timestamp" the results.
+    auto& out = output.writeBuffer();
     out.mItemsTick = job.mItems.size();
     out.mQueryTick = job.mQueryTick;
     out.mQuery = job.mQuery;
