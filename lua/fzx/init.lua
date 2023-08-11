@@ -22,8 +22,9 @@ function mt.__index:destroy()
     self._ui:destroy()
     self._ui = nil
   end
-  if self._timer then
+  if self._timer and not self._timer:is_closing() then
     self._timer:close()
+    self._timer = nil
   end
 end
 

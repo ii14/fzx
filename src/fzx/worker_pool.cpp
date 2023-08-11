@@ -216,7 +216,10 @@ start:
   bool queryChanged = false;
 
   if (ev & kJob) {
-    mJob.load(job);
+    {
+      std::shared_lock lock { mJobMutex };
+      job = mJob;
+    }
 
     if (lastItemsTick < job.mItems.size()) {
       lastItemsTick = job.mItems.size();

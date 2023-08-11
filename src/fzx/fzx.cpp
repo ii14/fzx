@@ -65,7 +65,11 @@ void Fzx::commitItems() noexcept
   if (mJob.mQuery)
     mJob.mReserved = std::make_shared<Job::Reserved>();
 
-  mPool.mJob.store(mJob);
+  // TODO: don't wake up workers when there is no active query
+  {
+    std::unique_lock lock { mPool.mJobMutex };
+    mPool.mJob = mJob;
+  }
   mPool.notify();
 }
 
@@ -80,7 +84,10 @@ void Fzx::setQuery(std::string query) noexcept
   }
   mJob.mQueryTick += 1;
 
-  mPool.mJob.store(mJob);
+  {
+    std::unique_lock lock { mPool.mJobMutex };
+    mPool.mJob = mJob;
+  }
   mPool.notify();
 }
 

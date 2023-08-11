@@ -5,11 +5,11 @@
 #include <memory>
 #include <thread>
 #include <vector>
+#include <shared_mutex>
 
 #include "fzx/eventfd.hpp"
 #include "fzx/events.hpp"
 #include "fzx/items.hpp"
-#include "fzx/lr.hpp"
 #include "fzx/match.hpp"
 #include "fzx/tx.hpp"
 
@@ -86,10 +86,10 @@ private:
   void run(uint8_t workerIndex);
 
 public:
-  LR<Job> mJob;
+  Job mJob;
   EventFd mEventFd;
-private:
   std::vector<std::unique_ptr<Worker>> mWorkers {};
+  std::shared_mutex mJobMutex;
 };
 
 } // namespace fzx
