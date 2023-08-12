@@ -192,8 +192,8 @@ void Items::push(std::string_view s)
     throw std::length_error { "max storage size reached" };
 
   if (strsSize > mStrsCap) {
-    // Space for the control block + overallocate 64 bytes for reading out of bounds with SIMD
-    constexpr auto kSpace = kStorageAlign + 64;
+    // Space for the control block + overallocated bytes for reading out of bounds with SIMD
+    constexpr auto kSpace = kStorageAlign + kOveralloc;
     const size_t size = mStrsCap == 0 ? 1024 : roundPow2(kSpace + mStrsCap + s.size());
     DEBUG_ASSERT(size > kSpace);
     DEBUG_ASSERT(size - kSpace > mStrsCap);

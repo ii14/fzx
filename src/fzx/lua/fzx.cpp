@@ -1,3 +1,4 @@
+#include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
 #include "fzx/match/fzy.hpp"
 
@@ -28,7 +29,7 @@ static int create(lua_State* lstate)
     if (!lua_isnil(lstate, -1)) {
       if (lua_type(lstate, -1) != LUA_TNUMBER)
         return luaL_error(lstate, "fzx: 'threads' has to be a number");
-      threads = std::clamp(lua_tointeger(lstate, -1), lua_Integer{1}, lua_Integer{64});
+      threads = std::clamp(lua_tointeger(lstate, -1), lua_Integer{1}, lua_Integer{kMaxThreads});
     }
     lua_pop(lstate, 1);
   }
@@ -138,7 +139,7 @@ static int scanFeed(lua_State* lstate) try
   size_t len = 0;
   const char* str = luaL_checklstring(lstate, 2, &len);
   if (p->scanFeed({ str, len }) > 0)
-    p->commitItems();
+    p->commit();
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -150,19 +151,21 @@ static int scanEnd(lua_State* lstate) try
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
   if (p->scanEnd())
-    p->commitItems();
+    p->commit();
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int commit(lua_State* lstate)
+static int commit(lua_State* lstate) try
 {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  p->commitItems();
+  p->commit();
   return 0;
+} catch (const std::exception& e) {
+  return luaL_error(lstate, "fzx: %s", e.what());
 }
 
 static int setQuery(lua_State* lstate) try

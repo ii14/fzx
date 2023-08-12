@@ -1,18 +1,16 @@
-#include "fzx/worker_pool.hpp"
+#include "fzx/worker.hpp"
 
 #include <algorithm>
 
+#include "fzx/config.hpp"
+#include "fzx/fzx.hpp"
 #include "fzx/macros.hpp"
 #include "fzx/match/fzy.hpp"
 #include "fzx/thread.hpp"
 
 namespace fzx {
 
-// TODO: it's a mess, refactor this
-
 namespace {
-
-constexpr auto kChunkSize = 0x400;
 
 // Results from each worker are merged using this dependency
 // tree, where each vertical lane represents one worker thread:
@@ -32,13 +30,10 @@ constexpr auto kChunkSize = 0x400;
 // results from all the workers under it, until the full results
 // end up in the worker 0, that then notifies the main thread.
 
-/// Hard limit on 64 threads
-constexpr auto kMaxWorkers = 64;
-constexpr auto kMaxChildren = 6;
-
+static_assert(kMaxThreads == 64);
 /// Map of worker index to the parent worker index. The parent is responsible for
 /// merging your results. It has to be notified about results being ready to merge.
-constexpr std::array<uint8_t, kMaxWorkers> kParentMap {
+constexpr std::array<uint8_t, kMaxThreads> kParentMap {
   // 0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
   0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x04, 0x06, 0x00, 0x08, 0x08, 0x0A, 0x08, 0x0C, 0x0C, 0x0E,
   0x00, 0x10, 0x10, 0x12, 0x10, 0x14, 0x14, 0x16, 0x10, 0x18, 0x18, 0x1A, 0x18, 0x1C, 0x1C, 0x1E,
@@ -52,11 +47,12 @@ struct MergeState
   MergeState(const uint8_t workerIndex, const size_t workersCount) noexcept
     : mIndex(workerIndex)
   {
-    ASSERT(workerIndex < kMaxWorkers);
-    ASSERT(workersCount <= kMaxWorkers);
+    ASSERT(workerIndex < kMaxThreads);
+    ASSERT(workersCount <= kMaxThreads);
 
+    constexpr auto kMaxChildren = 6;
     // Map of worker index to max possible children count
-    static constexpr std::array<uint8_t, kMaxWorkers> kMaxChildrenMap {
+    static constexpr std::array<uint8_t, kMaxThreads> kMaxChildrenMap {
       6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
       4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
       5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
@@ -141,41 +137,14 @@ void merge2(
 
 } // namespace
 
-void WorkerPool::start(uint32_t workers)
-{
-  ASSERT(workers <= kMaxWorkers);
-  for (size_t i = 0; i < workers; ++i)
-    mWorkers.emplace_back(std::make_unique<Worker>());
-  for (size_t i = 0; i < mWorkers.size(); ++i) {
-    auto& worker = mWorkers[i];
-    worker->mThread = std::thread { &WorkerPool::run, this, static_cast<uint8_t>(i) };
-  }
-}
-
-void WorkerPool::stop()
-{
-  for (auto& worker : mWorkers)
-    worker->mEvents.post(kStop);
-  for (auto& worker : mWorkers)
-    if (worker->mThread.joinable())
-      worker->mThread.join();
-  mWorkers.clear();
-}
-
-void WorkerPool::notify() noexcept
-{
-  for (auto& worker : mWorkers)
-    worker->mEvents.post(kJob);
-}
-
 // TODO: exception safety
-void WorkerPool::run(const uint8_t workerIndex)
+void Worker::run() const
 {
-  ASSERT(workerIndex < mWorkers.size());
-  ASSERT(mWorkers.size() <= kMaxWorkers);
+  ASSERT(mIndex < mPool->mWorkers.size());
+  ASSERT(mPool->mWorkers.size() <= kMaxThreads);
 
-  auto& output = mWorkers[workerIndex]->mOutput;
-  auto& events = mWorkers[workerIndex]->mEvents;
+  auto& output = mPool->mWorkers[mIndex]->mOutput;
+  auto& events = mPool->mWorkers[mIndex]->mEvents;
 
   Job job;
   size_t lastItemsTick = 0;
@@ -184,8 +153,8 @@ void WorkerPool::run(const uint8_t workerIndex)
   // Temporary vector for merging results
   std::vector<Match> tmp;
 
-  const uint8_t kParentIndex = kParentMap[workerIndex];
-  MergeState mergeState { workerIndex, mWorkers.size() };
+  const uint8_t kParentIndex = kParentMap[mIndex];
+  MergeState mergeState { mIndex, mPool->mWorkers.size() };
 
   bool published = false;
   // Commit results and notify whoever is responsible for handling them.
@@ -195,12 +164,12 @@ void WorkerPool::run(const uint8_t workerIndex)
     published = true;
     output.commit();
 
-    if (workerIndex == 0) {
-      // Worker 0 is the main thread, publish results globally.
-      mEventFd.notify();
+    if (mIndex == 0) {
+      // Worker 0 is the master worker thread. Notify the external event loop.
+      mPool->mEventFd.notify();
     } else {
       // For all other workers, notify the worker that is responsible for merging our results.
-      mWorkers[kParentIndex]->mEvents.post(kMerge);
+      mPool->mWorkers[kParentIndex]->mEvents.post(kMerge);
     }
   };
 
@@ -216,10 +185,7 @@ start:
   bool queryChanged = false;
 
   if (ev & kJob) {
-    {
-      std::shared_lock lock { mJobMutex };
-      job = mJob;
-    }
+    mPool->loadJob(job);
 
     if (lastItemsTick < job.mItems.size()) {
       lastItemsTick = job.mItems.size();
@@ -250,8 +216,8 @@ start:
       goto wait;
     }
 
-    ASSERT(job.mReserved);
-    auto& reserved = *job.mReserved;
+    ASSERT(job.mQueue);
+    auto& queue = *job.mQueue;
     const std::string_view query { *job.mQuery };
     out.mItems.reserve(job.mItems.size());
     for (;;) {
@@ -267,7 +233,7 @@ start:
       // bounds value. This is fine for the time being, but if we want to reuse already calculated
       // items, it will have to be changed to a CAS loop, to guarantee we were within the previous
       // boundaries when new items are appended.
-      const size_t start = std::min(reserved.reserve(kChunkSize), job.mItems.size());
+      const size_t start = std::min(queue.take(kChunkSize), job.mItems.size());
       const size_t end = std::min(start + kChunkSize, job.mItems.size());
       if (start >= end)
         break;
@@ -303,8 +269,8 @@ start:
 
       // Load the results from this worker.
       const uint8_t id = mergeState.at(i);
-      mWorkers[id]->mOutput.load();
-      const auto& cres = mWorkers[id]->mOutput.readBuffer();
+      mPool->mWorkers[id]->mOutput.load();
+      const auto& cres = mPool->mWorkers[id]->mOutput.readBuffer();
 
       // We've received results with a newer timestamp than ours, so that has to mean
       // there is a new job that we weren't aware about. Properly wait for new events

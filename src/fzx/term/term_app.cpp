@@ -23,7 +23,7 @@ void TermApp::processInput()
   auto len = read(mInput.fd(), mInputBuffer.data(), mInputBuffer.size());
   if (len > 0) {
     if (mFzx.scanFeed({ mInputBuffer.data(), size_t(len) }) > 0)
-      mFzx.commitItems();
+      mFzx.commit();
     // resize the buffer if data can be read in bigger chunks
     if (mInputBuffer.size() == size_t(len) && mInputBuffer.size() < kMaxInputBufferSize)
       mInputBuffer.resize(mInputBuffer.size() * 2);
@@ -31,7 +31,7 @@ void TermApp::processInput()
   } else if (len == 0) {
     mInput.close();
     if (mFzx.scanEnd())
-      mFzx.commitItems();
+      mFzx.commit();
     mInputBuffer.clear();
     mInputBuffer.shrink_to_fit();
     redraw();

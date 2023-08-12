@@ -47,7 +47,7 @@ TEST_CASE("fzx::Fzx")
     f.pushItem("foo"sv);
     f.pushItem("bar"sv);
     f.pushItem("baz"sv);
-    f.commitItems();
+    f.commit();
     REQUIRE(f.itemsSize() == 3);
     REQUIRE(f.getItem(0) == "foo"sv);
     REQUIRE(f.getItem(1) == "bar"sv);
