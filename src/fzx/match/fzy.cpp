@@ -28,16 +28,10 @@
 #include <utility>
 #include <vector>
 
-#if defined(FZX_SSE2)
-# include <emmintrin.h>
-#endif
-#if defined(FZX_AVX2)
-# include <immintrin.h>
-#endif
-
 #include "fzx/macros.hpp"
-#include "fzx/util.hpp"
 #include "fzx/match/fzy_config.hpp"
+#include "fzx/simd.hpp"
+#include "fzx/util.hpp"
 
 namespace fzx::fzy {
 
@@ -74,42 +68,20 @@ constexpr auto kBonusIndex = []{
   return r;
 }();
 
-#if defined(FZX_SSE2)
-ALWAYS_INLINE inline __m128i vecLowercase(const __m128i& r) noexcept
-{
-  auto t = _mm_add_epi8(r, _mm_set1_epi8(63)); // offset so that A == SCHAR_MIN
-  t = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
-  t = _mm_and_si128(t, _mm_set1_epi8(32)); // mask lowercase offset
-  return _mm_add_epi8(r, t); // apply offset
-}
-#endif
-
-#if defined(FZX_AVX2)
-ALWAYS_INLINE inline __m256i vecLowercase(const __m256i& r) noexcept
-{
-  auto t = _mm256_add_epi8(r, _mm256_set1_epi8(63)); // offset so that A == SCHAR_MIN
-  t = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
-  t = _mm256_and_si256(t, _mm256_set1_epi8(32)); // mask lowercase offset
-  return _mm256_add_epi8(r, t); // apply offset
-}
-#endif
-
 void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out) noexcept
 {
   size_t i = 0;
 #if defined(FZX_AVX2)
   for (; i + 31 < len; i += 32) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    auto s = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(in + i));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(out + i), vecLowercase(s));
+    auto s = simd::loadUnaligned256i(in + i);
+    s = simd::toLower(s);
+    simd::storeUnaligned(out + i, s);
   }
 #elif defined(FZX_SSE2)
   for (; i + 15 < len; i += 16) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    auto s = _mm_loadu_si128(reinterpret_cast<const __m128i*>(in + i));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(out + i), vecLowercase(s));
+    auto s = simd::loadUnaligned128i(in + i);
+    s = simd::toLower(s);
+    simd::storeUnaligned(out + i, s);
   }
 #endif
   // TODO: neon
@@ -149,9 +121,8 @@ bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept
     if (hp >= hEnd)
       return false;
     auto n = _mm_set1_epi8(static_cast<char>(toLower(*np)));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    auto h = _mm_loadu_si128(reinterpret_cast<const __m128i*>(hp));
-    h = vecLowercase(h);
+    auto h = simd::loadUnaligned128i(hp);
+    h = simd::toLower(h);
     uint16_t r = _mm_movemask_epi8(_mm_cmpeq_epi8(h, n));
     ptrdiff_t d = hEnd - hp;
     r &= d < 16 ? 0xFFFFU >> (16 - d) : 0xFFFFU; // mask out positions out of bounds
