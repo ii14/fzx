@@ -23,22 +23,10 @@
 #include "fzx/match/fzy.hpp"
 
 #include <algorithm>
-#include <array>
-#include <cctype>
-#include <cfloat>
-#include <cmath>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <limits>
-#include <strings.h>
 #include <utility>
 #include <vector>
-
-#include "fzx/macros.hpp"
-#include "fzx/util.hpp"
-#include "fzx/match/fzy_config.hpp"
 
 #if defined(FZX_SSE2)
 # include <emmintrin.h>
@@ -46,6 +34,10 @@
 #if defined(FZX_AVX2)
 # include <immintrin.h>
 #endif
+
+#include "fzx/macros.hpp"
+#include "fzx/util.hpp"
+#include "fzx/match/fzy_config.hpp"
 
 namespace fzx::fzy {
 
@@ -82,30 +74,42 @@ constexpr auto kBonusIndex = []{
   return r;
 }();
 
-void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out)
+#if defined(FZX_SSE2)
+ALWAYS_INLINE inline __m128i vecLowercase(const __m128i& r) noexcept
+{
+  auto t = _mm_add_epi8(r, _mm_set1_epi8(63)); // offset so that A == SCHAR_MIN
+  t = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
+  t = _mm_and_si128(t, _mm_set1_epi8(32)); // mask lowercase offset
+  return _mm_add_epi8(r, t); // apply offset
+}
+#endif
+
+#if defined(FZX_AVX2)
+ALWAYS_INLINE inline __m256i vecLowercase(const __m256i& r) noexcept
+{
+  auto t = _mm256_add_epi8(r, _mm256_set1_epi8(63)); // offset so that A == SCHAR_MIN
+  t = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
+  t = _mm256_and_si256(t, _mm256_set1_epi8(32)); // mask lowercase offset
+  return _mm256_add_epi8(r, t); // apply offset
+}
+#endif
+
+void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out) noexcept
 {
   size_t i = 0;
 #if defined(FZX_AVX2)
   for (; i + 31 < len; i += 32) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto s = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(in + i));
-    auto a = _mm256_add_epi8(s, _mm256_set1_epi8(63)); // offset so that A == SCHAR_MIN
-    auto c = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), a); // lower or equal Z
-    auto b = _mm256_and_si256(c, _mm256_set1_epi8(32));
-    auto r = _mm256_add_epi8(s, b);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(out + i), r);
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(out + i), vecLowercase(s));
   }
 #elif defined(FZX_SSE2)
   for (; i + 15 < len; i += 16) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto s = _mm_loadu_si128(reinterpret_cast<const __m128i*>(in + i));
-    auto a = _mm_add_epi8(s, _mm_set1_epi8(63)); // offset so that A == SCHAR_MIN
-    auto c = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), a); // lower or equal Z
-    auto b = _mm_and_si128(c, _mm_set1_epi8(32));
-    auto r = _mm_add_epi8(s, b);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(out + i), r);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(out + i), vecLowercase(s));
   }
 #endif
   // TODO: neon
@@ -117,7 +121,7 @@ void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out)
 
 } // namespace
 
-bool hasMatch(std::string_view needle, std::string_view haystack)
+bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
 {
   const char* it = haystack.begin();
   for (char ch : needle) {
@@ -131,9 +135,37 @@ bool hasMatch(std::string_view needle, std::string_view haystack)
   return true;
 }
 
+bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept
+{
+  // TODO: avx, neon
+#if defined(FZX_SSE2)
+  const char* np = needle.begin();
+  const char* hp = haystack.begin();
+  const char* const nEnd = needle.end();
+  const char* const hEnd = haystack.end();
+  for (;;) {
+    if (np == nEnd)
+      return true;
+    if (hp >= hEnd)
+      return false;
+    auto n = _mm_set1_epi8(static_cast<char>(toLower(*np)));
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto h = _mm_loadu_si128(reinterpret_cast<const __m128i*>(hp));
+    h = vecLowercase(h);
+    uint16_t r = _mm_movemask_epi8(_mm_cmpeq_epi8(h, n));
+    ptrdiff_t d = hEnd - hp;
+    r &= d < 16 ? 0xFFFFU >> (16 - d) : 0xFFFFU; // mask out positions out of bounds
+    hp += r ? __builtin_ffs(r) : 16;
+    np += static_cast<bool>(r);
+  }
+#else
+  return hasMatch(needle, haystack);
+#endif
+}
+
 namespace {
 
-void precomputeBonus(std::string_view haystack, Score* matchBonus)
+void precomputeBonus(std::string_view haystack, Score* matchBonus) noexcept
 {
   // Which positions are beginning of words
   uint8_t lastCh = '/';

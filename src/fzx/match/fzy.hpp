@@ -32,7 +32,8 @@ using Score = double;
 
 static constexpr auto kMatchMaxLen = 1024;
 
-bool hasMatch(std::string_view needle, std::string_view haystack);
+bool hasMatch(std::string_view needle, std::string_view haystack) noexcept;
+bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept;
 Score match(std::string_view needle, std::string_view haystack);
 
 using Positions = std::array<size_t, kMatchMaxLen>;
