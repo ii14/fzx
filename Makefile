@@ -1,8 +1,8 @@
-GCC = g++
-CLANG = clang++
 CMAKE = cmake
 JOBS = 1
 OPTS =
+RELEASE_OPTS = -DFZX_BUILD_BENCHMARKS=ON
+DEBUG_OPTS = -DFZX_BUILD_TESTS=ON
 
 help:
 	@echo "This is for development only."
@@ -16,33 +16,33 @@ submodules:
 .PHONY: submodules
 
 release-gcc:
-	cmake --preset release-gcc -DFZX_BUILD_BENCHMARKS=ON $(OPTS)
-	cmake --build --preset release-gcc -j$(JOBS)
+	$(CMAKE) --preset release-gcc $(OPTS) $(RELEASE_OPTS)
+	$(CMAKE) --build --preset release-gcc -j$(JOBS)
 .PHONY: release-gcc
 
 release-clang:
-	cmake --preset release-clang -DFZX_BUILD_BENCHMARKS=ON $(OPTS)
-	cmake --build --preset release-clang -j$(JOBS)
+	$(CMAKE) --preset release-clang $(OPTS) $(RELEASE_OPTS)
+	$(CMAKE) --build --preset release-clang -j$(JOBS)
 .PHONY: release-clang
 
 debug-asan-gcc:
-	cmake --preset debug-asan-gcc -DFZX_BUILD_TESTS=ON $(OPTS)
-	cmake --build --preset debug-asan-gcc -j$(JOBS)
+	$(CMAKE) --preset debug-asan-gcc $(OPTS) $(DEBUG_OPTS)
+	$(CMAKE) --build --preset debug-asan-gcc -j$(JOBS)
 .PHONY: debug-asan-gcc
 
 debug-asan-clang:
-	cmake --preset debug-asan-clang -DFZX_BUILD_TESTS=ON $(OPTS)
-	cmake --build --preset debug-asan-clang -j$(JOBS)
+	$(CMAKE) --preset debug-asan-clang $(OPTS) $(DEBUG_OPTS)
+	$(CMAKE) --build --preset debug-asan-clang -j$(JOBS)
 .PHONY: debug-asan-clang
 
 debug-tsan-gcc:
-	cmake --preset debug-tsan-gcc -DFZX_BUILD_TESTS=ON $(OPTS)
-	cmake --build --preset debug-tsan-gcc -j$(JOBS)
+	$(CMAKE) --preset debug-tsan-gcc $(OPTS) $(DEBUG_OPTS)
+	$(CMAKE) --build --preset debug-tsan-gcc -j$(JOBS)
 .PHONY: debug-tsan-gcc
 
 debug-tsan-clang:
-	cmake --preset debug-tsan-clang -DFZX_BUILD_TESTS=ON $(OPTS)
-	cmake --build --preset debug-tsan-clang -j$(JOBS)
+	$(CMAKE) --preset debug-tsan-clang $(OPTS) $(DEBUG_OPTS)
+	$(CMAKE) --build --preset debug-tsan-clang -j$(JOBS)
 .PHONY: debug-tsan-clang
 
 all: release-gcc release-clang debug-asan-gcc debug-asan-clang debug-tsan-gcc debug-tsan-clang
