@@ -15,13 +15,13 @@ namespace fzx::simd {
 
 #if defined(FZX_SSE2)
 template <typename T>
-[[nodiscard]] ALWAYS_INLINE inline __m128i loadUnaligned128i(const T* p) noexcept
+[[nodiscard]] ALWAYS_INLINE inline __m128i load128i(const T* p) noexcept
 {
   return _mm_loadu_si128(reinterpret_cast<const __m128i*>(p));
 }
 
 template <typename T>
-ALWAYS_INLINE inline void storeUnaligned(T* p, const __m128i& r) noexcept
+ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
 {
   _mm_storeu_si128(reinterpret_cast<__m128i*>(p), r);
 }
@@ -37,13 +37,13 @@ ALWAYS_INLINE inline void storeUnaligned(T* p, const __m128i& r) noexcept
 
 #if defined(FZX_AVX2)
 template <typename T>
-[[nodiscard]] ALWAYS_INLINE inline __m256i loadUnaligned256i(const T* p) noexcept
+[[nodiscard]] ALWAYS_INLINE inline __m256i load256i(const T* p) noexcept
 {
   return _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p));
 }
 
 template <typename T>
-ALWAYS_INLINE inline void storeUnaligned(T* p, const __m256i& r) noexcept
+ALWAYS_INLINE inline void store(T* p, const __m256i& r) noexcept
 {
   _mm256_storeu_si256(reinterpret_cast<__m256i*>(p), r);
 }

@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 
+#include "fzx/config.hpp"
 #include "fzx/macros.hpp"
 #include "fzx/match/fzy_config.hpp"
 #include "fzx/simd.hpp"
@@ -68,49 +69,40 @@ constexpr auto kBonusIndex = []{
   return r;
 }();
 
+/// `in` is expected to be overallocated with at least fzx::kOveralloc bytes beyond `len`
 void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out) noexcept
 {
-  size_t i = 0;
+  // TODO: neon
 #if defined(FZX_AVX2)
-  for (; i + 31 < len; i += 32) {
-    auto s = simd::loadUnaligned256i(in + i);
+  static_assert(fzx::kOveralloc >= 32);
+  for (size_t i = 0; i < len; i += 32) {
+    auto s = simd::load256i(in + i);
     s = simd::toLower(s);
-    simd::storeUnaligned(out + i, s);
+    simd::store(out + i, s);
   }
 #elif defined(FZX_SSE2)
-  for (; i + 15 < len; i += 16) {
-    auto s = simd::loadUnaligned128i(in + i);
+  static_assert(fzx::kOveralloc >= 16);
+  for (size_t i = 0; i < len; i += 16) {
+    auto s = simd::load128i(in + i);
     s = simd::toLower(s);
-    simd::storeUnaligned(out + i, s);
+    simd::store(out + i, s);
   }
-#endif
-  // TODO: neon
-  // TODO: guarantee that buffers are overallocated, so we can read
-  // out of bounds with simd and the loop below can be removed
-  for (; i < len; ++i)
+#else
+  for (size_t i = 0; i < len; ++i)
     out[i] = static_cast<char>(toLower(in[i]));
+#endif
 }
 
 } // namespace
 
 bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
 {
-  const char* it = haystack.begin();
-  for (char ch : needle) {
-    char uch = static_cast<char>(toUpper(ch));
-    while (it != haystack.end() && *it != ch && *it != uch)
-      ++it;
-    if (it == haystack.end())
-      return false;
-    ++it;
-  }
-  return true;
-}
-
-bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept
-{
   // TODO: avx, neon
-#if defined(FZX_SSE2)
+#if defined(FZX_SSE2) && FZX_HAS_BUILTIN(__builtin_ffs)
+  // Interestingly, the original fzy doesn't seem to have any problems with performance here.
+  // If I had to guess, it's probably because it uses strpbrk, which is probably optimized
+  // already in glibc? We're not using null terminated strings though.
+  static_assert(fzx::kOveralloc >= 16);
   const char* np = needle.begin();
   const char* hp = haystack.begin();
   const char* const nEnd = needle.end();
@@ -121,16 +113,25 @@ bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept
     if (hp >= hEnd)
       return false;
     auto n = _mm_set1_epi8(static_cast<char>(toLower(*np)));
-    auto h = simd::loadUnaligned128i(hp);
+    auto h = simd::load128i(hp);
     h = simd::toLower(h);
     uint16_t r = _mm_movemask_epi8(_mm_cmpeq_epi8(h, n));
-    ptrdiff_t d = hEnd - hp;
-    r &= d < 16 ? 0xFFFFU >> (16 - d) : 0xFFFFU; // mask out positions out of bounds
-    hp += r ? __builtin_ffs(r) : 16;
-    np += static_cast<bool>(r);
+    ptrdiff_t d = hEnd - hp; // How many bytes are left in the haystack until the end
+    r &= d < 16 ? 0xFFFFU >> (16 - d) : 0xFFFFU; // Mask out positions out of bounds
+    hp += r ? __builtin_ffs(r) : 16; // Skip to after the first matched character
+    np += static_cast<bool>(r); // Next needle character if we had a match
   }
 #else
-  return hasMatch(needle, haystack);
+  const char* it = haystack.begin();
+  for (char ch : needle) {
+    char uch = static_cast<char>(toUpper(ch));
+    while (it != haystack.end() && *it != ch && *it != uch)
+      ++it;
+    if (it == haystack.end())
+      return false;
+    ++it;
+  }
+  return true;
 #endif
 }
 

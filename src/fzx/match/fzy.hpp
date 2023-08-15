@@ -32,8 +32,12 @@ using Score = double;
 
 static constexpr auto kMatchMaxLen = 1024;
 
+/// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
+/// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
 bool hasMatch(std::string_view needle, std::string_view haystack) noexcept;
-bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept;
+
+/// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
+/// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
 Score match(std::string_view needle, std::string_view haystack);
 
 using Positions = std::array<size_t, kMatchMaxLen>;
