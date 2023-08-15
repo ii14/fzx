@@ -62,6 +62,22 @@ TEST_CASE("fzx::fzy::hasMatch", "[fzy]")
     CHECK(hasMatch("eq"_s, { b1.data(), 17 }));
     CHECK(!hasMatch("er"_s, { b1.data(), 17 }));
   }
+
+  SECTION("avx") {
+    auto b1 =
+      "abcdefghijklmnop"
+      "qrstuvwx01234567yz"_s;
+
+    CHECK(hasMatch("7"_s, { b1.data(), 32 }));
+    CHECK(!hasMatch("y"_s, { b1.data(), 32 }));
+    CHECK(hasMatch("y"_s, { b1.data(), 33 }));
+    CHECK(!hasMatch("z"_s, { b1.data(), 33 }));
+
+    CHECK(hasMatch("e7"_s, { b1.data(), 32 }));
+    CHECK(!hasMatch("ey"_s, { b1.data(), 32 }));
+    CHECK(hasMatch("ey"_s, { b1.data(), 33 }));
+    CHECK(!hasMatch("ez"_s, { b1.data(), 33 }));
+  }
 }
 
 TEST_CASE("fzx::fzy::match", "[fzy]")

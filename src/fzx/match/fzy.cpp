@@ -97,12 +97,11 @@ void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out) noexce
 
 bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
 {
-  // TODO: avx, neon
-#if defined(FZX_SSE2) && FZX_HAS_BUILTIN(__builtin_ffs)
+  // TODO: neon
+#if (defined(FZX_AVX2) && FZX_HAS_BUILTIN(__builtin_ffsl)) || (defined(FZX_SSE2) && FZX_HAS_BUILTIN(__builtin_ffs))
   // Interestingly, the original fzy doesn't seem to have any problems with performance here.
   // If I had to guess, it's probably because it uses strpbrk, which is probably optimized
   // already in glibc? We're not using null terminated strings though.
-  static_assert(fzx::kOveralloc >= 16);
   const char* np = needle.begin();
   const char* hp = haystack.begin();
   const char* const nEnd = needle.end();
@@ -112,6 +111,17 @@ bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
       return true;
     if (hp >= hEnd)
       return false;
+# if defined(FZX_AVX2)
+    static_assert(fzx::kOveralloc >= 32);
+    auto n = _mm256_set1_epi8(static_cast<char>(toLower(*np)));
+    auto h = simd::load256i(hp);
+    h = simd::toLower(h);
+    uint32_t r = _mm256_movemask_epi8(_mm256_cmpeq_epi8(h, n));
+    ptrdiff_t d = hEnd - hp; // How many bytes are left in the haystack until the end
+    r &= d < 32 ? 0xFFFFFFFFU >> (32 - d) : 0xFFFFFFFFU; // Mask out positions out of bounds
+    hp += r ? __builtin_ffsl(r) : 32; // Skip to after the first matched character
+# else // defined(FZX_SSE2)
+    static_assert(fzx::kOveralloc >= 16);
     auto n = _mm_set1_epi8(static_cast<char>(toLower(*np)));
     auto h = simd::load128i(hp);
     h = simd::toLower(h);
@@ -119,6 +129,7 @@ bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
     ptrdiff_t d = hEnd - hp; // How many bytes are left in the haystack until the end
     r &= d < 16 ? 0xFFFFU >> (16 - d) : 0xFFFFU; // Mask out positions out of bounds
     hp += r ? __builtin_ffs(r) : 16; // Skip to after the first matched character
+# endif
     np += static_cast<bool>(r); // Next needle character if we had a match
   }
 #else
