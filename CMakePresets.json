@@ -14,7 +14,6 @@
       "inherits": "conf-common",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_C_COMPILER": "gcc",
         "CMAKE_PREFIX_PATH": "${sourceDir}/build/deps-gcc/usr"
       }
     },
@@ -24,7 +23,6 @@
       "inherits": "conf-common",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_PREFIX_PATH": "${sourceDir}/build/deps-clang/usr"
       }
     },
@@ -41,9 +39,9 @@
       "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_ASAN": true,
-        "ENABLE_UBSAN": true,
-        "BUILD_TESTS": true
+        "FZX_ENABLE_ASAN": true,
+        "FZX_ENABLE_UBSAN": true,
+        "FZX_BUILD_TESTS": true
       }
     },
     {
@@ -51,8 +49,8 @@
       "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_TSAN": true,
-        "BUILD_TESTS": true
+        "FZX_ENABLE_TSAN": true,
+        "FZX_BUILD_TESTS": true
       }
     },
 
