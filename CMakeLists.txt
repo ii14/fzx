@@ -55,13 +55,8 @@ endif()
 
 option(FZX_ENABLE_NATIVE  "Optimize for the current architecture" ON)
 option(FZX_ENABLE_LTO     "Enable link time optimizations" ON)
-# TODO: detect support
-option(FZX_ENABLE_SSE2    "Enable SSE2 (x86_64)" OFF)
-option(FZX_ENABLE_SSE3    "Enable SSE3 (x86_64)" OFF) # unused
-option(FZX_ENABLE_SSSE3   "Enable SSSE3 (x86_64)" OFF) # unused
-option(FZX_ENABLE_SSE41   "Enable SSE4.1 (x86_64)" OFF) # unused
-option(FZX_ENABLE_AVX     "Enable AVX (x86_64)" OFF) # unused
-option(FZX_ENABLE_AVX2    "Enable AVX2 (x86_64)" OFF)
+option(FZX_ENABLE_SSE2    "Enable SSE2 (x86_64)" ON)
+option(FZX_ENABLE_AVX2    "Enable AVX2 (x86_64)" ON)
 
 option(FZX_ENABLE_UBSAN   "Enable undefined behavior sanitizer" OFF)
 option(FZX_ENABLE_ASAN    "Enable address sanitizer" OFF)
@@ -160,16 +155,50 @@ if(FZX_SAVE_OPTIMIZATION_RECORDS)
   target_compile_options(fzxopts INTERFACE -fsave-optimization-record=yaml)
 endif()
 
+
+include(CheckCXXSourceRuns)
+include(CMakePushCheckState)
+
+cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_FLAGS "-msse2")
+  check_cxx_source_runs("
+    #include <emmintrin.h>
+    int main() {
+      __m128i r = _mm_add_epi8(
+        _mm_setzero_si128(),
+        _mm_setzero_si128());
+      return 0;
+    }
+  " FZX_HAS_SSE2)
+  if(FZX_ENABLE_SSE2 AND FZX_HAS_SSE2)
+    message(STATUS "SSE2 enabled")
+  endif()
+cmake_pop_check_state()
+
+cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_FLAGS "-mavx2")
+  check_cxx_source_runs("
+    #include <immintrin.h>
+    int main() {
+      __m256i r = _mm256_add_epi8(
+        _mm256_setzero_si256(),
+        _mm256_setzero_si256());
+      return 0;
+    }
+  " FZX_HAS_AVX2)
+  if(FZX_ENABLE_AVX2 AND FZX_HAS_AVX2)
+    message(STATUS "AVX2 enabled")
+  endif()
+cmake_pop_check_state()
+
+
 target_compile_definitions(fzxopts INTERFACE
   # Disable DEBUG_ASSERT and enable ASSUME in release builds
   $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>
   # Enable SIMD
-  $<$<BOOL:${FZX_ENABLE_SSE2}>:FZX_SSE2>
-  $<$<BOOL:${FZX_ENABLE_SSE3}>:FZX_SSE3>
-  $<$<BOOL:${FZX_ENABLE_SSSE3}>:FZX_SSSE3>
-  $<$<BOOL:${FZX_ENABLE_SSE41}>:FZX_SSE41>
-  $<$<BOOL:${FZX_ENABLE_AVX}>:FZX_AVX>
-  $<$<BOOL:${FZX_ENABLE_AVX2}>:FZX_AVX2>)
+  $<$<AND:$<BOOL:${FZX_ENABLE_SSE2}>,$<BOOL:${FZX_HAS_SSE2}>>:FZX_SSE2>
+  $<$<AND:$<BOOL:${FZX_ENABLE_AVX2}>,$<BOOL:${FZX_HAS_AVX2}>>:FZX_AVX2>)
+
 
 add_subdirectory(src/fzx)
 
