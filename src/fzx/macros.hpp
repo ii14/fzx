@@ -10,12 +10,16 @@
 
 #if (defined(__GNUC__) || defined(__clang__)) && FZX_HAS_ATTRIBUTE(always_inline)
 # define ALWAYS_INLINE [[gnu::always_inline]]
+#elif defined(_MSC_VER)
+# define ALWAYS_INLINE __forceinline
 #else
 # define ALWAYS_INLINE
 #endif
 
 #if (defined(__GNUC__) || defined(__clang__)) && FZX_HAS_ATTRIBUTE(noinline)
 # define NOINLINE [[gnu::noinline]]
+#elif defined(_MSC_VER)
+# define NOINLINE __declspec(noinline)
 #else
 # define NOINLINE
 #endif
@@ -60,6 +64,8 @@
 #  define ASSUME(x) __builtin_assume(x)
 # elif FZX_HAS_BUILTIN(__builtin_unreachable)
 #  define ASSUME(x) (static_cast<bool>(x) ? void(0) : __builtin_unreachable())
+# elif defined(_MSC_VER)
+#  define ASSUME(x) __assume(x)
 # else
 #  define ASSUME(x) UNUSED(x)
 # endif
@@ -70,6 +76,8 @@
 #if defined(FZX_OPTIMIZE)
 # if FZX_HAS_BUILTIN(__builtin_unreachable)
 #  define UNREACHABLE() __builtin_unreachable()
+# elif defined(_MSC_VER)
+#  define UNREACHABLE() __assume(false)
 # else
 #  define UNREACHABLE()
 # endif

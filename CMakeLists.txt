@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(fzx VERSION 0.1.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Using default build type - RelWithDebInfo")
+  message(STATUS "fzx: Using default build type - RelWithDebInfo")
   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
     "Release" "RelWithDebInfo" "MinSizeRel" "Debug")
@@ -62,7 +62,7 @@ option(FZX_ENABLE_UBSAN   "Enable undefined behavior sanitizer" OFF)
 option(FZX_ENABLE_ASAN    "Enable address sanitizer" OFF)
 option(FZX_ENABLE_TSAN    "Enable thread sanitizer" OFF)
 if(FZX_ENABLE_ASAN AND FZX_ENABLE_TSAN)
-  message(FATAL_ERROR "ASAN and TSAN are not compatible")
+  message(FATAL_ERROR "fzx: ASAN and TSAN are not compatible")
 endif()
 
 option(FZX_ENABLE_COVERAGE "Enable code coverage" OFF)
@@ -74,7 +74,7 @@ if(FZX_ENABLE_LTO)
   include(CheckIPOSupported)
   check_ipo_supported(RESULT lto)
   if(lto)
-    message(STATUS "Link time optimizations enabled")
+    message(STATUS "fzx: Link time optimizations enabled")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
@@ -108,10 +108,6 @@ endif()
 if(FZX_ENABLE_TSAN)
   target_compile_options(fzxopts INTERFACE -fsanitize=thread)
   target_link_options(fzxopts INTERFACE -fsanitize=thread)
-endif()
-
-if(FZX_ENABLE_NATIVE)
-  target_compile_options(fzxopts INTERFACE -march=native)
 endif()
 
 target_compile_options(fzxopts INTERFACE -Wall -Wextra)
@@ -150,7 +146,7 @@ endif()
 
 if(FZX_SAVE_OPTIMIZATION_RECORDS)
   if(NOT "${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
-    message(FATAL_ERROR "FZX_SAVE_OPTIMIZATION_RECORDS is supported only on Clang")
+    message(FATAL_ERROR "fzx: FZX_SAVE_OPTIMIZATION_RECORDS is supported only on Clang")
   endif()
   target_compile_options(fzxopts INTERFACE -fsave-optimization-record=yaml)
 endif()
@@ -158,7 +154,6 @@ endif()
 
 include(CheckCXXSourceRuns)
 include(CMakePushCheckState)
-
 cmake_push_check_state(RESET)
   set(CMAKE_REQUIRED_FLAGS "-msse2")
   check_cxx_source_runs("
@@ -170,11 +165,7 @@ cmake_push_check_state(RESET)
       return 0;
     }
   " FZX_HAS_SSE2)
-  if(FZX_ENABLE_SSE2 AND FZX_HAS_SSE2)
-    message(STATUS "SSE2 enabled")
-  endif()
 cmake_pop_check_state()
-
 cmake_push_check_state(RESET)
   set(CMAKE_REQUIRED_FLAGS "-mavx2")
   check_cxx_source_runs("
@@ -186,18 +177,26 @@ cmake_push_check_state(RESET)
       return 0;
     }
   " FZX_HAS_AVX2)
-  if(FZX_ENABLE_AVX2 AND FZX_HAS_AVX2)
-    message(STATUS "AVX2 enabled")
-  endif()
 cmake_pop_check_state()
+
+if(FZX_ENABLE_NATIVE)
+  target_compile_options(fzxopts INTERFACE -march=native)
+endif()
+if(FZX_ENABLE_SSE2 AND FZX_HAS_SSE2)
+  message(STATUS "fzx: SSE2 enabled")
+  target_compile_options(fzxopts INTERFACE -msse2)
+  target_compile_definitions(fzxopts INTERFACE FZX_SSE2)
+endif()
+if(FZX_ENABLE_AVX2 AND FZX_HAS_AVX2)
+  message(STATUS "fzx: AVX2 enabled")
+  target_compile_options(fzxopts INTERFACE -mavx2)
+  target_compile_definitions(fzxopts INTERFACE FZX_AVX2)
+endif()
 
 
 target_compile_definitions(fzxopts INTERFACE
   # Disable DEBUG_ASSERT and enable ASSUME in release builds
-  $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>
-  # Enable SIMD
-  $<$<AND:$<BOOL:${FZX_ENABLE_SSE2}>,$<BOOL:${FZX_HAS_SSE2}>>:FZX_SSE2>
-  $<$<AND:$<BOOL:${FZX_ENABLE_AVX2}>,$<BOOL:${FZX_HAS_AVX2}>>:FZX_AVX2>)
+  $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:FZX_OPTIMIZE>)
 
 
 add_subdirectory(src/fzx)
