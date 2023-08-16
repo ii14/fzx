@@ -171,20 +171,20 @@ struct MatchStruct
 
   Score mMatchBonus[kMatchMaxLen];
 
-  MatchStruct(std::string_view needle, std::string_view haystack);
+  MatchStruct(std::string_view needle, std::string_view haystack) noexcept;
 
   inline void matchRow(
     int row,
     Score* RESTRICT currD,
     Score* RESTRICT currM,
     const Score* RESTRICT lastD,
-    const Score* RESTRICT lastM);
+    const Score* RESTRICT lastM) noexcept;
 };
 
 // "initialize all your variables" they said.
 // and now memset takes up 20% of the runtime of your program.
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack)
+MatchStruct::MatchStruct(std::string_view needle, std::string_view haystack) noexcept
   : mNeedleLen(static_cast<int>(needle.size()))
   , mHaystackLen(static_cast<int>(haystack.size()))
 {
@@ -203,7 +203,7 @@ void MatchStruct::matchRow(
     Score* RESTRICT currD,
     Score* RESTRICT currM,
     const Score* RESTRICT lastD,
-    const Score* RESTRICT lastM)
+    const Score* RESTRICT lastM) noexcept
 {
   Score prevScore = kScoreMin;
   Score gapScore = row == mNeedleLen - 1 ? kScoreGapTrailing : kScoreGapInner;
@@ -230,7 +230,7 @@ void MatchStruct::matchRow(
 
 } // namespace
 
-Score match(std::string_view needle, std::string_view haystack)
+Score match(std::string_view needle, std::string_view haystack) noexcept
 {
   if (needle.empty())
     return kScoreMin;

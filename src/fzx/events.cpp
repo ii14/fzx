@@ -11,16 +11,12 @@ constexpr uint32_t kEventMask = ~kWaitFlag;
 
 } // namespace
 
-// std::mutex::lock and std::mutex::unlock are not noexcept, but none
-// of the exceptions that they can throw should ever happen. We need
-// noexcept because the post function can be called inside destructors.
-
 uint32_t Events::get() noexcept
 {
   return mState.exchange(0);
 }
 
-uint32_t Events::wait() noexcept
+uint32_t Events::wait()
 {
   std::unique_lock lock { mMutex };
   // Enter the waiting state with kWaitFlag. If there
@@ -31,7 +27,7 @@ uint32_t Events::wait() noexcept
   return mState.exchange(0) & kEventMask;
 }
 
-void Events::post(uint32_t flags) noexcept
+void Events::post(uint32_t flags)
 {
   DEBUG_ASSERT((flags & kWaitFlag) == 0); // Trying to set a private flag
   DEBUG_ASSERT(flags != 0); // No flags set

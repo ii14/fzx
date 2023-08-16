@@ -42,7 +42,7 @@ void Fzx::start()
     worker->mThread = std::thread { &Worker::run, worker.get() };
 }
 
-void Fzx::stop() noexcept
+void Fzx::stop()
 {
   if (!mRunning)
     return;
@@ -70,7 +70,7 @@ bool Fzx::scanEnd()
   });
 }
 
-void Fzx::setQuery(std::string query) noexcept
+void Fzx::setQuery(std::string query)
 {
   if (!query.empty()) {
     query.reserve(query.size() + kOveralloc);

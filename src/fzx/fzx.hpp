@@ -72,7 +72,7 @@ struct Fzx
   void setThreads(unsigned threads) noexcept;
 
   void start();
-  void stop() noexcept;
+  void stop();
   [[nodiscard]] int notifyFd() const noexcept { return mEventFd.fd(); }
 
   /// Push string to the list of items.
@@ -86,7 +86,7 @@ struct Fzx
   bool scanEnd();
 
   /// Set query
-  void setQuery(std::string query) noexcept;
+  void setQuery(std::string query);
 
   /// Publish changes and wake up worker threads.
   void commit();

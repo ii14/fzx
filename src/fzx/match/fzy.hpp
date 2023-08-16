@@ -38,7 +38,7 @@ bool hasMatch(std::string_view needle, std::string_view haystack) noexcept;
 
 /// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
 /// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
-Score match(std::string_view needle, std::string_view haystack);
+Score match(std::string_view needle, std::string_view haystack) noexcept;
 
 using Positions = std::array<size_t, kMatchMaxLen>;
 Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions);
