@@ -9,7 +9,7 @@
 
 static std::vector<char> gStrings;
 static std::vector<std::string_view> gItems;
-static std::string gQuery { "test" };
+static std::string gQuery { "test" }; // TODO: cli option
 
 static void BM_fzy(benchmark::State& s)
 {

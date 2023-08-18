@@ -1,3 +1,5 @@
+// Licensed under LGPLv3 - see LICENSE file for details.
+
 #include "fzx/fzx.hpp"
 
 #include <algorithm>

@@ -1,3 +1,5 @@
+// Licensed under LGPLv3 - see LICENSE file for details.
+
 #pragma once
 
 #include <vector>
