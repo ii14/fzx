@@ -1,6 +1,7 @@
 #include "fzx/worker.hpp"
 
 #include <algorithm>
+#include <cstring>
 
 #include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
@@ -137,8 +138,8 @@ void merge2(
 
 } // namespace
 
-// TODO: exception safety
-void Worker::run() const
+// TODO: compile time option to disable try/catch
+void Worker::run() try
 {
   ASSERT(mIndex < mPool->mWorkers.size());
   ASSERT(mPool->mWorkers.size() <= kMaxThreads);
@@ -300,6 +301,15 @@ start:
   // Publish results.
   publish();
   goto wait;
+} catch (const std::exception& e) {
+  std::strncpy(mErrorMsg, e.what(), std::size(mErrorMsg));
+  mError.store(true);
+  try {
+    // TODO: Send a different byte over the pipe to communicate a critical error?
+    mPool->mEventFd.notify();
+  } catch (...) {
+    // Nothing else we can possibly do to communicate an error.
+  }
 }
 
 } // namespace fzx

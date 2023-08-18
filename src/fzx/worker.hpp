@@ -55,7 +55,13 @@ struct Worker
   Fzx* mPool { nullptr };
   uint8_t mIndex { 0 };
 
-  void run() const;
+  char mErrorMsg[256] {}; ///< Populated before mError becomes true.
+  std::atomic<bool> mError { false }; ///< A critical error has occurred.
+  // TODO: Error flags should be stored in one place, as a uint64_t bitmask
+  // that indicates what workers were aborted due to an unhandled exception.
+  // This way you can cheaply check all of them at once.
+
+  void run();
 };
 
 } // namespace fzx

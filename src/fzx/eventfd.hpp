@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <string>
 
 namespace fzx {
@@ -30,13 +31,13 @@ struct EventFd
   /// you should call this before processing any data.
   void consume() noexcept;
 
-  /// Notify about new activity.
-  /// No guarantees on what happens when you call this from multiple threads.
-  void notify() noexcept;
+  /// Notify about new activity. Safe to call from multiple threads.
+  void notify();
 
 private:
   int mPipe[2] { -1, -1 };
   std::atomic<bool> mActive { false };
+  mutable std::mutex mMutex;
 };
 
 } // namespace fzx

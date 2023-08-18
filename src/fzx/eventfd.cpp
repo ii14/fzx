@@ -63,18 +63,22 @@ void EventFd::close() noexcept
 
 void EventFd::consume() noexcept
 {
-  if (!mActive.exchange(false, std::memory_order_seq_cst) || !isOpen())
+  if (!isOpen() || !mActive.exchange(false))
     return;
   char buf = 0;
   UNUSED(::read(mPipe[0], &buf, 1));
 }
 
-void EventFd::notify() noexcept
+void EventFd::notify()
 {
-  if (!isOpen() || mActive.exchange(true, std::memory_order_seq_cst))
+  if (!isOpen())
     return;
+  std::unique_lock lock { mMutex };
+  if (mActive.exchange(true))
+    return;
+
   const char c = 0;
-  for (size_t i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 5; ++i) {
     const auto r = ::write(mPipe[1], &c, 1);
     if (r == 1)
       return; // Success
@@ -87,7 +91,8 @@ void EventFd::notify() noexcept
       continue;
     break;
   }
-  // TODO: If we got here, something went wrong. Kill everything
+
+  throw std::runtime_error { "EventFd::notify failed" };
 }
 
 } // namespace fzx

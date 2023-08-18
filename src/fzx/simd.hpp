@@ -3,7 +3,10 @@
 #if defined(FZX_SSE2)
 # include <emmintrin.h>
 #endif
-#if defined(FZX_AVX2)
+#if defined(FZX_SSE41)
+# include <smmintrin.h>
+#endif
+#if defined(FZX_AVX) || defined(FZX_AVX2)
 # include <immintrin.h>
 #endif
 
@@ -32,6 +35,27 @@ ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
   t = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
   t = _mm_and_si128(t, _mm_set1_epi8(32)); // mask lowercase offset
   return _mm_add_epi8(r, t); // apply offset
+}
+
+[[nodiscard]] ALWAYS_INLINE inline __m128 blendv(__m128 a, __m128 b, __m128 c)
+{
+# if defined(FZX_SSE41)
+  return _mm_blendv_ps(a, b, c);
+# else
+  return _mm_or_ps(_mm_and_ps(a, c), _mm_andnot_ps(c, b));
+# endif
+}
+
+template <unsigned N>
+[[nodiscard]] ALWAYS_INLINE inline __m128 shr(__m128 r)
+{
+  return _mm_castsi128_ps(_mm_srli_si128(_mm_castps_si128(r), N));
+}
+
+template <unsigned N>
+[[nodiscard]] ALWAYS_INLINE inline __m128 shl(__m128 r)
+{
+  return _mm_castsi128_ps(_mm_slli_si128(_mm_castps_si128(r), N));
 }
 #endif
 

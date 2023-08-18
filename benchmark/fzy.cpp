@@ -9,7 +9,7 @@
 
 static std::vector<char> gStrings;
 static std::vector<std::string_view> gItems;
-static std::string gQuery { "/" };
+static std::string gQuery { "test" };
 
 static void BM_fzy(benchmark::State& s)
 {
@@ -24,7 +24,7 @@ static void BM_fzy(benchmark::State& s)
     }
   }
 
-  s.SetBytesProcessed(static_cast<int64_t>(gStrings.size()));
+  s.SetBytesProcessed(static_cast<int64_t>(gStrings.size()) * s.iterations());
   s.SetItemsProcessed(static_cast<int64_t>(gItems.size()) * s.iterations());
 }
 

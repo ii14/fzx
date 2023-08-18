@@ -53,9 +53,13 @@ if(FZX_BUILD_BENCHMARKS)
 endif()
 
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 option(FZX_ENABLE_NATIVE  "Optimize for the current architecture" ON)
 option(FZX_ENABLE_LTO     "Enable link time optimizations" ON)
 option(FZX_ENABLE_SSE2    "Enable SSE2 (x86_64)" ON)
+option(FZX_ENABLE_SSE41   "Enable SSE4.1 (x86_64)" ON)
+option(FZX_ENABLE_AVX     "Enable AVX (x86_64)" ON)
 option(FZX_ENABLE_AVX2    "Enable AVX2 (x86_64)" ON)
 
 option(FZX_ENABLE_UBSAN   "Enable undefined behavior sanitizer" OFF)
@@ -152,33 +156,7 @@ if(FZX_SAVE_OPTIMIZATION_RECORDS)
 endif()
 
 
-include(CheckCXXSourceRuns)
-include(CMakePushCheckState)
-cmake_push_check_state(RESET)
-  set(CMAKE_REQUIRED_FLAGS "-msse2")
-  check_cxx_source_runs("
-    #include <emmintrin.h>
-    int main() {
-      __m128i r = _mm_add_epi8(
-        _mm_setzero_si128(),
-        _mm_setzero_si128());
-      return 0;
-    }
-  " FZX_HAS_SSE2)
-cmake_pop_check_state()
-cmake_push_check_state(RESET)
-  set(CMAKE_REQUIRED_FLAGS "-mavx2")
-  check_cxx_source_runs("
-    #include <immintrin.h>
-    int main() {
-      __m256i r = _mm256_add_epi8(
-        _mm256_setzero_si256(),
-        _mm256_setzero_si256());
-      return 0;
-    }
-  " FZX_HAS_AVX2)
-cmake_pop_check_state()
-
+include(FzxCPUFeatures)
 if(FZX_ENABLE_NATIVE)
   target_compile_options(fzxopts INTERFACE -march=native)
 endif()
@@ -186,6 +164,16 @@ if(FZX_ENABLE_SSE2 AND FZX_HAS_SSE2)
   message(STATUS "fzx: SSE2 enabled")
   target_compile_options(fzxopts INTERFACE -msse2)
   target_compile_definitions(fzxopts INTERFACE FZX_SSE2)
+endif()
+if(FZX_ENABLE_SSE41 AND FZX_HAS_SSE41)
+  message(STATUS "fzx: SSE4.1 enabled")
+  target_compile_options(fzxopts INTERFACE -msse4.1)
+  target_compile_definitions(fzxopts INTERFACE FZX_SSE41)
+endif()
+if(FZX_ENABLE_AVX AND FZX_HAS_AVX)
+  message(STATUS "fzx: AVX enabled")
+  target_compile_options(fzxopts INTERFACE -mavx)
+  target_compile_definitions(fzxopts INTERFACE FZX_AVX)
 endif()
 if(FZX_ENABLE_AVX2 AND FZX_HAS_AVX2)
   message(STATUS "fzx: AVX2 enabled")
