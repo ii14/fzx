@@ -1,5 +1,7 @@
 // Licensed under LGPLv3 - see LICENSE file for details.
-
+//
+// This file incorporates work covered by the following copyright and permission notice:
+//
 // The MIT License (MIT)
 //
 // Copyright (c) 2014 John Hawthorn
@@ -35,6 +37,10 @@
 #include "fzx/match/fzy_config.hpp"
 #include "fzx/simd.hpp"
 #include "fzx/util.hpp"
+
+#include <immintrin.h> // TODO: temporary
+
+// TODO: clean this up
 
 namespace fzx::fzy {
 
@@ -97,7 +103,7 @@ void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out) noexce
 
 } // namespace
 
-bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
+bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept
 {
   // TODO: neon
 #if (defined(FZX_AVX2) || defined(FZX_SSE2)) && FZX_HAS_BUILTIN(__builtin_ffsl)
@@ -146,6 +152,61 @@ bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
   }
   return true;
 #endif
+}
+
+bool hasMatch(std::string_view needle, std::string_view haystack) noexcept
+{
+  // technically needle and haystack never will be empty,
+  // so maybe fix the tests and turn it into debug asserts
+  if (needle.empty())
+    return true;
+  if (haystack.empty()) // otherwise can lead to end < it
+    return false;
+
+  constexpr ptrdiff_t kWidth { 16 };
+  static_assert(isPow2(kWidth)); // -1 has to yield a mask for unaligned bytes
+  constexpr uintptr_t kMisalignment { kWidth - 1 };
+
+  const char* nit = needle.begin();
+  const char* nend = needle.end();
+  const char* it = haystack.begin();
+  const char* end = haystack.end();
+
+  auto offsetIt = reinterpret_cast<uintptr_t>(it) & kMisalignment;
+  auto offsetEnd = reinterpret_cast<uintptr_t>(end) & kMisalignment;
+  it -= offsetIt;
+  if (offsetEnd == 0)
+    offsetEnd = kWidth;
+  end -= offsetEnd;
+  DEBUG_ASSERT(end >= it);
+
+  const auto maskEnd = ~(uint32_t{0xFFFF} << offsetEnd);
+
+  auto xmm0 = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(it)));
+  auto xmm1 = _mm_set1_epi8(static_cast<char>(toLower(nit[0])));
+
+  for (;;) {
+    uint32_t r = _mm_movemask_epi8(_mm_cmpeq_epi8(xmm0, xmm1));
+    r &= uint32_t{0xFFFF} << offsetIt;
+    if (it == end)
+      r &= maskEnd;
+
+    if (int fs = __builtin_ffs(static_cast<int>(r)); fs != 0) {
+      if (++nit == nend)
+        return true;
+      xmm1 = _mm_set1_epi8(static_cast<char>(toLower(nit[0])));
+      if (fs != 16) {
+        offsetIt = fs;
+        continue;
+      }
+    }
+
+    if (it == end)
+      return false;
+    it += kWidth;
+    xmm0 = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(it)));
+    offsetIt = 0;
+  }
 }
 
 namespace {
@@ -268,6 +329,326 @@ Score match(std::string_view needle, std::string_view haystack) noexcept
   }
 
   return lastM[match.mHaystackLen - 1];
+}
+
+Score match1(std::string_view needle, std::string_view haystack) noexcept
+{
+  DEBUG_ASSERT(needle.size() == 1);
+  if (haystack.size() > kMatchMaxLen || haystack.empty()) {
+    return kScoreMin;
+  } else if (haystack.size() == 1) {
+    return kScoreMax;
+  }
+
+  const int haystackLen = static_cast<int>(haystack.size());
+  const uint8_t lowerNeedle = toLower(needle[0]);
+  uint8_t lastCh = '/';
+  Score score = kScoreMin;
+  {
+    uint8_t ch = haystack[0];
+    Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+    lastCh = ch;
+    if (lowerNeedle == toLower(ch))
+      score = bonus;
+  }
+  for (int i = 1; i < haystackLen; ++i) {
+    uint8_t ch = haystack[i];
+    Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+    lastCh = ch;
+    score += kScoreGapTrailing;
+    if (lowerNeedle == toLower(ch))
+      if (Score ns = (static_cast<float>(i) * kScoreGapLeading) + bonus; ns > score)
+        score = ns;
+  }
+  return score;
+}
+
+namespace {
+alignas(64) constexpr Score kScoreGapTable[7] {
+  kScoreGapInner,
+  kScoreGapInner,
+  kScoreGapTrailing,
+  kScoreGapInner,
+  kScoreGapInner,
+  kScoreGapInner,
+  kScoreGapTrailing,
+};
+} // namespace
+
+Score matchSse4(std::string_view needle, std::string_view haystack) noexcept
+{
+  DEBUG_ASSERT(needle.size() <= 4);
+  if (needle.empty() || haystack.size() > kMatchMaxLen || needle.size() > haystack.size()) {
+    return kScoreMin;
+  } else if (needle.size() == haystack.size()) {
+    return kScoreMax;
+  }
+
+  // const int needleLen = static_cast<int>(needle.size());
+  const int haystackLen = static_cast<int>(haystack.size());
+
+  const auto kMin = _mm_set1_ps(kScoreMin);
+  const auto kGap = _mm_loadu_ps(&kScoreGapTable[3 - (needle.size() & 0b11)]);
+  const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
+  const auto kZero = _mm_setzero_si128();
+
+  auto nt = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(needle.data())));
+  nt = _mm_unpacklo_epi8(nt, kZero);
+  auto n = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nt, kZero));
+  auto d = kMin;
+  auto m = kMin;
+  uint8_t lastCh = '/';
+
+  const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
+  auto gapLeading = _mm_set_ss(0);
+  _Pragma("GCC unroll 8")
+  for (int i = 0; i < haystackLen; ++i) {
+    uint8_t ch = haystack[i];
+    float bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+    lastCh = ch;
+
+    auto r = _mm_set1_ps(toLower(ch));
+    auto b = _mm_set1_ps(bonus);
+    auto c = _mm_cmpeq_ps(n, r);
+    auto pm = _mm_shuffle_ps(m, m, 0b10010011);
+    auto pd = _mm_shuffle_ps(d, d, 0b10010011);
+    auto s = _mm_max_ps(_mm_add_ps(pm, b), _mm_add_ps(pd, kConsecutive));
+    gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+    s = _mm_move_ss(s, _mm_add_ss(gapLeading, b));
+    auto g = _mm_add_ps(m, kGap);
+    d = _mm_blendv_ps(kMin, s, c);
+    m = _mm_blendv_ps(g, _mm_max_ps(s, g), c);
+  }
+
+  return m[(needle.size() + 3) & 0b11];
+}
+
+Score matchSse8(std::string_view needle, std::string_view haystack) noexcept
+{
+  DEBUG_ASSERT(needle.size() <= 8);
+  if (needle.empty() || haystack.size() > kMatchMaxLen || needle.size() > haystack.size()) {
+    return kScoreMin;
+  } else if (needle.size() == haystack.size()) {
+    return kScoreMax;
+  }
+
+  // const int needleLen = static_cast<int>(needle.size());
+  const int haystackLen = static_cast<int>(haystack.size());
+
+  const auto kMin = _mm_set1_ps(kScoreMin);
+  const auto kGap1 = _mm_set1_ps(kScoreGapInner);
+  const auto kGap2 = _mm_loadu_ps(&kScoreGapTable[3 - (needle.size() & 0b11)]);
+  const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
+  const auto kZero = _mm_setzero_si128();
+
+  auto nt = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(needle.data())));
+  nt = _mm_unpacklo_epi8(nt, kZero);
+  auto n1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nt, kZero));
+  auto n2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nt, kZero));
+  auto d1 = kMin;
+  auto d2 = kMin;
+  auto m1 = kMin;
+  auto m2 = kMin;
+  uint8_t lastCh = '/';
+
+  const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
+  auto gapLeading = _mm_set_ss(0);
+  _Pragma("GCC unroll 8")
+  for (int i = 0; i < haystackLen; ++i) {
+    uint8_t ch = haystack[i];
+    float bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+    lastCh = ch;
+
+    auto r = _mm_set1_ps(static_cast<char>(toLower(ch)));
+    auto b = _mm_set1_ps(bonus);
+    auto c1 = _mm_cmpeq_ps(n1, r);
+    auto c2 = _mm_cmpeq_ps(n2, r);
+
+    auto pm1 = _mm_shuffle_ps(m1, m1, 0b10010011);
+    auto pm2 = _mm_shuffle_ps(m2, m2, 0b10010011);
+    auto pd1 = _mm_shuffle_ps(d1, d1, 0b10010011);
+    auto pd2 = _mm_shuffle_ps(d2, d2, 0b10010011);
+    pm2 = _mm_blend_ps(pm2, pm1, 0b0001);
+    pd2 = _mm_blend_ps(pd2, pd1, 0b0001);
+    auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
+    auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
+    gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+    s1 = _mm_move_ss(s1, _mm_add_ss(gapLeading, b));
+
+    auto g1 = _mm_add_ps(m1, kGap1);
+    auto g2 = _mm_add_ps(m2, kGap2);
+    d1 = _mm_blendv_ps(kMin, s1, c1);
+    d2 = _mm_blendv_ps(kMin, s2, c2);
+    m1 = _mm_blendv_ps(g1, _mm_max_ps(s1, g1), c1);
+    m2 = _mm_blendv_ps(g2, _mm_max_ps(s2, g2), c2);
+  }
+
+  return m2[(needle.size() + 3) & 0b11];
+}
+
+Score matchSse12(std::string_view needle, std::string_view haystack) noexcept
+{
+  DEBUG_ASSERT(needle.size() <= 12);
+  if (needle.empty() || haystack.size() > kMatchMaxLen || needle.size() > haystack.size()) {
+    return kScoreMin;
+  } else if (needle.size() == haystack.size()) {
+    return kScoreMax;
+  }
+
+  // const int needleLen = static_cast<int>(needle.size());
+  const int haystackLen = static_cast<int>(haystack.size());
+
+  const auto kMin = _mm_set1_ps(kScoreMin);
+  const auto kGap1 = _mm_set1_ps(kScoreGapInner);
+  const auto kGap2 = _mm_loadu_ps(&kScoreGapTable[3 - (needle.size() & 0b11)]);
+  const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
+  const auto kZero = _mm_setzero_si128();
+
+  auto nt = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(needle.data())));
+  auto nlo = _mm_unpacklo_epi8(nt, kZero);
+  auto nhi = _mm_unpackhi_epi8(nt, kZero);
+  auto n1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nlo, kZero));
+  auto n2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nlo, kZero));
+  auto n3 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nhi, kZero));
+  auto d1 = kMin;
+  auto d2 = kMin;
+  auto d3 = kMin;
+  auto m1 = kMin;
+  auto m2 = kMin;
+  auto m3 = kMin;
+  uint8_t lastCh = '/';
+
+  const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
+  auto gapLeading = _mm_set_ss(0);
+  _Pragma("GCC unroll 4")
+  for (int i = 0; i < haystackLen; ++i) {
+    uint8_t ch = haystack[i];
+    float bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+    lastCh = ch;
+
+    auto r = _mm_set1_ps(static_cast<char>(toLower(ch)));
+    auto b = _mm_set1_ps(bonus);
+    auto c1 = _mm_cmpeq_ps(n1, r);
+    auto c2 = _mm_cmpeq_ps(n2, r);
+    auto c3 = _mm_cmpeq_ps(n3, r);
+
+    auto pm1 = _mm_shuffle_ps(m1, m1, 0b10010011);
+    auto pm2 = _mm_shuffle_ps(m2, m2, 0b10010011);
+    auto pm3 = _mm_shuffle_ps(m3, m3, 0b10010011);
+    auto pd1 = _mm_shuffle_ps(d1, d1, 0b10010011);
+    auto pd2 = _mm_shuffle_ps(d2, d2, 0b10010011);
+    auto pd3 = _mm_shuffle_ps(d3, d3, 0b10010011);
+    pm3 = _mm_blend_ps(pm3, pm2, 0b0001);
+    pd3 = _mm_blend_ps(pd3, pd2, 0b0001);
+    pm2 = _mm_blend_ps(pm2, pm1, 0b0001);
+    pd2 = _mm_blend_ps(pd2, pd1, 0b0001);
+    auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
+    auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
+    auto s3 = _mm_max_ps(_mm_add_ps(pm3, b), _mm_add_ps(pd3, kConsecutive));
+    gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+    s1 = _mm_move_ss(s1, _mm_add_ss(gapLeading, b));
+
+    auto g1 = _mm_add_ps(m1, kGap1);
+    auto g2 = _mm_add_ps(m2, kGap1);
+    auto g3 = _mm_add_ps(m3, kGap2);
+    d1 = _mm_blendv_ps(kMin, s1, c1);
+    d2 = _mm_blendv_ps(kMin, s2, c2);
+    d3 = _mm_blendv_ps(kMin, s3, c3);
+    m1 = _mm_blendv_ps(g1, _mm_max_ps(s1, g1), c1);
+    m2 = _mm_blendv_ps(g2, _mm_max_ps(s2, g2), c2);
+    m3 = _mm_blendv_ps(g3, _mm_max_ps(s3, g3), c3);
+  }
+
+  return m3[(needle.size() + 3) & 0b11];
+}
+
+Score matchSse16(std::string_view needle, std::string_view haystack) noexcept
+{
+  DEBUG_ASSERT(needle.size() <= 16);
+  if (needle.empty() || haystack.size() > kMatchMaxLen || needle.size() > haystack.size()) {
+    return kScoreMin;
+  } else if (needle.size() == haystack.size()) {
+    return kScoreMax;
+  }
+
+  // const int needleLen = static_cast<int>(needle.size());
+  const int haystackLen = static_cast<int>(haystack.size());
+
+  const auto kMin = _mm_set1_ps(kScoreMin);
+  const auto kGap1 = _mm_set1_ps(kScoreGapInner);
+  const auto kGap2 = _mm_loadu_ps(&kScoreGapTable[3 - (needle.size() & 0b11)]);
+  const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
+  const auto kZero = _mm_setzero_si128();
+
+  auto nt = _mm_load_si128(reinterpret_cast<const __m128i*>(needle.data()));
+  nt = simd::toLower(nt);
+  auto nlo = _mm_unpacklo_epi8(nt, kZero);
+  auto nhi = _mm_unpackhi_epi8(nt, kZero);
+  auto n1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nlo, kZero));
+  auto n2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nlo, kZero));
+  auto n3 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nhi, kZero));
+  auto n4 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nhi, kZero));
+  auto d1 = kMin;
+  auto d2 = kMin;
+  auto d3 = kMin;
+  auto d4 = kMin;
+  auto m1 = kMin;
+  auto m2 = kMin;
+  auto m3 = kMin;
+  auto m4 = kMin;
+  uint8_t lastCh = '/';
+
+  const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
+  auto gapLeading = _mm_set_ss(0);
+  _Pragma("GCC unroll 4")
+  for (int i = 0; i < haystackLen; ++i) {
+    uint8_t ch = haystack[i];
+    float bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+    lastCh = ch;
+
+    auto r = _mm_set1_ps(static_cast<char>(toLower(ch)));
+    auto b = _mm_set1_ps(bonus);
+    auto c1 = _mm_cmpeq_ps(n1, r);
+    auto c2 = _mm_cmpeq_ps(n2, r);
+    auto c3 = _mm_cmpeq_ps(n3, r);
+    auto c4 = _mm_cmpeq_ps(n4, r);
+
+    auto pm1 = _mm_shuffle_ps(m1, m1, 0b10010011);
+    auto pm2 = _mm_shuffle_ps(m2, m2, 0b10010011);
+    auto pm3 = _mm_shuffle_ps(m3, m3, 0b10010011);
+    auto pm4 = _mm_shuffle_ps(m4, m4, 0b10010011);
+    auto pd1 = _mm_shuffle_ps(d1, d1, 0b10010011);
+    auto pd2 = _mm_shuffle_ps(d2, d2, 0b10010011);
+    auto pd3 = _mm_shuffle_ps(d3, d3, 0b10010011);
+    auto pd4 = _mm_shuffle_ps(d4, d4, 0b10010011);
+    pm4 = _mm_blend_ps(pm4, pm3, 0b0001);
+    pd4 = _mm_blend_ps(pd4, pd3, 0b0001);
+    pm3 = _mm_blend_ps(pm3, pm2, 0b0001);
+    pd3 = _mm_blend_ps(pd3, pd2, 0b0001);
+    pm2 = _mm_blend_ps(pm2, pm1, 0b0001);
+    pd2 = _mm_blend_ps(pd2, pd1, 0b0001);
+    auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
+    auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
+    auto s3 = _mm_max_ps(_mm_add_ps(pm3, b), _mm_add_ps(pd3, kConsecutive));
+    auto s4 = _mm_max_ps(_mm_add_ps(pm4, b), _mm_add_ps(pd4, kConsecutive));
+    gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+    s1 = _mm_move_ss(s1, _mm_add_ss(gapLeading, b));
+
+    auto g1 = _mm_add_ps(m1, kGap1);
+    auto g2 = _mm_add_ps(m2, kGap1);
+    auto g3 = _mm_add_ps(m3, kGap1);
+    auto g4 = _mm_add_ps(m4, kGap2);
+    d1 = _mm_blendv_ps(kMin, s1, c1);
+    d2 = _mm_blendv_ps(kMin, s2, c2);
+    d3 = _mm_blendv_ps(kMin, s3, c3);
+    d4 = _mm_blendv_ps(kMin, s4, c4);
+    m1 = _mm_blendv_ps(g1, _mm_max_ps(s1, g1), c1);
+    m2 = _mm_blendv_ps(g2, _mm_max_ps(s2, g2), c2);
+    m3 = _mm_blendv_ps(g3, _mm_max_ps(s3, g3), c3);
+    m4 = _mm_blendv_ps(g4, _mm_max_ps(s4, g4), c4);
+  }
+
+  return m4[(needle.size() + 3) & 0b11];
 }
 
 Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions)

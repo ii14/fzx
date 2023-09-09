@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include "fzx/aligned_string.hpp"
 #include "fzx/eventfd.hpp"
 #include "fzx/items.hpp"
 #include "fzx/line_scanner.hpp"
@@ -69,7 +70,7 @@ struct Job
   /// Items to process. The size is monotonically increasing.
   Items mItems;
   /// Active query.
-  std::shared_ptr<std::string> mQuery;
+  std::shared_ptr<AlignedString> mQuery;
   /// Shared atomic counter for reserving the items for processing.
   std::shared_ptr<ItemQueue> mQueue;
   /// Monotonically increasing timestamp identifying the active query.
@@ -103,7 +104,7 @@ struct Fzx
   bool scanEnd();
 
   /// Set query
-  void setQuery(std::string query);
+  void setQuery(std::string_view query);
 
   /// Publish changes and wake up worker threads.
   void commit();
@@ -148,7 +149,7 @@ private:
 
 private:
   Items mItems;
-  std::shared_ptr<std::string> mQuery;
+  std::shared_ptr<AlignedString> mQuery;
   std::shared_ptr<ItemQueue> mQueue;
 
   LineScanner mLineScanner;

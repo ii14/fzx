@@ -15,8 +15,6 @@
 #include "fzx/macros.hpp"
 #include "fzx/util.hpp"
 
-// NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
-
 namespace fzx {
 
 // "Faster, but more UB" or "Slower, but more correct" selector
@@ -225,5 +223,3 @@ void Items::push(std::string_view s)
 }
 
 } // namespace fzx
-
-// NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)

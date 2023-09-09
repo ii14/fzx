@@ -221,7 +221,7 @@ start:
 
     ASSERT(job.mQueue);
     auto& queue = *job.mQueue;
-    const std::string_view query { *job.mQuery };
+    const std::string_view query { job.mQuery->str() };
     out.mItems.reserve(job.mItems.size());
     for (;;) {
       // Reserve a chunk of items.
@@ -242,15 +242,60 @@ start:
         break;
 
       // Match items and calculate scores.
-      for (size_t i = start; i < end; ++i) {
-        auto item = job.mItems.at(i);
-        if (!fzy::hasMatch(query, item))
-          continue;
-        out.mItems.push_back({
-          static_cast<uint32_t>(i),
-          static_cast<float>(fzy::match(query, item)),
-        });
+      switch (query.size()) {
+      case 1:
+        for (size_t i = start; i < end; ++i)
+          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::match1(query, item) });
+        break;
+      case 2:
+      case 3:
+      case 4:
+        for (size_t i = start; i < end; ++i)
+          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSse4(query, item) });
+        break;
+      case 5:
+      case 6:
+      case 7:
+      case 8:
+        for (size_t i = start; i < end; ++i)
+          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSse8(query, item) });
+        break;
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+        for (size_t i = start; i < end; ++i)
+          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSse12(query, item) });
+        break;
+      case 13:
+      case 14:
+      case 15:
+      case 16:
+        for (size_t i = start; i < end; ++i)
+          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSse16(query, item) });
+        break;
+      default:
+        for (size_t i = start; i < end; ++i)
+          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::match(query, item) });
+        break;
       }
+
+      // // Match items and calculate scores.
+      // for (size_t i = start; i < end; ++i) {
+      //   auto item = job.mItems.at(i);
+      //   if (!fzy::hasMatch(query, item))
+      //     continue;
+      //   out.mItems.push_back({
+      //     static_cast<uint32_t>(i),
+      //     static_cast<float>(fzy::match(query, item)),
+      //   });
+      // }
 
       // Ignore kMerge events from other workers, we don't care about
       // them at this stage, as we don't even have out own results yet.

@@ -95,11 +95,11 @@ constexpr void unused([[maybe_unused]] const T& x) noexcept { }
 namespace detail {
 
 // NOLINTNEXTLINE(google-runtime-int)
-[[noreturn]] void assertFail(const char* expr, const char* file, unsigned long line);
+[[noreturn]] NOINLINE void assertFail(const char* expr, const char* file, unsigned long line);
 // NOLINTNEXTLINE(google-runtime-int)
-[[noreturn]] void assumeFail(const char* expr, const char* file, unsigned long line);
+[[noreturn]] NOINLINE void assumeFail(const char* expr, const char* file, unsigned long line);
 // NOLINTNEXTLINE(google-runtime-int)
-[[noreturn]] void unreachableFail(const char* file, unsigned long line);
+[[noreturn]] NOINLINE void unreachableFail(const char* file, unsigned long line);
 
 } // namespace detail
 

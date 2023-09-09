@@ -7,7 +7,7 @@ namespace fzx {
 /// Take N items at once from the queue. This value can be adjusted.
 /// Higher values might result in the work being split unevenly across the threads.
 /// Lower values will synchronize threads more often and will have more L1 cache misses.
-static constexpr auto kChunkSize = 0x800;
+static constexpr auto kChunkSize = 0x4000;
 
 /// Hard limit on 64 threads.
 static constexpr unsigned kMaxThreads = 64;

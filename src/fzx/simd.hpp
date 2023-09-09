@@ -16,8 +16,6 @@
 
 namespace fzx::simd {
 
-// NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
-
 #if defined(FZX_SSE2)
 template <typename T>
 [[nodiscard]] ALWAYS_INLINE inline __m128i load128i(const T* p) noexcept
@@ -82,7 +80,5 @@ ALWAYS_INLINE inline void store(T* p, const __m256i& r) noexcept
   return _mm256_add_epi8(r, t); // apply offset
 }
 #endif
-
-// NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
 
 } // namespace fzx::simd

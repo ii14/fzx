@@ -1,5 +1,7 @@
 // Licensed under LGPLv3 - see LICENSE file for details.
-
+//
+// This file incorporates work covered by the following copyright and permission notice:
+//
 // The MIT License (MIT)
 //
 // Copyright (c) 2014 John Hawthorn

@@ -1,5 +1,7 @@
 // Licensed under LGPLv3 - see LICENSE file for details.
-
+//
+// This file incorporates work covered by the following copyright and permission notice:
+//
 // The MIT License (MIT)
 //
 // Copyright (c) 2014 John Hawthorn
@@ -30,17 +32,24 @@
 
 namespace fzx::fzy {
 
-using Score = double;
+using Score = float;
 
 static constexpr auto kMatchMaxLen = 1024;
 
 /// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
 /// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
 bool hasMatch(std::string_view needle, std::string_view haystack) noexcept;
+bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept;
 
 /// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
 /// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
 Score match(std::string_view needle, std::string_view haystack) noexcept;
+Score match1(std::string_view needle, std::string_view haystack) noexcept;
+Score matchSse4(std::string_view needle, std::string_view haystack) noexcept;
+Score matchSse8(std::string_view needle, std::string_view haystack) noexcept;
+Score matchSse12(std::string_view needle, std::string_view haystack) noexcept;
+Score matchSse16(std::string_view needle, std::string_view haystack) noexcept;
+Score matchAvx8(std::string_view needle, std::string_view haystack) noexcept;
 
 using Positions = std::array<size_t, kMatchMaxLen>;
 Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions);

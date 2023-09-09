@@ -73,11 +73,12 @@ bool Fzx::scanEnd()
   });
 }
 
-void Fzx::setQuery(std::string query)
+void Fzx::setQuery(std::string_view query)
 {
+  if (mQuery && mQuery->str() == query)
+    return;
   if (!query.empty()) {
-    query.reserve(query.size() + kOveralloc);
-    mQuery = std::make_shared<std::string>(std::move(query));
+    mQuery = std::make_shared<AlignedString>(query);
   } else {
     mQuery.reset();
   }
@@ -159,7 +160,7 @@ Result Fzx::getResult(size_t i) const noexcept
 std::string_view Fzx::query() const
 {
   if (const Results* res = getResults(); res != nullptr && res->mQuery)
-    return *res->mQuery;
+    return res->mQuery->str();
   return {};
 }
 
