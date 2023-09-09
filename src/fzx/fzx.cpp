@@ -3,6 +3,7 @@
 #include "fzx/fzx.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <thread>
 
 #include "fzx/config.hpp"
