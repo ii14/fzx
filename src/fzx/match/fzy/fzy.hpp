@@ -24,22 +24,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include "fzx/match/fzy.hpp"
+#pragma once
 
-#include <limits>
+#include <cstddef>
+#include <string_view>
+#include <array>
+
+#include "fzx/aligned_string.hpp"
 
 namespace fzx::fzy {
 
-constexpr Score kScoreGapLeading = -0.005;
-constexpr Score kScoreGapTrailing = -0.005;
-constexpr Score kScoreGapInner = -0.01;
-constexpr Score kScoreMatchConsecutive = 1.0;
-constexpr Score kScoreMatchSlash = 0.9;
-constexpr Score kScoreMatchWord = 0.8;
-constexpr Score kScoreMatchCapital = 0.7;
-constexpr Score kScoreMatchDot = 0.6;
+using Score = float;
 
-constexpr Score kScoreMax = std::numeric_limits<Score>::infinity();
-constexpr Score kScoreMin = -std::numeric_limits<Score>::infinity();
+static constexpr auto kMatchMaxLen = 1024;
+
+bool hasMatch(const AlignedString& needle, std::string_view haystack) noexcept;
+
+Score match(const AlignedString& needle, std::string_view haystack) noexcept;
+Score match1(const AlignedString& needle, std::string_view haystack) noexcept;
+#if defined(FZX_SSE2)
+template <size_t N> Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score matchSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score matchSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score matchSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score matchSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+#endif // defined(FZX_SSE2)
+
+using Positions = std::array<size_t, kMatchMaxLen>;
+Score matchPositions(const AlignedString& needle, std::string_view haystack, Positions* positions);
 
 } // namespace fzx::fzy

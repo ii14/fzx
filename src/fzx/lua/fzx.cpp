@@ -1,6 +1,6 @@
 #include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
-#include "fzx/match/fzy.hpp"
+#include "fzx/match/fzy/fzy.hpp"
 
 #include <algorithm>
 

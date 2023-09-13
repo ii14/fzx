@@ -87,6 +87,24 @@
 # define UNREACHABLE() ::fzx::detail::unreachableFail(__FILE__, __LINE__)
 #endif
 
+#if defined(__clang__)
+# define FZX_PRAGMA_CLANG(x) _Pragma(x)
+# define FZX_PRAGMA_GCC(x)
+# define FZX_PRAGMA_MSVC(x)
+#elif defined(__GNUC__)
+# define FZX_PRAGMA_CLANG(x)
+# define FZX_PRAGMA_GCC(x) _Pragma(x)
+# define FZX_PRAGMA_MSVC(x)
+#elif defined(_MSC_VER)
+# define FZX_PRAGMA_CLANG(x)
+# define FZX_PRAGMA_GCC(x)
+# define FZX_PRAGMA_MSVC(x) _Pragma(x)
+#else
+# define FZX_PRAGMA_CLANG(x)
+# define FZX_PRAGMA_GCC(x)
+# define FZX_PRAGMA_MSVC(x)
+#endif
+
 namespace fzx {
 
 template <typename T>

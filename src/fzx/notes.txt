@@ -55,25 +55,7 @@ stuff?
 
 ------------------------------------------------------------------------------------------
 
-Do the benchmarks properly. They are awful and can't really be relied on for anything
-other than just getting the general idea, which was good enough at the beginning, but now
-they stopped being useful. First of all the benchmarks that use multithreading include the
-overhead from creating and joining threads, which doesn't happen in the actual library.
-Second, use real input data. For testing and benchmarking the entire worker pool, EventFd
-should also provide a wait function, so we don't have to go through the OS to receive
-results.
-
-Compare against the stuff from <algorithm> and <execution>.
-
-------------------------------------------------------------------------------------------
-
-Vectorize sorting. Sorting takes up very roughly 5% of the runtime, so it's not worth
-spending any time on it right now. But in the case it goes up because of the improvements
-on the matching, it could make sense to try to somehow vectorize that. What needs to be
-sorted is the {u32,f32} pairs, together. Should be doable with pshufb on intel, and I have
-no idea if there is any equivalent instruction on neon. But realistically speaking, I'm
-probably not smart enough to actually do this.
-
-------------------------------------------------------------------------------------------
-
-Windows support. EventFd class probably needs Windows specific code.
+Vectorize sorting. I can't remember exactly, but I think sorting can take about 10% of
+the runtime? Anyway, to do that matches will probably have to be stored in AoSoA, because
+items are represented as pairs of {f32,u32}. In this case both sorting and merging have to
+be vectorized, can't have one without the other.

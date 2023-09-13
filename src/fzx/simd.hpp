@@ -12,6 +12,8 @@
 # include <immintrin.h>
 #endif
 
+#include <cstddef>
+
 #include "fzx/macros.hpp"
 
 namespace fzx::simd {
@@ -31,13 +33,13 @@ ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
 
 [[nodiscard]] ALWAYS_INLINE inline __m128i toLower(const __m128i& r) noexcept
 {
-  auto t = _mm_add_epi8(r, _mm_set1_epi8(63)); // offset so that A == SCHAR_MIN
-  t = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
-  t = _mm_and_si128(t, _mm_set1_epi8(32)); // mask lowercase offset
-  return _mm_add_epi8(r, t); // apply offset
+  auto t = _mm_add_epi8(r, _mm_set1_epi8(63)); // Offset so that A == SCHAR_MIN
+  t = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), t); // Lower or equal Z
+  t = _mm_and_si128(t, _mm_set1_epi8(32)); // Mask lowercase offset
+  return _mm_add_epi8(r, t); // Apply offset
 }
 
-[[nodiscard]] ALWAYS_INLINE inline __m128 blendv(__m128 a, __m128 b, __m128 c)
+[[nodiscard]] ALWAYS_INLINE inline __m128 blendv(const __m128& a, const __m128& b, const __m128& c)
 {
 # if defined(FZX_SSE41)
   return _mm_blendv_ps(a, b, c);
@@ -46,18 +48,18 @@ ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
 # endif
 }
 
-template <unsigned N>
-[[nodiscard]] ALWAYS_INLINE inline __m128 shr(__m128 r)
+[[nodiscard]] ALWAYS_INLINE inline float extractv(const __m128& r, unsigned n)
 {
-  return _mm_castsi128_ps(_mm_srli_si128(_mm_castps_si128(r), N));
+# if defined(__GNUC__) || defined(__clang__)
+  return r[n];
+# else
+  // I have no idea what's the best way to do this.
+  float t[4];
+  _mm_store_ps(t, r);
+  return t[n];
+# endif
 }
-
-template <unsigned N>
-[[nodiscard]] ALWAYS_INLINE inline __m128 shl(__m128 r)
-{
-  return _mm_castsi128_ps(_mm_slli_si128(_mm_castps_si128(r), N));
-}
-#endif
+#endif // defined(FZX_SSE2)
 
 #if defined(FZX_AVX2)
 template <typename T>
@@ -74,11 +76,11 @@ ALWAYS_INLINE inline void store(T* p, const __m256i& r) noexcept
 
 [[nodiscard]] ALWAYS_INLINE inline __m256i toLower(const __m256i& r) noexcept
 {
-  auto t = _mm256_add_epi8(r, _mm256_set1_epi8(63)); // offset so that A == SCHAR_MIN
-  t = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), t); // lower or equal Z
-  t = _mm256_and_si256(t, _mm256_set1_epi8(32)); // mask lowercase offset
-  return _mm256_add_epi8(r, t); // apply offset
+  auto t = _mm256_add_epi8(r, _mm256_set1_epi8(63)); // Offset so that A == SCHAR_MIN
+  t = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), t); // Lower or equal Z
+  t = _mm256_and_si256(t, _mm256_set1_epi8(32)); // Mask lowercase offset
+  return _mm256_add_epi8(r, t); // Apply offset
 }
-#endif
+#endif // defined(FZX_AVX2)
 
 } // namespace fzx::simd

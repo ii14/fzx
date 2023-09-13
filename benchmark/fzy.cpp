@@ -4,16 +4,20 @@
 #include <string>
 #include <string_view>
 
-#include "fzx/match/fzy.hpp"
+#include "fzx/match/fzy/fzy.hpp"
 #include "fzx/line_scanner.ipp"
+#include "fzx/aligned_string.hpp"
+
+using namespace std::string_view_literals;
 
 static std::vector<char> gStrings;
 static std::vector<std::string_view> gItems;
-static std::string gQuery { "chromium" }; // TODO: cli option
+static fzx::AlignedString gQuery;
 
+// NOLINTNEXTLINE(readability-identifier-naming)
 static void BM_fzy(benchmark::State& s)
 {
-  const std::string_view query = gQuery;
+  const std::string_view query { gQuery.str() };
 
   for ([[maybe_unused]] auto _ : s) {
     for (const auto& item : gItems) {
@@ -68,9 +72,30 @@ static void readStdin()
 
 int main(int argc, char** argv)
 {
-  gQuery.reserve(gQuery.size() + 64);
-  // TODO: add option for changing the query
+  std::string_view query { "chromium" };
+
+  // TODO: could be more robust and remove parsed arguments
+  //       before passing them to the benchmark library.
+  for (int i = 1; i < argc; ++i) {
+    std::string_view arg { argv[i] };
+    if (arg == "--query"sv) {
+      if (++i == argc) {
+        fprintf(stderr, "expected argument for --query\n");
+        return 1;
+      }
+      query = std::string_view { argv[i] };
+    }
+  }
+
+  gQuery = query;
+
   readStdin();
+  if (gItems.empty()) {
+    fprintf(stderr, "no data, aborting.\n");
+    fprintf(stderr, "provide the data set for the benchmark over stdin.\n");
+    return 1;
+  }
+
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
   benchmark::Shutdown();

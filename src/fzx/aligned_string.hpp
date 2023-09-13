@@ -7,9 +7,12 @@
 
 #include "fzx/config.hpp"
 #include "fzx/util.hpp"
+#include "fzx/macros.hpp"
 
 namespace fzx {
 
+/// Read-only string that is guaranteed to be aligned to the cache line size.
+/// The underlying memory is overallocated to a multiple of the cache line size.
 struct AlignedString
 {
 private:
@@ -22,14 +25,14 @@ public:
   {
     if (str.empty())
       return;
-    mData = new (kAlign) char[roundUp<kCacheLine>(str.size())];
-    std::memcpy(mData, str.data(), str.size());
-    mSize = str.size();
+    mPtr = new (kAlign) char[roundUp<kCacheLine>(str.size())];
+    std::memcpy(mPtr, str.data(), str.size());
+    mEnd = mPtr + str.size();
   }
 
   AlignedString(AlignedString&& b) noexcept
-    : mData(std::exchange(b.mData, nullptr))
-    , mSize(std::exchange(b.mSize, 0))
+    : mPtr(std::exchange(b.mPtr, nullptr))
+    , mEnd(std::exchange(b.mEnd, nullptr))
   {
   }
 
@@ -37,35 +40,47 @@ public:
   {
     if (this == &b)
       return *this;
-    mData = std::exchange(b.mData, nullptr);
-    mSize = std::exchange(b.mSize, 0);
+    mPtr = std::exchange(b.mPtr, nullptr);
+    mEnd = std::exchange(b.mEnd, nullptr);
     return *this;
   }
 
   ~AlignedString() noexcept
   {
-    operator delete[](mData, kAlign);
+    operator delete[](mPtr, kAlign);
   }
 
   void clear() noexcept
   {
-    operator delete[](mData, kAlign);
-    mData = nullptr;
-    mSize = 0;
+    operator delete[](mPtr, kAlign);
+    mPtr = nullptr;
+    mEnd = nullptr;
   }
 
   // not going to bother implementing copy, won't be used
   AlignedString(const AlignedString&) = delete;
   AlignedString& operator=(const AlignedString&) = delete;
 
-  [[nodiscard]] bool empty() const noexcept { return mSize == 0; }
-  [[nodiscard]] const char* data() const noexcept { return mData; }
-  [[nodiscard]] size_t size() const noexcept { return mSize; }
-  [[nodiscard]] std::string_view str() const noexcept { return { mData, mSize }; }
+  [[nodiscard]] const char* data() const noexcept { return mPtr; }
+  [[nodiscard]] size_t size() const noexcept { return mEnd - mPtr; }
+  [[nodiscard]] bool empty() const noexcept { return mPtr == mEnd; }
+
+  [[nodiscard]] std::string_view str() const noexcept { return { mPtr, size() }; }
+
+  [[nodiscard]] const char* begin() const noexcept { return mPtr; }
+  [[nodiscard]] const char* end() const noexcept { return mEnd; }
+
+  [[nodiscard]] char operator[](ptrdiff_t i) const noexcept
+  {
+    DEBUG_ASSERT(i >= 0);
+    DEBUG_ASSERT(mPtr != nullptr);
+    DEBUG_ASSERT(mPtr + i < mEnd);
+    return mPtr[i];
+  }
 
 private:
-  char* mData { nullptr };
-  size_t mSize { 0 };
+  char* mPtr { nullptr };
+  char* mEnd { nullptr };
 };
 
 } // namespace fzx

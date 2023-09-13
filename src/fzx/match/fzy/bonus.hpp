@@ -26,32 +26,41 @@
 
 #pragma once
 
-#include <cstddef>
-#include <string_view>
 #include <array>
+
+#include "fzx/match/fzy/config.hpp"
 
 namespace fzx::fzy {
 
-using Score = float;
+static constexpr auto kBonusStates = []{
+  std::array<std::array<Score, 256>, 3> r {};
 
-static constexpr auto kMatchMaxLen = 1024;
+  r[1]['/'] = kScoreMatchSlash;
+  r[1]['-'] = kScoreMatchWord;
+  r[1]['_'] = kScoreMatchWord;
+  r[1][' '] = kScoreMatchWord;
+  r[1]['.'] = kScoreMatchDot;
 
-/// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
-/// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
-bool hasMatch(std::string_view needle, std::string_view haystack) noexcept;
-bool hasMatch2(std::string_view needle, std::string_view haystack) noexcept;
+  r[2]['/'] = kScoreMatchSlash;
+  r[2]['-'] = kScoreMatchWord;
+  r[2]['_'] = kScoreMatchWord;
+  r[2][' '] = kScoreMatchWord;
+  r[2]['.'] = kScoreMatchDot;
+  for (char i = 'a'; i <= 'z'; ++i)
+    r[2][i] = kScoreMatchCapital;
 
-/// NOTE: When compiled with SSE2 or AVX2 enabled, it reads memory out of bounds of string_view.
-/// Needle and haystack need fzx::kOveralloc bytes of valid memory after the end of the string.
-Score match(std::string_view needle, std::string_view haystack) noexcept;
-Score match1(std::string_view needle, std::string_view haystack) noexcept;
-Score matchSse4(std::string_view needle, std::string_view haystack) noexcept;
-Score matchSse8(std::string_view needle, std::string_view haystack) noexcept;
-Score matchSse12(std::string_view needle, std::string_view haystack) noexcept;
-Score matchSse16(std::string_view needle, std::string_view haystack) noexcept;
-Score matchAvx8(std::string_view needle, std::string_view haystack) noexcept;
+  return r;
+}();
 
-using Positions = std::array<size_t, kMatchMaxLen>;
-Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions);
+static constexpr auto kBonusIndex = []{
+  std::array<uint8_t, 256> r {};
+  for (char i = 'A'; i <= 'Z'; ++i)
+    r[i] = 2;
+  for (char i = 'a'; i <= 'z'; ++i)
+    r[i] = 1;
+  for (char i = '0'; i <= '9'; ++i)
+    r[i] = 1;
+  return r;
+}();
 
 } // namespace fzx::fzy
