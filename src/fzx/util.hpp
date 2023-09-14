@@ -59,6 +59,40 @@ template <size_t N, typename T>
   return (n & ~mask) + static_cast<T>(!isMulOf<N>(n)) * N;
 }
 
+// NOLINTBEGIN(google-runtime-int)
+
+/// Find-first-set
+[[nodiscard]] inline int ffs32(uint32_t x) noexcept
+{
+#if defined(FZX_HAS_BUILTIN_FFS)
+  static_assert(sizeof(int) == 4);
+  return __builtin_ffs(static_cast<int>(x));
+#elif defined(FZX_HAS_BIT_SCAN_FORWARD)
+  unsigned long index;
+  return static_cast<int>(_BitScanForward(&index, static_cast<unsigned long>(x)) ? index + 1 : 0);
+#else
+# error "32-bit find-first-set is not available"
+  // TODO: portable implementation
+#endif
+}
+
+/// Find-first-set
+[[nodiscard]] inline int ffs64(uint64_t x) noexcept
+{
+#if defined(FZX_HAS_BUILTIN_FFSL)
+  static_assert(sizeof(long) == 8);
+  return __builtin_ffsl(static_cast<long>(x));
+#elif defined(FZX_HAS_BIT_SCAN_FORWARD_64)
+  unsigned long index;
+  return static_cast<int>(_BitScanForward64(&index, static_cast<__int64>(x)) ? index + 1 : 0);
+#else
+# error "64-bit find-first-set is not available"
+  // TODO: portable implementation
+#endif
+}
+
+// NOLINTEND(google-runtime-int)
+
 using std::swap;
 
 } // namespace fzx

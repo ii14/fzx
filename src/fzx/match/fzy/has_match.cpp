@@ -62,8 +62,7 @@ namespace {
   return true;
 }
 
-#if defined(FZX_SSE2) && FZX_HAS_BUILTIN(__builtin_ffs)
-#define FZX_HAS_MATCH_SSE
+#if defined(FZX_SSE2)
 [[maybe_unused]] bool hasMatchSSE(const AlignedString& needle, std::string_view haystack) noexcept
 {
   // Technically needle and haystack never will be empty,
@@ -112,7 +111,7 @@ namespace {
     // TODO: Mispredicted branch. Testing more characters at once might improve it.
     //       What might be worth to try is cramming in some speculative work and
     //       also checking nit[1]?
-    if (int pos = __builtin_ffs(static_cast<int>(mask)); pos != 0) {
+    if (int pos = ffs32(mask); pos != 0) {
       // Found the character. If this was the last character in the needle, we have our match.
       if (++nit == nend)
         return true;
@@ -145,7 +144,7 @@ namespace {
 
 bool hasMatch(const AlignedString& needle, std::string_view haystack) noexcept
 {
-#if defined(FZX_HAS_MATCH_SSE)
+#if defined(FZX_SSE2)
   return hasMatchSSE(needle, haystack);
 #else
   return hasMatchBasic(needle, haystack);

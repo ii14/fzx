@@ -20,18 +20,18 @@ namespace fzx::simd {
 
 #if defined(FZX_SSE2)
 template <typename T>
-[[nodiscard]] ALWAYS_INLINE inline __m128i load128i(const T* p) noexcept
+[[nodiscard]] INLINE __m128i load128i(const T* p) noexcept
 {
   return _mm_loadu_si128(reinterpret_cast<const __m128i*>(p));
 }
 
 template <typename T>
-ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
+INLINE void store(T* p, const __m128i& r) noexcept
 {
   _mm_storeu_si128(reinterpret_cast<__m128i*>(p), r);
 }
 
-[[nodiscard]] ALWAYS_INLINE inline __m128i toLower(const __m128i& r) noexcept
+[[nodiscard]] INLINE __m128i toLower(const __m128i& r) noexcept
 {
   auto t = _mm_add_epi8(r, _mm_set1_epi8(63)); // Offset so that A == SCHAR_MIN
   t = _mm_cmpgt_epi8(_mm_set1_epi8(static_cast<char>(-102)), t); // Lower or equal Z
@@ -39,7 +39,7 @@ ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
   return _mm_add_epi8(r, t); // Apply offset
 }
 
-[[nodiscard]] ALWAYS_INLINE inline __m128 blendv(const __m128& a, const __m128& b, const __m128& c)
+[[nodiscard]] INLINE __m128 blendv(const __m128& a, const __m128& b, const __m128& c)
 {
 # if defined(FZX_SSE41)
   return _mm_blendv_ps(a, b, c);
@@ -48,7 +48,7 @@ ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
 # endif
 }
 
-[[nodiscard]] ALWAYS_INLINE inline float extractv(const __m128& r, unsigned n)
+[[nodiscard]] INLINE float extractv(const __m128& r, unsigned n)
 {
 # if defined(__GNUC__) || defined(__clang__)
   return r[n];
@@ -63,18 +63,18 @@ ALWAYS_INLINE inline void store(T* p, const __m128i& r) noexcept
 
 #if defined(FZX_AVX2)
 template <typename T>
-[[nodiscard]] ALWAYS_INLINE inline __m256i load256i(const T* p) noexcept
+[[nodiscard]] INLINE __m256i load256i(const T* p) noexcept
 {
   return _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p));
 }
 
 template <typename T>
-ALWAYS_INLINE inline void store(T* p, const __m256i& r) noexcept
+INLINE void store(T* p, const __m256i& r) noexcept
 {
   _mm256_storeu_si256(reinterpret_cast<__m256i*>(p), r);
 }
 
-[[nodiscard]] ALWAYS_INLINE inline __m256i toLower(const __m256i& r) noexcept
+[[nodiscard]] INLINE __m256i toLower(const __m256i& r) noexcept
 {
   auto t = _mm256_add_epi8(r, _mm256_set1_epi8(63)); // Offset so that A == SCHAR_MIN
   t = _mm256_cmpgt_epi8(_mm256_set1_epi8(static_cast<char>(-102)), t); // Lower or equal Z
