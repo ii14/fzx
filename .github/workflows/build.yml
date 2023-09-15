@@ -1,0 +1,65 @@
+name: test
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+env:
+  # preferably should write to a log file instead
+  UBSAN_OPTIONS: halt_on_error=1
+  ASAN_OPTIONS: halt_on_error=1
+  TSAN_OPTIONS: halt_on_error=1
+
+jobs:
+  build:
+    name: ${{ matrix.compiler.name }} ${{ matrix.sanitizer.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - name: gcc
+            cc: gcc
+            cxx: g++
+          - name: clang
+            cc: clang
+            cxx: clang++
+        sanitizer:
+          - name: asan
+            flags: -D FZX_ENABLE_ASAN=ON -D FZX_ENABLE_UBSAN=ON
+          - name: tsan
+            flags: -D FZX_ENABLE_TSAN=ON
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake
+      run: >
+        cmake
+        -B ${{ steps.strings.outputs.build-output-dir }}
+        -D CMAKE_CXX_COMPILER=${{ matrix.compiler.cxx }}
+        -D CMAKE_BUILD_TYPE=Debug
+        -D FZX_BUILD_EXECUTABLE=OFF
+        -D FZX_BUILD_LUA_MODULE=OFF
+        -D FZX_BUILD_TESTS=ON
+        ${{ matrix.sanitizer.flags }}
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Debug
+
+    - name: Run tests
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: bin/test
