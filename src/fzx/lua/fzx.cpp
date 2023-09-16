@@ -276,7 +276,7 @@ static int getResults(lua_State* lstate) try
 } // namespace fzx::lua
 
 // NOLINTNEXTLINE(readability-identifier-naming)
-extern "C" int luaopen_fzxlib(lua_State* lstate)
+extern "C" int luaopen_fzxlua(lua_State* lstate)
 {
   luaL_newmetatable(lstate, fzx::lua::kMetatable);
     lua_pushcfunction(lstate, fzx::lua::gc);

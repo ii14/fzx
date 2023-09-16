@@ -26,11 +26,16 @@ endif()
 
 if(FZX_BUILD_LUA_MODULE)
   add_library(fzxlua MODULE ${LUA_FILES})
-  set_property(TARGET fzxlua PROPERTY OUTPUT_NAME fzxlib)
+  set_property(TARGET fzxlua PROPERTY OUTPUT_NAME fzxlua)
   set_property(TARGET fzxlua PROPERTY PREFIX "")
   target_link_libraries(fzxlua PRIVATE fzxopts libfzx)
   target_include_directories(fzxlua PRIVATE src "${LUA_INCLUDE_DIR}")
   if(APPLE)
     target_link_options(fzxlua PRIVATE -undefined dynamic_lookup)
   endif()
+
+  # Install the lua module in neovim
+  add_custom_target(install-plugin
+    DEPENDS fzxlua
+    COMMAND cmake -E copy $<TARGET_FILE:fzxlua> "${PROJECT_SOURCE_DIR}/lua")
 endif()

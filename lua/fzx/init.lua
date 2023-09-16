@@ -109,12 +109,12 @@ function mt.__index:redraw_display()
 end
 
 function mt.__index:scroll_relative(n)
-  self._offset = math.floor(clamp(self._offset + n, 0, require('fzxlib').MAX_OFFSET))
+  self._offset = math.floor(clamp(self._offset + n, 0, require('fzxlua').MAX_OFFSET))
   self:redraw_display()
 end
 
 function mt.__index:scroll_absolute(n)
-  self._offset = math.floor(clamp(n, 0, require('fzxlib').MAX_OFFSET))
+  self._offset = math.floor(clamp(n, 0, require('fzxlua').MAX_OFFSET))
   self:redraw_display()
 end
 
