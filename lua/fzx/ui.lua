@@ -121,13 +121,12 @@ local function new(opts)
     end
   end
 
-  api.nvim_set_hl(0, 'FzxNormal', { link = 'Normal', default = true })
-  api.nvim_set_hl(0, 'FzxPrompt', { link = 'CursorLine', default = true })
+  require('fzx.hl')
 
   self.display = new_window({
     focusable = true,
     on_show = function(w)
-      vim.wo[w.win].winhighlight = 'Normal:FzxNormal,CursorLine:FzxNormal'
+      vim.wo[w.win].winhighlight = 'Normal:FzxNormal,CursorLine:FzxCursorLine'
       vim.wo[w.win].winblend = 13
     end,
     on_destroy = on_destroy,
@@ -137,7 +136,7 @@ local function new(opts)
   api.nvim_buf_set_lines(self.display.buf, 0, -1, false, { '...' })
 
   local function on_show(w)
-    vim.wo[w.win].winhighlight = 'Normal:FzxPrompt,CursorLine:FzxPrompt'
+    vim.wo[w.win].winhighlight = 'Normal:FzxPrompt,CursorLine:FzxCursorLine'
   end
 
   self.prompt = new_window({

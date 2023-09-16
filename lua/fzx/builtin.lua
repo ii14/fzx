@@ -33,7 +33,7 @@ end
 
 function M.rg(query)
   local fzx = require('fzx').new({
-    prompt = 'rg> ',
+    prompt = 'grep> ',
     on_select = function(text)
       local file, line, col = text:match('^(.+):(%d+):(%d+):')
       if not file then return end
@@ -65,7 +65,7 @@ end
 
 function M.fd()
   local fzx = require('fzx').new({
-    prompt = 'fd> ',
+    prompt = 'files> ',
     on_select = function(text)
       vim.cmd(('edit %s'):format(fn.fnameescape(text)))
     end,
@@ -121,7 +121,7 @@ end
 local function bufname(bufnr)
   local name = api.nvim_buf_get_name(bufnr)
   if #name > 0 then
-    return name
+    return fn.fnamemodify(name, ':~')
   end
   local bt = vim.bo[bufnr].buftype
   if bt == 'quickfix' then

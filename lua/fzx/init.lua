@@ -52,7 +52,7 @@ function mt.__index:redraw_prompt(res)
   end
   self._extmark_prompt = api.nvim_buf_set_extmark(self._ui.input.buf, ns, 0, 0, {
     id = self._extmark_prompt,
-    virt_text = {{ status, 'Constant' }},
+    virt_text = {{ status, 'FzxInfo' }},
     virt_text_pos = 'right_align',
   })
 end
@@ -80,7 +80,7 @@ function mt.__index:redraw_display()
     api.nvim_buf_set_extmark(self._ui.display.buf, ns, 0, 0, {
       end_row = 1,
       end_col = 0,
-      hl_group = 'ErrorMsg',
+      hl_group = 'FzxNoResults',
       priority = 100,
     })
     return
@@ -99,7 +99,7 @@ function mt.__index:redraw_display()
       api.nvim_buf_set_extmark(self._ui.display.buf, ns, lnum - 1, pos, {
         end_row = lnum - 1,
         end_col = pos + 1,
-        hl_group = 'Search',
+        hl_group = 'FzxMatch',
         priority = 150,
       })
     end
@@ -130,7 +130,7 @@ function mt.__index:update_cursor()
   api.nvim_buf_set_extmark(self._ui.display.buf, ns2, pos, 0, {
     end_row = pos + 1,
     end_col = 0,
-    hl_group = 'Visual',
+    hl_group = 'FzxCursor',
     hl_eol = true,
     priority = 10,
   })
@@ -260,10 +260,7 @@ local function new(opts)
   end, { buffer = self._ui.input.buf })
 
   api.nvim_buf_call(self._ui.prompt.buf, function()
-    vim.cmd([[
-      syn match FzxPromptText "^.*"
-      hi def link FzxPromptText Type
-    ]])
+    vim.cmd([[syn match FzxPromptText "^.*"]])
   end)
 
   return self
