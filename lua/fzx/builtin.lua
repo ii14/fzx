@@ -5,6 +5,7 @@ local fn = vim.fn
 local M = {}
 
 local function new_process(fzx, exe, args)
+  -- TODO: read stderr, check exit code
   local stdout = uv.new_pipe()
   local proc
   proc = uv.spawn(exe, {
@@ -30,7 +31,7 @@ local function new_process(fzx, exe, args)
   end)
 end
 
-function M.rg(ctx)
+function M.rg(query)
   local fzx = require('fzx').new({
     prompt = 'rg> ',
     on_select = function(text)
@@ -59,7 +60,7 @@ function M.rg(ctx)
     ]])
   end)
 
-  new_process(fzx, 'rg', { '--line-number', '--column', ctx.args })
+  new_process(fzx, 'rg', { '--line-number', '--column', query or '' })
 end
 
 function M.fd()
