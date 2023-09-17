@@ -14,15 +14,19 @@ namespace fzx {
 
 Fzx::Fzx()
 {
-  if (auto err = mEventFd.open(); !err.empty())
-    throw std::runtime_error { err };
   setThreads(std::thread::hardware_concurrency());
 }
 
 Fzx::~Fzx() noexcept
 {
   stop();
-  mEventFd.close();
+}
+
+void Fzx::setCallback(Callback callback, void* userData) noexcept
+{
+  ASSERT(!mRunning);
+  mCallback = callback;
+  mUserData = userData;
 }
 
 void Fzx::setThreads(unsigned threads) noexcept
@@ -35,6 +39,8 @@ void Fzx::start()
   if (mRunning)
     return;
   mRunning = true;
+
+  ASSERT(mCallback);
 
   for (size_t i = 0; i < mThreads; ++i) {
     auto& worker = mWorkers.emplace_back(std::make_unique<Worker>());
@@ -128,7 +134,7 @@ void Fzx::commit()
 
 bool Fzx::loadResults() noexcept
 {
-  mEventFd.consume();
+  // TODO: mEventFd.consume();
   if (Worker* master = masterWorker(); master != nullptr)
     return master->mOutput.load();
   return false;
@@ -182,6 +188,13 @@ double Fzx::progress() const noexcept
   const size_t processed = mQueue->get();
   const size_t total = mItems.size();
   return static_cast<double>(std::min(processed, total)) / static_cast<double>(total);
+}
+
+bool Fzx::synchronized() const noexcept
+{
+  if (const Results* res = getResults(); res != nullptr)
+    return mItems.size() == res->mItemsTick && mQuery.get() == res->mQuery.get();
+  return true;
 }
 
 } // namespace fzx

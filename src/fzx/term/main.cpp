@@ -42,9 +42,14 @@ int main(int argc, char** argv)
     return 1;
   if (!app.mTTY.open())
     return 1;
+  if (auto err = app.mEventFd.open(); !err.empty())
+    return 1;
 
   // TODO: command line option
   app.mFzx.setThreads(std::thread::hardware_concurrency());
+  app.mFzx.setCallback([](void* app) {
+    static_cast<fzx::TermApp*>(app)->mEventFd.notify();
+  }, &app);
 
   // TODO: handle SIGTERM, SIGQUIT, SIGHUP
   struct sigaction sa {};
@@ -83,7 +88,7 @@ int main(int argc, char** argv)
 
     addFd(app.mTTY.fd());
     addFd(app.mInput.fd());
-    addFd(app.mFzx.notifyFd());
+    addFd(app.mEventFd.fd());
 
     if (processSignals())
       break;
@@ -106,8 +111,10 @@ int main(int argc, char** argv)
         app.processTTY();
       if (checkFd(app.mInput.fd()))
         app.processInput();
-      if (checkFd(app.mFzx.notifyFd()))
+      if (checkFd(app.mEventFd.fd())) {
+        app.mEventFd.consume();
         app.processWakeup();
+      }
     }
   }
 }

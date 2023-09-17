@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include <unistd.h>
+
 #include "fzx/match/fzy/fzy.hpp"
 #include "fzx/line_scanner.ipp"
 #include "fzx/aligned_string.hpp"
@@ -51,8 +53,8 @@ static void readStdin()
     gStrings.insert(gStrings.end(), s.begin(), s.end());
   };
 
-  for (size_t len = 0;;) {
-    len = fread(buf, std::size(buf), 1, stdin);
+  for (;;) {
+    auto len = fread(buf, 1, std::size(buf), stdin);
     if (len > 0) {
       scanner.feed({ buf, len }, push);
     } else {
@@ -80,7 +82,7 @@ int main(int argc, char** argv)
     std::string_view arg { argv[i] };
     if (arg == "--query"sv) {
       if (++i == argc) {
-        fprintf(stderr, "expected argument for --query\n");
+        fprintf(stderr, "Expected argument for --query\n");
         return 1;
       }
       query = std::string_view { argv[i] };
@@ -89,12 +91,20 @@ int main(int argc, char** argv)
 
   gQuery = query;
 
-  readStdin();
-  if (gItems.empty()) {
-    fprintf(stderr, "no data, aborting.\n");
-    fprintf(stderr, "provide the data set for the benchmark over stdin.\n");
+  if (isatty(0)) {
+    fprintf(stderr, "No data, aborting.\n");
+    fprintf(stderr, "Provide the data set for the benchmark over stdin.\n");
     return 1;
   }
+  readStdin();
+  if (gItems.empty()) {
+    fprintf(stderr, "No data, aborting.\n");
+    fprintf(stderr, "Provide the data set for the benchmark over stdin.\n");
+    return 1;
+  }
+
+  fprintf(stderr, "Input items: %zu\n", gItems.size() - 64);
+  fprintf(stderr, "Input bytes: %zu\n", gStrings.size());
 
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();

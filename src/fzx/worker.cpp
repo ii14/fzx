@@ -169,7 +169,7 @@ void Worker::run() try
 
     if (mIndex == 0) {
       // Worker 0 is the master worker thread. Notify the external event loop.
-      mPool->mEventFd.notify();
+      mPool->mCallback(mPool->mUserData);
     } else {
       // For all other workers, notify the worker that is responsible for merging our results.
       mPool->mWorkers[kParentIndex]->mEvents.post(kMerge);
@@ -347,7 +347,7 @@ start:
   mError.store(true);
   try {
     // TODO: Send a different byte over the pipe to communicate a critical error?
-    mPool->mEventFd.notify();
+    mPool->mCallback(mPool->mUserData);
   } catch (...) {
     // Nothing else we can possibly do to communicate an error.
   }

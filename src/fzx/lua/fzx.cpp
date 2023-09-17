@@ -1,6 +1,7 @@
 #include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
 #include "fzx/match/fzy/fzy.hpp"
+#include "fzx/eventfd.hpp"
 
 #include <algorithm>
 
@@ -11,11 +12,17 @@ extern "C" {
 
 namespace fzx::lua {
 
+struct Instance
+{
+  EventFd mEventFd;
+  Fzx mFzx;
+};
+
 static constexpr const char* kMetatable = "fzx-instance";
 
-static Fzx*& getUserdata(lua_State* lstate)
+static Instance*& getUserdata(lua_State* lstate)
 {
-  return *static_cast<Fzx**>(luaL_checkudata(lstate, 1, kMetatable));
+  return *static_cast<Instance**>(luaL_checkudata(lstate, 1, kMetatable));
 }
 
 static int create(lua_State* lstate)
@@ -34,10 +41,15 @@ static int create(lua_State* lstate)
     lua_pop(lstate, 1);
   }
 
-  auto*& p = *static_cast<Fzx**>(lua_newuserdata(lstate, sizeof(Fzx*)));
+  auto*& p = *static_cast<Instance**>(lua_newuserdata(lstate, sizeof(Instance*)));
   try {
-    p = new Fzx();
-    p->setThreads(threads);
+    p = new Instance();
+    p->mFzx.setThreads(threads);
+    if (auto err = p->mEventFd.open(); !err.empty())
+      return luaL_error(lstate, "fzx: %s", err.c_str());
+    p->mFzx.setCallback([](void* userData) {
+      static_cast<Instance*>(userData)->mEventFd.notify();
+    }, p);
   } catch (const std::exception& e) {
     return luaL_error(lstate, "fzx: %s", e.what());
   }
@@ -73,7 +85,7 @@ static int getFd(lua_State* lstate)
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  lua_pushinteger(lstate, p->notifyFd());
+  lua_pushinteger(lstate, p->mEventFd.fd());
   return 1;
 }
 
@@ -82,7 +94,7 @@ static int start(lua_State* lstate) try
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  p->start();
+  p->mFzx.start();
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -93,7 +105,7 @@ static int stop(lua_State* lstate) try
   auto*& p = getUserdata(lstate);
   if (p == nullptr)
     return 0;
-  p->stop();
+  p->mFzx.stop();
   delete p;
   p = nullptr;
   return 0;
@@ -110,7 +122,7 @@ static int push(lua_State* lstate) try
   if (type == LUA_TSTRING) {
     size_t len = 0;
     const char* str = lua_tolstring(lstate, 2, &len);
-    p->pushItem({ str, len });
+    p->mFzx.pushItem({ str, len });
   } else if (type == LUA_TTABLE) {
     for (int i = 1;; ++i) {
       lua_rawgeti(lstate, 2, i);
@@ -120,7 +132,7 @@ static int push(lua_State* lstate) try
         return luaL_error(lstate, "fzx: invalid type passed to push function");
       size_t len = 0;
       const char* str = lua_tolstring(lstate, -1, &len);
-      p->pushItem({ str, len });
+      p->mFzx.pushItem({ str, len });
       lua_pop(lstate, 1);
     }
   } else {
@@ -138,8 +150,8 @@ static int scanFeed(lua_State* lstate) try
     return luaL_error(lstate, "fzx: null pointer");
   size_t len = 0;
   const char* str = luaL_checklstring(lstate, 2, &len);
-  if (p->scanFeed({ str, len }) > 0)
-    p->commit();
+  if (p->mFzx.scanFeed({ str, len }) > 0)
+    p->mFzx.commit();
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -150,8 +162,8 @@ static int scanEnd(lua_State* lstate) try
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  if (p->scanEnd())
-    p->commit();
+  if (p->mFzx.scanEnd())
+    p->mFzx.commit();
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -162,7 +174,7 @@ static int commit(lua_State* lstate) try
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  p->commit();
+  p->mFzx.commit();
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -175,7 +187,7 @@ static int setQuery(lua_State* lstate) try
     return luaL_error(lstate, "fzx: null pointer");
   size_t len = 0;
   const char* str = luaL_checklstring(lstate, 2, &len);
-    p->setQuery({ str, len });
+    p->mFzx.setQuery({ str, len });
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -186,7 +198,8 @@ static int loadResults(lua_State* lstate)
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  lua_pushboolean(lstate, p->loadResults());
+  p->mEventFd.consume();
+  lua_pushboolean(lstate, p->mFzx.loadResults());
   return 1;
 }
 
@@ -210,36 +223,36 @@ static int getResults(lua_State* lstate) try
   }
 
   // TODO: use signed integers lol
-  const auto size = p->resultsSize();
+  const auto size = p->mFzx.resultsSize();
   const auto maxoff = size > static_cast<size_t>(max) ? size - static_cast<size_t>(max) : 0;
   if (static_cast<size_t>(offset) > maxoff)
     offset = static_cast<lua_Integer>(maxoff);
   const auto end = std::min(static_cast<size_t>(offset) + static_cast<size_t>(max), size);
 
-  const auto query = p->query();
+  const auto query = p->mFzx.query();
 
   lua_createtable(lstate, 0, 5);
 
-  lua_pushinteger(lstate, static_cast<lua_Integer>(p->itemsSize()));
+  lua_pushinteger(lstate, static_cast<lua_Integer>(p->mFzx.itemsSize()));
   lua_setfield(lstate, -2, "total");
 
-  lua_pushinteger(lstate, static_cast<lua_Integer>(p->resultsSize()));
+  lua_pushinteger(lstate, static_cast<lua_Integer>(p->mFzx.resultsSize()));
   lua_setfield(lstate, -2, "matched");
 
   lua_pushinteger(lstate, offset);
   lua_setfield(lstate, -2, "offset");
 
-  lua_pushboolean(lstate, p->processing());
+  lua_pushboolean(lstate, p->mFzx.processing());
   lua_setfield(lstate, -2, "processing");
 
-  lua_pushnumber(lstate, p->progress());
+  lua_pushnumber(lstate, p->mFzx.progress());
   lua_setfield(lstate, -2, "progress");
 
   lua_createtable(lstate, static_cast<int>(max), 0);
   const int tableSize = query.empty() ? 3 : 4;
   int n = 1;
   for (size_t i = offset; i < end; ++i, ++n) {
-    auto item = p->getResult(i);
+    auto item = p->mFzx.getResult(i);
     lua_createtable(lstate, 0, tableSize);
 
     lua_pushinteger(lstate, static_cast<lua_Integer>(item.mIndex));

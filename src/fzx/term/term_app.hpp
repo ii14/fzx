@@ -4,6 +4,7 @@
 #include "fzx/term/input.hpp"
 #include "fzx/term/line_editor.hpp"
 #include "fzx/term/tty.hpp"
+#include "fzx/eventfd.hpp"
 
 namespace fzx {
 
@@ -23,6 +24,7 @@ struct TermApp
   void quit();
   [[nodiscard]] bool running() const noexcept { return !mQuit; }
 
+  EventFd mEventFd;
   Fzx mFzx;
 
   Input mInput;

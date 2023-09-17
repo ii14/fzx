@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "fzx/aligned_string.hpp"
-#include "fzx/eventfd.hpp"
 #include "fzx/items.hpp"
 #include "fzx/line_scanner.hpp"
 #include "fzx/match.hpp"
@@ -77,6 +76,8 @@ struct Job
   size_t mQueryTick { 0 };
 };
 
+using Callback = void (*)(void* userData);
+
 struct Fzx
 {
   Fzx();
@@ -87,11 +88,14 @@ struct Fzx
   Fzx(Fzx&&) = delete;
   Fzx& operator=(Fzx&&) = delete;
 
+  /// Set callback function. Called when results for the last query are available.
+  /// Callback can be called from different threads, it has to be thread-safe, even
+  /// in regards to itself.
+  void setCallback(Callback callback, void* userData = nullptr) noexcept;
   void setThreads(unsigned threads) noexcept;
 
   void start();
   void stop();
-  [[nodiscard]] int notifyFd() const noexcept { return mEventFd.fd(); }
 
   /// Push string to the list of items.
   void pushItem(std::string_view s) { mItems.push(s); }
@@ -121,6 +125,10 @@ struct Fzx
   /// Get estimated progress, value between 0.0 and 1.0.
   /// Value changes independently of loadResults.
   [[nodiscard]] double progress() const noexcept;
+
+  /// Check if results are synchronized.
+  /// Only useful for testing and benchmarking, prefer using Fzx::processing.
+  bool synchronized() const noexcept;
 
 private:
   [[nodiscard]] const Results* getResults() const noexcept
@@ -156,9 +164,9 @@ private:
   /// Worker threads. This vector is shared with workers, so after
   /// starting and before joining threads, it cannot be modified.
   std::vector<std::unique_ptr<Worker>> mWorkers {};
-  /// Notifies external event loop. Used by worker threads, so it
-  /// cannot be closed before joining threads.
-  EventFd mEventFd;
+
+  Callback mCallback { nullptr };
+  void* mUserData { nullptr };
 
   /// Worker count.
   unsigned mThreads { 1 };

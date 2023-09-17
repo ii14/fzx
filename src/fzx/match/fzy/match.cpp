@@ -274,8 +274,6 @@ Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d = kMin;
     auto m = kMin;
 
-    FZX_PRAGMA_GCC("GCC unroll 8")
-    FZX_PRAGMA_CLANG("clang loop unroll_count(8)")
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
@@ -302,8 +300,6 @@ Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d1 = kMin, d2 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin; // NOLINT(readability-isolate-declaration)
 
-    FZX_PRAGMA_GCC("GCC unroll 8")
-    FZX_PRAGMA_CLANG("clang loop unroll_count(8)")
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
@@ -343,8 +339,6 @@ Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d1 = kMin, d2 = kMin, d3 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin; // NOLINT(readability-isolate-declaration)
 
-    FZX_PRAGMA_GCC("GCC unroll 4")
-    FZX_PRAGMA_CLANG("clang loop unroll_count(4)")
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
@@ -394,8 +388,6 @@ Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d1 = kMin, d2 = kMin, d3 = kMin, d4 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin, m4 = kMin; // NOLINT(readability-isolate-declaration)
 
-    FZX_PRAGMA_GCC("GCC unroll 4")
-    FZX_PRAGMA_CLANG("clang loop unroll_count(4)")
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];

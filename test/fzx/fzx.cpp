@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "fzx/fzx.hpp"
+#include "fzx/eventfd.hpp"
 #include "fzx/macros.hpp"
 #include <unistd.h>
 #include <chrono>
@@ -34,7 +35,12 @@ static bool wait(int fd, chrono::nanoseconds timeout)
 
 TEST_CASE("fzx::Fzx")
 {
+  fzx::EventFd e;
   fzx::Fzx f;
+  REQUIRE(e.open().empty());
+  f.setCallback([](void* userData) {
+    static_cast<fzx::EventFd*>(userData)->notify();
+  }, &e);
 
   SECTION("starts and stops") {
     f.start();
@@ -56,7 +62,8 @@ TEST_CASE("fzx::Fzx")
     f.setQuery("b"s);
 
     for (unsigned i = 0; i < 2; ++i) {
-      REQUIRE(wait(f.notifyFd(), 100ms));
+      REQUIRE(wait(e.fd(), 100ms));
+      e.consume();
       REQUIRE(f.loadResults());
       if (!f.processing())
         break;
