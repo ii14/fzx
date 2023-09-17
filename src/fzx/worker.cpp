@@ -9,6 +9,7 @@
 #include "fzx/fzx.hpp"
 #include "fzx/macros.hpp"
 #include "fzx/match/fzy/fzy.hpp"
+#include "fzx/match/match.hpp"
 #include "fzx/thread.hpp"
 
 namespace fzx {
@@ -242,53 +243,32 @@ start:
         break;
 
       // Match items and calculate scores.
-      // TODO: hide this switch somewhere maybe.
-      //       also i just assumed it will be better to have the switch outside of the loop,
-      //       but maybe it doesn't matter and the switch could be inside the loop. benchmark.
-      switch (query.size()) {
-      case 1:
-        for (size_t i = start; i < end; ++i)
-          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::match1(query, item) });
-        break;
+      for (size_t i = start; i < end; ++i) {
+        auto item = job.mItems.at(i);
+        if (!matchFuzzy(query, item))
+          continue;
+        switch (query.size()) {
+        case 1:
+          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::score1(query, item) });
+          break;
 #if defined(FZX_SSE2)
-      case 2:
-      case 3:
-      case 4:
-        for (size_t i = start; i < end; ++i)
-          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSSE<4>(query, item) });
-        break;
-      case 5:
-      case 6:
-      case 7:
-      case 8:
-        for (size_t i = start; i < end; ++i)
-          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSSE<8>(query, item) });
-        break;
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-        for (size_t i = start; i < end; ++i)
-          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSSE<12>(query, item) });
-        break;
-      case 13:
-      case 14:
-      case 15:
-      case 16:
-        for (size_t i = start; i < end; ++i)
-          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::matchSSE<16>(query, item) });
-        break;
+        case 2: case 3: case 4:
+          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<4>(query, item) });
+          break;
+        case 5: case 6: case 7: case 8:
+          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<8>(query, item) });
+          break;
+        case 9: case 10: case 11: case 12:
+          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<12>(query, item) });
+          break;
+        case 13: case 14: case 15: case 16:
+          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<16>(query, item) });
+          break;
 #endif // defined(FZX_SSE2)
-      default:
-        for (size_t i = start; i < end; ++i)
-          if (auto item = job.mItems.at(i); fzy::hasMatch(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), fzy::match(query, item) });
-        break;
+        default:
+          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::score(query, item) });
+          break;
+        }
       }
 
       // Ignore kMerge events from other workers, we don't care about

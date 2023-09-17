@@ -15,6 +15,9 @@ constexpr uint32_t kEventMask = ~kWaitFlag;
 
 uint32_t Events::get() noexcept
 {
+  // Since only one thread can call get/wait, this could be improved by doing
+  // `if (mState.load() == 0) return 0;` first to prevent unnecessary writes,
+  // but it doesn't seem to matter for our application.
   return mState.exchange(0);
 }
 
@@ -31,15 +34,16 @@ uint32_t Events::wait()
 
 void Events::post(uint32_t flags)
 {
-  DEBUG_ASSERT((flags & kWaitFlag) == 0); // Trying to set a private flag
-  DEBUG_ASSERT(flags != 0); // No flags set
+  ASSERT((flags & kWaitFlag) == 0); // Trying to set a private flag
+  ASSERT(flags != 0); // No flags set
   // Add new flags. If the thread is in a waiting state,
   // let only the first person who got here through.
   if (mState.fetch_or(flags) != kWaitFlag)
     return;
-  // std::condition_variable::notify_* requires locking a
-  // mutex first, even if it doesn't actually do anything.
-  std::unique_lock { mMutex }; // NOLINT(bugprone-unused-raii)
+  {
+    // Synchronizes with mCv.wait in Events::wait
+    std::unique_lock lock { mMutex };
+  }
   mCv.notify_one();
 }
 

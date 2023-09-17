@@ -149,7 +149,7 @@ void MatchStruct::matchRow(
 
 } // namespace
 
-Score match(const AlignedString& needle, std::string_view haystack) noexcept
+Score score(const AlignedString& needle, std::string_view haystack) noexcept
 {
   if (needle.empty())
     return kScoreMin;
@@ -187,7 +187,7 @@ Score match(const AlignedString& needle, std::string_view haystack) noexcept
   return lastM[match.mHaystackLen - 1];
 }
 
-Score match1(const AlignedString& needle, std::string_view haystack) noexcept
+Score score1(const AlignedString& needle, std::string_view haystack) noexcept
 {
   DEBUG_ASSERT(needle.size() == 1);
   if (needle.empty() || haystack.size() > kMatchMaxLen || haystack.empty()) {
@@ -244,7 +244,7 @@ alignas(32) constexpr Score kSSEGapTable[7] {
 // TODO: variable sized needle
 
 template <size_t N>
-Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept
+Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 {
   static_assert(N == 4 || N == 8 || N == 12 || N == 16);
 
@@ -439,10 +439,10 @@ Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept
   }
 }
 
-template Score matchSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
-template Score matchSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
-template Score matchSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
-template Score matchSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
 
 #endif // defined(FZX_SSE2)
 

@@ -38,16 +38,14 @@ using Score = float;
 
 static constexpr auto kMatchMaxLen = 1024;
 
-bool hasMatch(const AlignedString& needle, std::string_view haystack) noexcept;
-
-Score match(const AlignedString& needle, std::string_view haystack) noexcept;
-Score match1(const AlignedString& needle, std::string_view haystack) noexcept;
+Score score(const AlignedString& needle, std::string_view haystack) noexcept;
+Score score1(const AlignedString& needle, std::string_view haystack) noexcept;
 #if defined(FZX_SSE2)
-template <size_t N> Score matchSSE(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score matchSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score matchSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score matchSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score matchSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+template <size_t N> Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
 #endif // defined(FZX_SSE2)
 
 using Positions = std::array<size_t, kMatchMaxLen>;

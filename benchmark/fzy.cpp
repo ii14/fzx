@@ -6,9 +6,10 @@
 
 #include <unistd.h>
 
-#include "fzx/match/fzy/fzy.hpp"
-#include "fzx/line_scanner.hpp"
 #include "fzx/aligned_string.hpp"
+#include "fzx/line_scanner.hpp"
+#include "fzx/match/fzy/fzy.hpp"
+#include "fzx/match/match.hpp"
 
 using namespace std::string_view_literals;
 
@@ -23,8 +24,8 @@ static void BM_fzy(benchmark::State& s)
 
   for ([[maybe_unused]] auto _ : s) {
     for (const auto& item : gItems) {
-      if (fzx::fzy::hasMatch(query, item)) {
-        auto res = fzx::fzy::match(query, item);
+      if (fzx::matchFuzzy(query, item)) {
+        auto res = fzx::fzy::score(query, item);
         benchmark::DoNotOptimize(res);
       }
     }

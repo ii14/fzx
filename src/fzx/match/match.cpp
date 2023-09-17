@@ -1,30 +1,6 @@
 // Licensed under LGPLv3 - see LICENSE file for details.
-//
-// This file incorporates work covered by the following copyright and permission notice:
-//
-// The MIT License (MIT)
-//
-// Copyright (c) 2014 John Hawthorn
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
 
-#include "fzx/match/fzy/fzy.hpp"
+#include "fzx/match/match.hpp"
 
 #include <cstdint>
 
@@ -33,22 +9,11 @@
 #include "fzx/simd.hpp"
 #include "fzx/util.hpp"
 
-// TODO: avx2 and neon implementation
-// TODO: find-first-set for MSVC
-
-namespace fzx::fzy {
+namespace fzx {
 
 namespace {
 
-// Portable implementation. Unfortunately it's really slow.
-//
-// The original fzy implementation of this function didn't seem to have any problems
-// with performance. I think it's because it uses strpbrk, which is probably already
-// optimized in glibc? The difference is that fzy uses null terminated strings, and
-// we aren't, so it has to be optimized manually.
-//
-// Maybe it could be written in a way that can be autovectorized by the compiler?
-[[maybe_unused]] bool hasMatchBasic(const AlignedString& needle, std::string_view haystack) noexcept
+[[maybe_unused]] bool matchFuzzyNaive(const AlignedString& needle, std::string_view haystack) noexcept
 {
   const char* it = haystack.begin();
   for (char ch : needle) {
@@ -63,7 +28,7 @@ namespace {
 }
 
 #if defined(FZX_SSE2)
-[[maybe_unused]] bool hasMatchSSE(const AlignedString& needle, std::string_view haystack) noexcept
+[[maybe_unused]] bool matchFuzzySSE(const AlignedString& needle, std::string_view haystack) noexcept
 {
   // Technically needle and haystack never will be empty,
   // so maybe fix the tests and turn it into debug asserts
@@ -142,13 +107,61 @@ namespace {
 
 } // namespace
 
-bool hasMatch(const AlignedString& needle, std::string_view haystack) noexcept
+bool matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept
 {
 #if defined(FZX_SSE2)
-  return hasMatchSSE(needle, haystack);
+  return matchFuzzySSE(needle, haystack);
 #else
-  return hasMatchBasic(needle, haystack);
+  return matchFuzzyNaive(needle, haystack);
 #endif
 }
 
-} // namespace fzx::fzy
+bool matchBegin(const AlignedString& needle, std::string_view haystack) noexcept
+{
+  // TODO: sse
+  if (needle.size() > haystack.size())
+    return false;
+  const char* n = needle.begin();
+  const char* h = haystack.begin();
+  while (n != needle.end()) {
+    if (toLower(*n) != toLower(*h))
+      return false;
+    ++n;
+    ++h;
+  }
+  return true;
+}
+
+bool matchEnd(const AlignedString& needle, std::string_view haystack) noexcept
+{
+  // TODO: sse
+  if (needle.size() > haystack.size())
+    return false;
+  const char* n = needle.begin();
+  const char* h = haystack.end() - needle.size();
+  while (n != needle.end()) {
+    if (toLower(*n) != toLower(*h))
+      return false;
+    ++n;
+    ++h;
+  }
+  return true;
+}
+
+bool matchExact(const AlignedString& needle, std::string_view haystack) noexcept
+{
+  // TODO: sse
+  if (needle.size() != haystack.size())
+    return false;
+  const char* n = needle.begin();
+  const char* h = haystack.begin();
+  while (n != needle.end()) {
+    if (toLower(*n) != toLower(*h))
+      return false;
+    ++n;
+    ++h;
+  }
+  return true;
+}
+
+} // namespace fzx
