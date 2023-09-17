@@ -156,20 +156,25 @@ int main(int argc, char** argv)
     if (min == std::numeric_limits<int64_t>::max())
       min = 0;
 
-    auto mean = static_cast<size_t>(acc / static_cast<double>(gSamples.size()));
-    fprintf(stderr, "    min: %zu\n", static_cast<size_t>(min));
-    fprintf(stderr, "    max: %zu\n", static_cast<size_t>(max));
-    fprintf(stderr, "   mean: %zu\n", mean);
+    auto print = [](const char* what, size_t time) {
+      size_t ms = static_cast<size_t>(time) / 1000;
+      size_t us = static_cast<size_t>(time) % 1000;
+      fprintf(stderr, "%7s: %zu.%03zu ms\n", what, ms, us);
+    };
+
+    print("min", min);
+    print("max", max);
+    print("mean", static_cast<size_t>(acc / static_cast<double>(gSamples.size())));
     ASSERT(!gSamples.empty());
     if (gSamples.size() == 1) {
-      fprintf(stderr, " median: %zu\n", gSamples.at(0).diff());
+      print("median", gSamples.at(0).diff());
     } else if (gSamples.size() % 2 == 1) {
       auto mid = gSamples.size() / 2;
-      fprintf(stderr, " median: %zu\n", gSamples.at(mid).diff());
+      print("median", gSamples.at(mid).diff());
     } else {
       auto mid = gSamples.size() / 2;
       auto median = static_cast<size_t>((gSamples.at(mid-1).diff() + gSamples.at(mid).diff()) / 2);
-      fprintf(stderr, " median: %zu\n", median);
+      print("median", median);
     }
   }
 }
