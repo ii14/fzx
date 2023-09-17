@@ -5,6 +5,7 @@
 #include "fzx/term/line_editor.hpp"
 #include "fzx/term/tty.hpp"
 #include "fzx/eventfd.hpp"
+#include "fzx/line_scanner.hpp"
 
 namespace fzx {
 
@@ -26,6 +27,7 @@ struct TermApp
 
   EventFd mEventFd;
   Fzx mFzx;
+  LineScanner mLineScanner;
 
   Input mInput;
   TTY mTTY;

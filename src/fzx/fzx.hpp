@@ -102,11 +102,6 @@ struct Fzx
   [[nodiscard]] size_t itemsSize() const noexcept { return mItems.size(); }
   [[nodiscard]] std::string_view getItem(size_t i) const noexcept { return mItems.at(i); }
 
-  /// Feed bytes into the line scanner.
-  uint32_t scanFeed(std::string_view s);
-  /// Finalize scanning - push any pending data that was left.
-  bool scanEnd();
-
   /// Set query
   void setQuery(std::string_view query);
 

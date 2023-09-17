@@ -1,10 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
-#include "fzx/fzx.hpp"
-#include "fzx/eventfd.hpp"
-#include "fzx/macros.hpp"
-#include <unistd.h>
+
 #include <chrono>
 #include <iostream>
+#include <unistd.h>
+
+#include "fzx/eventfd.hpp"
+#include "fzx/fzx.hpp"
+#include "fzx/macros.hpp"
 
 namespace chrono = std::chrono;
 using namespace std::chrono_literals;
@@ -37,6 +39,7 @@ TEST_CASE("fzx::Fzx")
 {
   fzx::EventFd e;
   fzx::Fzx f;
+
   REQUIRE(e.open().empty());
   f.setCallback([](void* userData) {
     static_cast<fzx::EventFd*>(userData)->notify();
@@ -75,74 +78,5 @@ TEST_CASE("fzx::Fzx")
     REQUIRE(f.getResult(1).mLine == "baz"sv);
 
     f.stop();
-  }
-}
-
-TEST_CASE("fzx::Fzx scan")
-{
-  fzx::Fzx f;
-
-  SECTION("") {
-    CHECK(f.scanFeed(""sv) == 0);
-    CHECK(f.scanFeed(""sv) == 0);
-    CHECK(f.scanEnd() == false);
-    REQUIRE(f.itemsSize() == 0);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("\n"sv) == 0);
-    CHECK(f.scanEnd() == false);
-    REQUIRE(f.itemsSize() == 0);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("\n\n\n"sv) == 0);
-    CHECK(f.scanEnd() == false);
-    REQUIRE(f.itemsSize() == 0);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("foo"sv) == 0);
-    CHECK(f.scanFeed("bar"sv) == 0);
-    CHECK(f.scanEnd() == true);
-    REQUIRE(f.itemsSize() == 1);
-    REQUIRE(f.getItem(0) == "foobar"sv);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("foo\n"sv) == 1);
-    CHECK(f.scanFeed("bar\n"sv) == 1);
-    CHECK(f.scanEnd() == false);
-    REQUIRE(f.itemsSize() == 2);
-    REQUIRE(f.getItem(0) == "foo"sv);
-    REQUIRE(f.getItem(1) == "bar"sv);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("\nfoo"sv) == 0);
-    CHECK(f.scanFeed("\nbar"sv) == 1);
-    CHECK(f.scanEnd() == true);
-    REQUIRE(f.itemsSize() == 2);
-    REQUIRE(f.getItem(0) == "foo"sv);
-    REQUIRE(f.getItem(1) == "bar"sv);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("fo"sv) == 0);
-    CHECK(f.scanFeed("o\nba"sv) == 1);
-    CHECK(f.scanFeed("r\n"sv) == 1);
-    CHECK(f.scanEnd() == false);
-    REQUIRE(f.itemsSize() == 2);
-    REQUIRE(f.getItem(0) == "foo"sv);
-    REQUIRE(f.getItem(1) == "bar"sv);
-  }
-
-  SECTION("") {
-    CHECK(f.scanFeed("foo\nbar\nbaz\n"sv) == 3);
-    CHECK(f.scanEnd() == false);
-    REQUIRE(f.itemsSize() == 3);
-    REQUIRE(f.getItem(0) == "foo"sv);
-    REQUIRE(f.getItem(1) == "bar"sv);
-    REQUIRE(f.getItem(2) == "baz"sv);
   }
 }

@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "fzx/fzx.hpp"
-#include "fzx/line_scanner.ipp"
+#include "fzx/line_scanner.hpp"
 #include "fzx/macros.hpp"
 
 namespace chrono = std::chrono;

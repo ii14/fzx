@@ -20,10 +20,11 @@ static constexpr auto kMaxInputBufferSize = 0x40000; // limit buffer size to 256
 
 void TermApp::processInput()
 {
+  auto push = [this](std::string_view item) { mFzx.pushItem(item); };
   try {
     auto len = read(mInput.fd(), mInputBuffer.data(), mInputBuffer.size());
     if (len > 0) {
-      if (mFzx.scanFeed({ mInputBuffer.data(), size_t(len) }) > 0)
+      if (mLineScanner.feed({ mInputBuffer.data(), size_t(len) }, push) > 0)
         mFzx.commit();
       // resize the buffer if data can be read in bigger chunks
       if (mInputBuffer.size() == size_t(len) && mInputBuffer.size() < kMaxInputBufferSize)
@@ -32,7 +33,7 @@ void TermApp::processInput()
       return;
     } else if (len == 0) {
       mInput.close();
-      if (mFzx.scanEnd())
+      if (mLineScanner.finalize(push))
         mFzx.commit();
       mInputBuffer.clear();
       mInputBuffer.shrink_to_fit();
@@ -44,7 +45,7 @@ void TermApp::processInput()
   } catch (...) {
     // catch out of memory exceptions
     mInput.close();
-    if (mFzx.scanEnd())
+    if (mLineScanner.finalize(push))
       mFzx.commit();
     mInputBuffer.clear();
     mInputBuffer.shrink_to_fit();

@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "fzx/match/fzy/fzy.hpp"
-#include "fzx/line_scanner.ipp"
+#include "fzx/line_scanner.hpp"
 #include "fzx/aligned_string.hpp"
 
 using namespace std::string_view_literals;

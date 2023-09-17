@@ -15,6 +15,7 @@ namespace fzx::lua {
 struct Instance
 {
   EventFd mEventFd;
+  LineScanner mLineScanner;
   Fzx mFzx;
 };
 
@@ -150,7 +151,8 @@ static int scanFeed(lua_State* lstate) try
     return luaL_error(lstate, "fzx: null pointer");
   size_t len = 0;
   const char* str = luaL_checklstring(lstate, 2, &len);
-  if (p->mFzx.scanFeed({ str, len }) > 0)
+  auto push = [&p](std::string_view item) { p->mFzx.pushItem(item); };
+  if (p->mLineScanner.feed({ str, len }, push) > 0)
     p->mFzx.commit();
   return 0;
 } catch (const std::exception& e) {
@@ -162,7 +164,8 @@ static int scanEnd(lua_State* lstate) try
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
-  if (p->mFzx.scanEnd())
+  auto push = [&p](std::string_view item) { p->mFzx.pushItem(item); };
+  if (p->mLineScanner.finalize(push))
     p->mFzx.commit();
   return 0;
 } catch (const std::exception& e) {

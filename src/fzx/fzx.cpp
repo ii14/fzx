@@ -7,7 +7,6 @@
 #include <thread>
 
 #include "fzx/config.hpp"
-#include "fzx/line_scanner.ipp"
 #include "fzx/macros.hpp"
 
 namespace fzx {
@@ -63,20 +62,6 @@ void Fzx::stop()
     if (worker->mThread.joinable())
       worker->mThread.join();
   mWorkers.clear();
-}
-
-uint32_t Fzx::scanFeed(std::string_view s)
-{
-  return mLineScanner.feed(s, [this](std::string_view item) {
-    mItems.push(item);
-  });
-}
-
-bool Fzx::scanEnd()
-{
-  return mLineScanner.finalize([this](std::string_view item) {
-    mItems.push(item);
-  });
 }
 
 void Fzx::setQuery(std::string_view query)
