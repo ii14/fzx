@@ -18,12 +18,13 @@ struct LineScanner
   uint32_t feed(std::string_view str, Push&& push, char ch = '\n')
   {
     uint32_t count = 0;
-    const auto* it = str.begin();
+    const char* it = str.data();
+    const char* const end = it + str.size();
     while (true) {
-      const auto* const nl = std::find(it, str.end(), ch);
+      const auto* const nl = std::find(it, end, ch);
       const auto len = std::distance(it, nl);
       ASSUME(len >= 0);
-      if (nl == str.end()) {
+      if (nl == end) {
         if (len != 0) {
           const auto size = mBuf.size();
           mBuf.resize(size + len);

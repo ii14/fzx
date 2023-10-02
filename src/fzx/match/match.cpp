@@ -15,12 +15,13 @@ namespace {
 
 [[maybe_unused]] bool matchFuzzyNaive(const AlignedString& needle, std::string_view haystack) noexcept
 {
-  const char* it = haystack.begin();
+  const char* it = haystack.data();
+  const char* const end = it + haystack.size();
   for (char ch : needle) {
     char uch = static_cast<char>(toUpper(ch));
-    while (it != haystack.end() && *it != ch && *it != uch)
+    while (it != end && *it != ch && *it != uch)
       ++it;
-    if (it == haystack.end())
+    if (it == end)
       return false;
     ++it;
   }
@@ -41,10 +42,10 @@ namespace {
   static_assert(isPow2(kWidth)); // -1 has to yield a mask for unaligned bytes
   constexpr uintptr_t kMisaligned { kWidth - 1 };
 
-  const char* nit = needle.begin();
-  const char* nend = needle.end();
-  const char* it = haystack.begin();
-  const char* end = haystack.end();
+  const char* nit = needle.data();
+  const char* nend = nit + needle.size();
+  const char* it = haystack.data();
+  const char* end = it + haystack.size();
 
   // Loading memory from unaligned addresses is way slower.
   // Align the start and the end pointer to the width of the xmm register.
@@ -121,9 +122,10 @@ bool matchBegin(const AlignedString& needle, std::string_view haystack) noexcept
   // TODO: sse
   if (needle.size() > haystack.size())
     return false;
-  const char* n = needle.begin();
-  const char* h = haystack.begin();
-  while (n != needle.end()) {
+  const char* n = needle.data();
+  const char* nend = n + needle.size();
+  const char* h = haystack.data();
+  while (n != nend) {
     if (toLower(*n) != toLower(*h))
       return false;
     ++n;
@@ -137,9 +139,10 @@ bool matchEnd(const AlignedString& needle, std::string_view haystack) noexcept
   // TODO: sse
   if (needle.size() > haystack.size())
     return false;
-  const char* n = needle.begin();
-  const char* h = haystack.end() - needle.size();
-  while (n != needle.end()) {
+  const char* n = needle.data();
+  const char* nend = n + needle.size();
+  const char* h = haystack.data() + haystack.size() - needle.size();
+  while (n != nend) {
     if (toLower(*n) != toLower(*h))
       return false;
     ++n;
@@ -153,9 +156,10 @@ bool matchExact(const AlignedString& needle, std::string_view haystack) noexcept
   // TODO: sse
   if (needle.size() != haystack.size())
     return false;
-  const char* n = needle.begin();
-  const char* h = haystack.begin();
-  while (n != needle.end()) {
+  const char* n = needle.data();
+  const char* nend = n + needle.size();
+  const char* h = haystack.data();
+  while (n != nend) {
     if (toLower(*n) != toLower(*h))
       return false;
     ++n;
