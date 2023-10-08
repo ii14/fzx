@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <type_traits>
 #include <utility>
 
@@ -92,6 +93,26 @@ template <size_t N, typename T>
 }
 
 // NOLINTEND(google-runtime-int)
+
+inline void* alignedAlloc(size_t alignment, size_t size)
+{
+  // TODO: _WIN32 should be enough, but I think it's somehow
+  // not being defined? I don't know anything about windows.
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64)
+  return _aligned_malloc(size, alignment);
+#else
+  return std::aligned_alloc(alignment, size);
+#endif
+}
+
+inline void alignedFree(void* ptr)
+{
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64)
+  return _aligned_free(ptr);
+#else
+  return std::free(ptr);
+#endif
+}
 
 using std::swap;
 

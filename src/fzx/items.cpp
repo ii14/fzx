@@ -30,7 +30,7 @@ struct Item
 
 // can memcpy, don't have to call a destructor
 static_assert(std::is_trivial_v<Item>);
-static_assert(std::is_trivial_v<std::atomic<size_t>>);
+static_assert(std::is_trivially_destructible_v<std::atomic<size_t>>);
 
 constexpr auto kStorageAlign = fzx::kCacheLine;
 static_assert(isPow2(kStorageAlign), "not a power of two");
@@ -53,7 +53,7 @@ void decRef(char* p) noexcept
     return;
   auto* refCount = std::launder(reinterpret_cast<std::atomic<size_t>*>(p));
   if (refCount->fetch_sub(1, std::memory_order_acq_rel) == 1)
-    std::free(p);
+    alignedFree(p);
 }
 
 template <typename T>
@@ -61,7 +61,7 @@ void resize(char*& mptr, size_t psize, size_t nsize)
 {
   DEBUG_ASSERT(nsize > kStorageAlign);
   DEBUG_ASSERT(isMulOf<kStorageAlign>(nsize));
-  auto* const data = static_cast<char*>(std::aligned_alloc(kStorageAlign, nsize));
+  auto* const data = static_cast<char*>(alignedAlloc(kStorageAlign, nsize));
   if (data == nullptr)
     throw std::bad_alloc {};
 
