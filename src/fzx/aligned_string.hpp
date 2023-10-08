@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cstring>
+#include <memory>
 #include <new>
 #include <string_view>
 #include <utility>
 
 #include "fzx/config.hpp"
-#include "fzx/util.hpp"
 #include "fzx/macros.hpp"
+#include "fzx/util.hpp"
 
 namespace fzx {
 
@@ -15,19 +15,18 @@ namespace fzx {
 /// The underlying memory is overallocated to a multiple of the cache line size.
 struct AlignedString
 {
-private:
-  static constexpr std::align_val_t kAlign { kCacheLine };
-
-public:
   constexpr AlignedString() noexcept = default;
 
   AlignedString(std::string_view str)
   {
     if (str.empty())
       return;
-    mPtr = new (kAlign) char[roundUp<kCacheLine>(str.size())];
-    std::memcpy(mPtr, str.data(), str.size());
-    mEnd = mPtr + str.size();
+    size_t size = roundUp<kCacheLine>(str.size());
+    mPtr = static_cast<char*>(alignedAlloc(kCacheLine, size));
+    if (mPtr == nullptr)
+      throw std::bad_alloc {};
+    mEnd = std::uninitialized_copy_n(str.data(), str.size(), mPtr);
+    std::uninitialized_fill_n(mEnd, size - str.size(), 0); // zero out the rest of the memory
   }
 
   AlignedString(AlignedString&& b) noexcept
@@ -47,12 +46,12 @@ public:
 
   ~AlignedString() noexcept
   {
-    operator delete[](mPtr, kAlign);
+    alignedFree(mPtr);
   }
 
   void clear() noexcept
   {
-    operator delete[](mPtr, kAlign);
+    alignedFree(mPtr);
     mPtr = nullptr;
     mEnd = nullptr;
   }
