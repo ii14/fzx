@@ -243,32 +243,48 @@ start:
         break;
 
       // Match items and calculate scores.
-      for (size_t i = start; i < end; ++i) {
-        auto item = job.mItems.at(i);
-        if (!matchFuzzy(query, item))
-          continue;
-        switch (query.size()) {
-        case 1:
-          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::score1(query, item) });
-          break;
-#if defined(FZX_SSE2)
-        case 2: case 3: case 4:
-          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<4>(query, item) });
-          break;
-        case 5: case 6: case 7: case 8:
-          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<8>(query, item) });
-          break;
-        case 9: case 10: case 11: case 12:
-          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<12>(query, item) });
-          break;
-        case 13: case 14: case 15: case 16:
-          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::scoreSSE<16>(query, item) });
-          break;
-#endif // defined(FZX_SSE2)
-        default:
-          out.mItems.push_back({ static_cast<uint32_t>(i), fzy::score(query, item) });
-          break;
+      auto process = [&](auto&& scoreFunc) {
+        for (size_t i = start; i < end; ++i) {
+          auto item = job.mItems.at(i);
+          if (matchFuzzy(query, item))
+            out.mItems.push_back({ static_cast<uint32_t>(i), scoreFunc(query, item) });
         }
+      };
+
+      switch (query.size()) {
+      default:
+        process(fzy::score);
+        break;
+      case 1:
+        process(fzy::score1);
+        break;
+#if defined(FZX_SSE2)
+      case 2: case 3: case 4:
+        process(fzy::scoreSSE<4>);
+        break;
+      case 5: case 6: case 7: case 8:
+        process(fzy::scoreSSE<8>);
+        break;
+      case 9: case 10: case 11: case 12:
+        process(fzy::scoreSSE<12>);
+        break;
+      case 13: case 14: case 15: case 16:
+        process(fzy::scoreSSE<16>);
+        break;
+#elif defined(FZX_NEON)
+      case 2: case 3: case 4:
+        process(fzy::scoreNeon<4>);
+        break;
+      case 5: case 6: case 7: case 8:
+        process(fzy::scoreNeon<8>);
+        break;
+      case 9: case 10: case 11: case 12:
+        process(fzy::scoreNeon<12>);
+        break;
+      case 13: case 14: case 15: case 16:
+        process(fzy::scoreNeon<16>);
+        break;
+#endif
       }
 
       // Ignore kMerge events from other workers, we don't care about

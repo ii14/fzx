@@ -7,6 +7,7 @@
 #include "fzx/config.hpp"
 #include "fzx/macros.hpp"
 #include "fzx/simd.hpp"
+#include "fzx/strings.hpp"
 #include "fzx/util.hpp"
 
 namespace fzx {

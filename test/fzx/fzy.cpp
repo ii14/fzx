@@ -219,3 +219,72 @@ TEST_CASE("fzx::fzy::score sse2", "[fzy]")
   }
 }
 #endif
+
+#if defined(FZX_NEON)
+TEST_CASE("fzx::fzy::score neon", "[fzy]")
+{
+  auto h =
+    "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"
+    "Maecenas/mollis/odio/semper/nunc/convallis/accumsan/"_s;
+
+  const std::vector<std::string_view> kTestCases {
+    "/"sv,
+    "//"sv,
+    "///"sv,
+    "////"sv,
+    "/////"sv,
+    "//////"sv,
+    "///////"sv,
+    "////////"sv,
+    "/////////"sv,
+    "//////////"sv,
+    "///////////"sv,
+    "////////////"sv,
+    "/////////////"sv,
+    "//////////////"sv,
+    "///////////////"sv,
+    "////////////////"sv,
+    "l"sv,
+    "li"sv,
+    "lid"sv,
+    "lids"sv,
+    "lidsa"sv,
+    "lidsac"sv,
+    "lidsaca"sv,
+    "lidsacae"sv,
+    "lidsacaem"sv,
+    "lidsacaemm"sv,
+    "lidsacaemmo"sv,
+    "lidsacaemmos"sv,
+    "lidsacaemmosn"sv,
+    "lidsacaemmosnc"sv,
+    "lidsacaemmosnca"sv,
+    "co"sv,
+    "con"sv,
+    "cons"sv,
+    "conse"sv,
+    "consec"sv,
+    "consect"sv,
+    "consecte"sv,
+    "consectet"sv,
+    "consectetu"sv,
+    "consectetur"sv,
+  };
+
+  for (auto t : kTestCases) {
+    CAPTURE(t);
+    fzx::AlignedString n { t };
+    if (!t.empty() && t.size() <= 4) {
+      CHECK(Approx(score(n, h)) == scoreNeon<4>(n, h));
+    } else if (t.size() >= 5 && t.size() <= 8) {
+      CHECK(Approx(score(n, h)) == scoreNeon<8>(n, h));
+    } else if (t.size() >= 9 && t.size() <= 12) {
+      CHECK(Approx(score(n, h)) == scoreNeon<12>(n, h));
+    } else if (t.size() >= 13 && t.size() <= 16) {
+      CHECK(Approx(score(n, h)) == scoreNeon<16>(n, h));
+    } else {
+      FAIL("invalid needle size");
+    }
+  }
+}
+#endif

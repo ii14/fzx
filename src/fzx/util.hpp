@@ -10,18 +10,6 @@
 
 namespace fzx {
 
-/// Because libc's toupper can't be inlined
-[[nodiscard]] constexpr uint8_t toUpper(uint8_t ch) noexcept
-{
-  return ch >= 'a' && ch <= 'z' ? ch - 32 : ch;
-}
-
-/// Because libc's tolower can't be inlined
-[[nodiscard]] constexpr uint8_t toLower(uint8_t ch) noexcept
-{
-  return ch >= 'A' && ch <= 'Z' ? ch + 32 : ch;
-}
-
 /// Check if integer is a power of two
 template <typename T>
 [[nodiscard]] constexpr bool isPow2(T n) noexcept

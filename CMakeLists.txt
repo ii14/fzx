@@ -61,6 +61,7 @@ option(FZX_ENABLE_SSE2    "Enable SSE2 (x86_64)" ON)
 option(FZX_ENABLE_SSE41   "Enable SSE4.1 (x86_64)" ON)
 option(FZX_ENABLE_AVX     "Enable AVX (x86_64)" ON)
 option(FZX_ENABLE_AVX2    "Enable AVX2 (x86_64)" ON)
+option(FZX_ENABLE_NEON    "Enable NEON (arm64)" OFF)
 
 option(FZX_ENABLE_UBSAN   "Enable undefined behavior sanitizer" OFF)
 option(FZX_ENABLE_ASAN    "Enable address sanitizer" OFF)
@@ -193,6 +194,11 @@ if(FZX_ENABLE_AVX2 AND FZX_HAS_AVX2)
     target_compile_options(fzxopts INTERFACE /arch:AVX2)
   endif()
   target_compile_definitions(fzxopts INTERFACE FZX_AVX2)
+endif()
+if(FZX_ENABLE_NEON)
+  # TODO: detect
+  message(STATUS "fzx: NEON enabled")
+  target_compile_definitions(fzxopts INTERFACE FZX_NEON)
 endif()
 
 

@@ -37,35 +37,12 @@
 #include "fzx/match/fzy/bonus.hpp"
 #include "fzx/match/fzy/config.hpp"
 #include "fzx/simd.hpp"
+#include "fzx/strings.hpp"
 #include "fzx/util.hpp"
 
 namespace fzx::fzy {
 
 namespace {
-
-/// `in` is expected to be overallocated with at least fzx::kOveralloc bytes beyond `len`
-void toLowercase(const char* RESTRICT in, size_t len, char* RESTRICT out) noexcept
-{
-  // TODO: neon
-#if defined(FZX_AVX2)
-  static_assert(fzx::kOveralloc >= 32);
-  for (size_t i = 0; i < len; i += 32) {
-    auto s = simd::load256i(in + i);
-    s = simd::toLower(s);
-    simd::store(out + i, s);
-  }
-#elif defined(FZX_SSE2)
-  static_assert(fzx::kOveralloc >= 16);
-  for (size_t i = 0; i < len; i += 16) {
-    auto s = simd::load128i(in + i);
-    s = simd::toLower(s);
-    simd::store(out + i, s);
-  }
-#else
-  for (size_t i = 0; i < len; ++i)
-    out[i] = static_cast<char>(toLower(in[i]));
-#endif
-}
 
 void precomputeBonus(std::string_view haystack, Score* matchBonus) noexcept
 {
@@ -111,8 +88,8 @@ MatchStruct::MatchStruct(const AlignedString& needle, std::string_view haystack)
     return;
 
   // TODO: needle can be preprocessed only once
-  toLowercase(needle.data(), mNeedleLen, mLowerNeedle);
-  toLowercase(haystack.data(), mHaystackLen, mLowerHaystack);
+  toLower(mLowerNeedle, needle.data(), mNeedleLen);
+  toLower(mLowerHaystack, haystack.data(), mHaystackLen);
 
   precomputeBonus(haystack, mMatchBonus);
 }
@@ -226,10 +203,9 @@ Score score1(const AlignedString& needle, std::string_view haystack) noexcept
   return score;
 }
 
-#if defined(FZX_SSE2)
+#if defined(FZX_SSE2) || defined(FZX_NEON)
 namespace {
-
-alignas(32) constexpr Score kSSEGapTable[7] {
+alignas(32) constexpr Score kGapTable[7] {
   kScoreGapInner,
   kScoreGapInner,
   kScoreGapTrailing,
@@ -238,9 +214,10 @@ alignas(32) constexpr Score kSSEGapTable[7] {
   kScoreGapInner,
   kScoreGapTrailing,
 };
-
 } // namespace
+#endif
 
+#if defined(FZX_SSE2)
 // TODO: variable sized needle
 
 template <size_t N>
@@ -260,7 +237,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   const auto kZero = _mm_setzero_si128();
   const auto kMin = _mm_set1_ps(kScoreMin);
   const auto kGap1 [[maybe_unused]] = _mm_set1_ps(kScoreGapInner);
-  const auto kGap2 = _mm_loadu_ps(&kSSEGapTable[3 - (needle.size() & 0b11)]);
+  const auto kGap2 = _mm_loadu_ps(&kGapTable[3 - (needle.size() & 0b11)]);
   const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
   const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
 
@@ -445,6 +422,209 @@ template Score scoreSSE<12>(const AlignedString& needle, std::string_view haysta
 template Score scoreSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
 
 #endif // defined(FZX_SSE2)
+
+#if defined(FZX_NEON)
+template <size_t N>
+Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
+{
+  static_assert(N == 4 || N == 8 || N == 12 || N == 16);
+
+  DEBUG_ASSERT(needle.size() <= N);
+  if (needle.empty() || haystack.size() > kMatchMaxLen || needle.size() > haystack.size()) {
+    return kScoreMin;
+  } else if (needle.size() == haystack.size()) {
+    return kScoreMax;
+  }
+
+  const int haystackLen = static_cast<int>(haystack.size());
+
+  const auto kMin = vmovq_n_f32(kScoreMin);
+  const auto kGap1 [[maybe_unused]] = vmovq_n_f32(kScoreGapInner);
+  const auto kGap2 = vld1q_f32(&kGapTable[3 - (needle.size() & 0b11)]);
+  const auto kConsecutive = vmovq_n_f32(kScoreMatchConsecutive);
+  const float kGapLeading = kScoreGapLeading;
+
+  uint8_t lastCh = '/';
+  float gapLeading = 0.f;
+  auto nt = simd::toLower(vld1q_u8(reinterpret_cast<const uint8_t*>(needle.data())));
+
+  if constexpr (N == 4) {
+    auto nl = vmovl_u8(vget_low_u8(nt));
+    auto n = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
+    auto d = kMin;
+    auto m = kMin;
+
+    for (int i = 0; i < haystackLen; ++i) {
+      uint8_t ch = haystack[i];
+      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      lastCh = ch;
+
+      auto r = vmovq_n_f32(toLower(ch));
+      auto b = vmovq_n_f32(bonus);
+      auto c = vceqq_f32(n, r);
+      auto pm = vextq_f32(m, m, 3);
+      auto pd = vextq_f32(d, d, 3);
+      auto s = vmaxq_f32(vaddq_f32(pm, b), vaddq_f32(pd, kConsecutive));
+      s = vsetq_lane_f32(gapLeading + bonus, s, 0);
+      gapLeading += kGapLeading;
+      auto g = vaddq_f32(m, kGap2);
+      d = vbslq_f32(c, s, kMin);
+      m = vbslq_f32(c, vmaxq_f32(s, g), g);
+    }
+
+    return simd::extractv(m, (needle.size() + 3) & 0b11);
+  } else if constexpr (N == 8) {
+    auto nl = vmovl_u8(vget_low_u8(nt));
+    auto n1 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
+    auto n2 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nl)));
+    auto d1 = kMin, d2 = kMin; // NOLINT(readability-isolate-declaration)
+    auto m1 = kMin, m2 = kMin; // NOLINT(readability-isolate-declaration)
+
+    for (int i = 0; i < haystackLen; ++i) {
+      uint8_t ch = haystack[i];
+      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      lastCh = ch;
+
+      auto r = vmovq_n_f32(toLower(ch));
+      auto b = vmovq_n_f32(bonus);
+      auto c1 = vceqq_f32(n1, r);
+      auto c2 = vceqq_f32(n2, r);
+
+      auto pm1 = vextq_f32(m1, m1, 3);
+      auto pm2 = vextq_f32(m2, m2, 3);
+      auto pd1 = vextq_f32(d1, d1, 3);
+      auto pd2 = vextq_f32(d2, d2, 3);
+      pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
+      pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
+      auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
+      auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
+      s1 = vsetq_lane_f32(gapLeading + bonus, s1, 0);
+      gapLeading += kGapLeading;
+
+      auto g1 = vaddq_f32(m1, kGap1);
+      auto g2 = vaddq_f32(m2, kGap2);
+      d1 = vbslq_f32(c1, s1, kMin);
+      d2 = vbslq_f32(c2, s2, kMin);
+      m1 = vbslq_f32(c1, vmaxq_f32(s1, g1), g1);
+      m2 = vbslq_f32(c2, vmaxq_f32(s2, g2), g2);
+    }
+
+    return simd::extractv(m2, (needle.size() + 3) & 0b11);
+  } else if constexpr (N == 12) {
+    auto nl = vmovl_u8(vget_low_u8(nt));
+    auto nh = vmovl_u8(vget_high_u8(nt));
+    auto n1 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
+    auto n2 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nl)));
+    auto n3 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nh)));
+    auto d1 = kMin, d2 = kMin, d3 = kMin; // NOLINT(readability-isolate-declaration)
+    auto m1 = kMin, m2 = kMin, m3 = kMin; // NOLINT(readability-isolate-declaration)
+
+    for (int i = 0; i < haystackLen; ++i) {
+      uint8_t ch = haystack[i];
+      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      lastCh = ch;
+
+      auto r = vmovq_n_f32(toLower(ch));
+      auto b = vmovq_n_f32(bonus);
+      auto c1 = vceqq_f32(n1, r);
+      auto c2 = vceqq_f32(n2, r);
+      auto c3 = vceqq_f32(n3, r);
+
+      auto pm1 = vextq_f32(m1, m1, 3);
+      auto pm2 = vextq_f32(m2, m2, 3);
+      auto pm3 = vextq_f32(m3, m3, 3);
+      auto pd1 = vextq_f32(d1, d1, 3);
+      auto pd2 = vextq_f32(d2, d2, 3);
+      auto pd3 = vextq_f32(d3, d3, 3);
+      pm3 = vsetq_lane_f32(vgetq_lane_f32(pm2, 0), pm3, 0);
+      pd3 = vsetq_lane_f32(vgetq_lane_f32(pd2, 0), pd3, 0);
+      pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
+      pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
+      auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
+      auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
+      auto s3 = vmaxq_f32(vaddq_f32(pm3, b), vaddq_f32(pd3, kConsecutive));
+      s1 = vsetq_lane_f32(gapLeading + bonus, s1, 0);
+      gapLeading += kGapLeading;
+
+      auto g1 = vaddq_f32(m1, kGap1);
+      auto g2 = vaddq_f32(m2, kGap1);
+      auto g3 = vaddq_f32(m3, kGap2);
+      d1 = vbslq_f32(c1, s1, kMin);
+      d2 = vbslq_f32(c2, s2, kMin);
+      d3 = vbslq_f32(c3, s3, kMin);
+      m1 = vbslq_f32(c1, vmaxq_f32(s1, g1), g1);
+      m2 = vbslq_f32(c2, vmaxq_f32(s2, g2), g2);
+      m3 = vbslq_f32(c3, vmaxq_f32(s3, g3), g3);
+    }
+
+    return simd::extractv(m3, (needle.size() + 3) & 0b11);
+  } else if constexpr (N == 16) {
+    auto nl = vmovl_u8(vget_low_u8(nt));
+    auto nh = vmovl_u8(vget_high_u8(nt));
+    auto n1 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
+    auto n2 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nl)));
+    auto n3 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nh)));
+    auto n4 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nh)));
+    auto d1 = kMin, d2 = kMin, d3 = kMin, d4 = kMin; // NOLINT(readability-isolate-declaration)
+    auto m1 = kMin, m2 = kMin, m3 = kMin, m4 = kMin; // NOLINT(readability-isolate-declaration)
+
+    for (int i = 0; i < haystackLen; ++i) {
+      uint8_t ch = haystack[i];
+      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      lastCh = ch;
+
+      auto r = vmovq_n_f32(toLower(ch));
+      auto b = vmovq_n_f32(bonus);
+      auto c1 = vceqq_f32(n1, r);
+      auto c2 = vceqq_f32(n2, r);
+      auto c3 = vceqq_f32(n3, r);
+      auto c4 = vceqq_f32(n4, r);
+
+      auto pm1 = vextq_f32(m1, m1, 3);
+      auto pm2 = vextq_f32(m2, m2, 3);
+      auto pm3 = vextq_f32(m3, m3, 3);
+      auto pm4 = vextq_f32(m4, m4, 3);
+      auto pd1 = vextq_f32(d1, d1, 3);
+      auto pd2 = vextq_f32(d2, d2, 3);
+      auto pd3 = vextq_f32(d3, d3, 3);
+      auto pd4 = vextq_f32(d4, d4, 3);
+      pm4 = vsetq_lane_f32(vgetq_lane_f32(pm3, 0), pm4, 0);
+      pd4 = vsetq_lane_f32(vgetq_lane_f32(pd3, 0), pd4, 0);
+      pm3 = vsetq_lane_f32(vgetq_lane_f32(pm2, 0), pm3, 0);
+      pd3 = vsetq_lane_f32(vgetq_lane_f32(pd2, 0), pd3, 0);
+      pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
+      pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
+      auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
+      auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
+      auto s3 = vmaxq_f32(vaddq_f32(pm3, b), vaddq_f32(pd3, kConsecutive));
+      auto s4 = vmaxq_f32(vaddq_f32(pm4, b), vaddq_f32(pd4, kConsecutive));
+      s1 = vsetq_lane_f32(gapLeading + bonus, s1, 0);
+      gapLeading += kGapLeading;
+
+      auto g1 = vaddq_f32(m1, kGap1);
+      auto g2 = vaddq_f32(m2, kGap1);
+      auto g3 = vaddq_f32(m3, kGap1);
+      auto g4 = vaddq_f32(m4, kGap2);
+      d1 = vbslq_f32(c1, s1, kMin);
+      d2 = vbslq_f32(c2, s2, kMin);
+      d3 = vbslq_f32(c3, s3, kMin);
+      d4 = vbslq_f32(c4, s4, kMin);
+      m1 = vbslq_f32(c1, vmaxq_f32(s1, g1), g1);
+      m2 = vbslq_f32(c2, vmaxq_f32(s2, g2), g2);
+      m3 = vbslq_f32(c3, vmaxq_f32(s3, g3), g3);
+      m4 = vbslq_f32(c4, vmaxq_f32(s4, g4), g4);
+    }
+
+    return simd::extractv(m4, (needle.size() + 3) & 0b11);
+  }
+}
+
+template Score scoreNeon<4>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreNeon<8>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreNeon<12>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreNeon<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+
+#endif // defined(FZX_NEON)
 
 Score matchPositions(const AlignedString& needle, std::string_view haystack, Positions* positions)
 {

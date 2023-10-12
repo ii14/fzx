@@ -40,6 +40,7 @@ static constexpr auto kMatchMaxLen = 1024;
 
 Score score(const AlignedString& needle, std::string_view haystack) noexcept;
 Score score1(const AlignedString& needle, std::string_view haystack) noexcept;
+
 #if defined(FZX_SSE2)
 template <size_t N> Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept;
 extern template Score scoreSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
@@ -47,6 +48,14 @@ extern template Score scoreSSE<8>(const AlignedString& needle, std::string_view 
 extern template Score scoreSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
 extern template Score scoreSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
 #endif // defined(FZX_SSE2)
+
+#if defined(FZX_NEON)
+template <size_t N> Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreNeon<4>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreNeon<8>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreNeon<12>(const AlignedString& needle, std::string_view haystack) noexcept;
+extern template Score scoreNeon<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+#endif // defined(FZX_NEON)
 
 using Positions = std::array<size_t, kMatchMaxLen>;
 Score matchPositions(const AlignedString& needle, std::string_view haystack, Positions* positions);

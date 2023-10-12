@@ -33,7 +33,7 @@ jobs:
             flags: -D FZX_ENABLE_UBSAN=ON
           - name: aarch64
             os: ubuntu-latest
-            flags: -D CMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -D FZX_ENABLE_NATIVE=OFF
+            flags: -D CMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -D FZX_ENABLE_NATIVE=OFF -D FZX_ENABLE_NEON=ON
             qemu: 'qemu-aarch64 -L /usr/aarch64-linux-gnu'
 
     runs-on: ${{ matrix.os }}
