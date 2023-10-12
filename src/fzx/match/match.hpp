@@ -8,6 +8,10 @@
 
 namespace fzx {
 
+bool matchFuzzyNaive(std::string_view needle, std::string_view haystack) noexcept;
+#if defined(FZX_SSE2)
+bool matchFuzzySSE(const AlignedString& needle, std::string_view haystack) noexcept;
+#endif
 bool matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept;
 
 // unused

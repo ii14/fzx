@@ -12,9 +12,7 @@
 
 namespace fzx {
 
-namespace {
-
-[[maybe_unused]] bool matchFuzzyNaive(const AlignedString& needle, std::string_view haystack) noexcept
+bool matchFuzzyNaive(std::string_view needle, std::string_view haystack) noexcept
 {
   const char* it = haystack.data();
   const char* const end = it + haystack.size();
@@ -30,7 +28,7 @@ namespace {
 }
 
 #if defined(FZX_SSE2)
-[[maybe_unused]] bool matchFuzzySSE(const AlignedString& needle, std::string_view haystack) noexcept
+bool matchFuzzySSE(const AlignedString& needle, std::string_view haystack) noexcept
 {
   // Technically needle and haystack never will be empty,
   // so maybe fix the tests and turn it into debug asserts
@@ -107,14 +105,12 @@ namespace {
 }
 #endif
 
-} // namespace
-
 bool matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept
 {
 #if defined(FZX_SSE2)
   return matchFuzzySSE(needle, haystack);
 #else
-  return matchFuzzyNaive(needle, haystack);
+  return matchFuzzyNaive(needle.str(), haystack);
 #endif
 }
 
