@@ -13,8 +13,7 @@
       "hidden": true,
       "inherits": "conf-common",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_PREFIX_PATH": "${sourceDir}/build/deps-gcc/usr"
+        "CMAKE_CXX_COMPILER": "g++"
       }
     },
     {
@@ -22,8 +21,7 @@
       "hidden": true,
       "inherits": "conf-common",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_PREFIX_PATH": "${sourceDir}/build/deps-clang/usr"
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     },
 
@@ -83,6 +81,19 @@
       "name": "debug-tsan-clang",
       "displayName": "debug, TSAN, clang",
       "inherits": ["clang-common", "debug-tsan-common"]
+    },
+    {
+      "name": "aarch64",
+      "displayName": "aarch64",
+      "inherits": ["conf-common"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "aarch64-linux-gnu-g++",
+        "FZX_ENABLE_NATIVE": false,
+        "FZX_BUILD_TESTS": true,
+        "FZX_BUILD_LUA_MODULE": false,
+        "FZX_BUILD_EXECUTABLE": false
+      }
     }
   ],
 
@@ -116,6 +127,11 @@
       "name": "debug-tsan-clang",
       "configurePreset": "debug-tsan-clang",
       "displayName": "debug, TSAN, clang"
+    },
+    {
+      "name": "aarch64",
+      "configurePreset": "aarch64",
+      "displayName": "aarch64"
     }
   ]
 }
