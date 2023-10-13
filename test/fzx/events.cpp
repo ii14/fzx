@@ -19,12 +19,16 @@ TEST_CASE("fzx::Events")
   fzx::Thread t0 { [&] {
     while (true) {
       uint32_t evs = ev.wait();
-      if (evs & Event::kStopEvent)
-        return;
       if (evs & Event::kItemsEvent)
         ++items;
       if (evs & Event::kQueryEvent)
         ++query;
+
+      // in the actual application this happens first to stop as soon as possible.
+      // here we want to guarantee that other events are parsed too, and if we get
+      // unlucky, this thread might not get a chance to run before all events came in.
+      if (evs & Event::kStopEvent)
+        return;
     }
   } };
 
