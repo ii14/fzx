@@ -10,24 +10,28 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.compiler.name }} ${{ matrix.sanitizer.name }}
+    name: ${{ matrix.flavor.name }}
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - name: gcc
-            cc: gcc
-            cxx: g++
-          - name: clang
-            cc: clang
-            cxx: clang++
-        sanitizer:
-          - name: asan
-            flags: -D FZX_ENABLE_ASAN=ON -D FZX_ENABLE_UBSAN=ON
-          - name: tsan
-            flags: -D FZX_ENABLE_TSAN=ON
+        flavor:
+          - name: ubuntu gcc asan
+            os: ubuntu-latest
+            flags: -D CMAKE_CXX_COMPILER=g++ -D FZX_ENABLE_ASAN=ON -D FZX_ENABLE_UBSAN=ON
+          - name: ubuntu gcc tsan
+            os: ubuntu-latest
+            flags: -D CMAKE_CXX_COMPILER=g++ -D FZX_ENABLE_TSAN=ON
+          - name: ubuntu clang asan
+            os: ubuntu-latest
+            flags: -D CMAKE_CXX_COMPILER=clang++ -D FZX_ENABLE_ASAN=ON -D FZX_ENABLE_UBSAN=ON
+          - name: ubuntu clang tsan
+            os: ubuntu-latest
+            flags: -D CMAKE_CXX_COMPILER=clang++ -D FZX_ENABLE_TSAN=ON
+          - name: macos clang ubsan
+            os: macos-latest
+            flags: -D FZX_ENABLE_UBSAN=ON
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.flavor.os }}
 
     steps:
     - uses: actions/checkout@v3
@@ -45,16 +49,15 @@ jobs:
       run: >
         cmake
         -B ${{ steps.strings.outputs.build-output-dir }}
-        -D CMAKE_CXX_COMPILER=${{ matrix.compiler.cxx }}
         -D CMAKE_BUILD_TYPE=Debug
         -D FZX_BUILD_EXECUTABLE=OFF
         -D FZX_BUILD_LUA_MODULE=OFF
         -D FZX_BUILD_TESTS=ON
-        ${{ matrix.sanitizer.flags }}
+        ${{ matrix.flavor.flags }}
         -S ${{ github.workspace }}
 
     - name: Build
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Debug
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Debug --parallel
 
     - name: Run tests
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
