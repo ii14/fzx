@@ -2,19 +2,24 @@ name: test
 
 on: [push, pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
 env:
   # preferably should write to a log file instead
   UBSAN_OPTIONS: halt_on_error=1
   ASAN_OPTIONS: halt_on_error=1
   TSAN_OPTIONS: halt_on_error=1
+  BUILD_DIR: ${{ github.workspace }}/build
 
 jobs:
   build:
-    name: ${{ matrix.flavor.name }}
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
-        flavor:
+        include:
           - name: ubuntu gcc asan
             os: ubuntu-latest
             flags: -D CMAKE_CXX_COMPILER=g++ -D FZX_ENABLE_ASAN=ON -D FZX_ENABLE_UBSAN=ON
@@ -33,39 +38,36 @@ jobs:
           - name: aarch64
             os: ubuntu-latest
             flags: -D CMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -D FZX_ENABLE_NATIVE=OFF
+            qemu: 'qemu-aarch64 -L /usr/aarch64-linux-gnu'
 
-    runs-on: ${{ matrix.flavor.os }}
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: Install cross-compiler and qemu
-      if: ${{ matrix.flavor.name == 'aarch64' }}
-      run: sudo apt-get install -y g++-aarch64-linux-gnu qemu-user qemu-system-arm qemu-efi
+    - run: ./.github/workflows/install_deps.sh
 
-    - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-      id: strings
-      shell: bash
-      run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+    - name: Install cross-compiler and qemu
+      if: ${{ matrix.name == 'aarch64' }}
+      run: sudo apt-get install -y g++-aarch64-linux-gnu qemu-user qemu-system-arm qemu-efi
 
     - name: Configure CMake
       run: >
         cmake
-        -B ${{ steps.strings.outputs.build-output-dir }}
+        -G Ninja
+        -B $BUILD_DIR
         -D CMAKE_BUILD_TYPE=Debug
         -D FZX_BUILD_EXECUTABLE=OFF
         -D FZX_BUILD_LUA_MODULE=OFF
         -D FZX_BUILD_TESTS=ON
-        ${{ matrix.flavor.flags }}
+        ${{ matrix.flags }}
         -S ${{ github.workspace }}
 
     - name: Build
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Debug --parallel
+      run: cmake --build $BUILD_DIR --config Debug
 
     - name: Run tests
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ${{ matrix.flavor.name == 'aarch64' && 'qemu-aarch64 -L /usr/aarch64-linux-gnu' || '' }} bin/test
+      working-directory: ${{ env.BUILD_DIR }}
+      run: ${{ matrix.qemu }} bin/test
