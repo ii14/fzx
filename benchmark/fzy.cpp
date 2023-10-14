@@ -10,6 +10,7 @@
 #include "fzx/line_scanner.hpp"
 #include "fzx/match/fzy/fzy.hpp"
 #include "fzx/match/match.hpp"
+#include "common.hpp"
 
 using namespace std::string_view_literals;
 
@@ -38,9 +39,6 @@ static void BM_fzy(benchmark::State& s)
 BENCHMARK(BM_fzy);
 
 /// Read dataset from stdin
-///
-/// Not providing the data, because it's ~100MB. I'm testing this on the
-/// output of fd from chromium, gecko, llvm, gcc, linux and few others.
 static void readStdin()
 {
   struct Range { size_t mOffset, mLength; };
@@ -54,6 +52,7 @@ static void readStdin()
     gStrings.insert(gStrings.end(), s.begin(), s.end());
   };
 
+  fprintf(stderr, "reading stdin... ");
   for (;;) {
     auto len = fread(buf, 1, std::size(buf), stdin);
     if (len > 0) {
@@ -63,6 +62,7 @@ static void readStdin()
       break;
     }
   }
+  fprintf(stderr, "done\n");
 
   // overallocate 64 bytes, so reading out of bounds with simd doesn't segfault
   gStrings.reserve(gStrings.size() + 64);
@@ -93,14 +93,12 @@ int main(int argc, char** argv)
   gQuery = query;
 
   if (isatty(0)) {
-    fprintf(stderr, "No data, aborting.\n");
-    fprintf(stderr, "Provide the data set for the benchmark over stdin.\n");
+    noDataError();
     return 1;
   }
   readStdin();
   if (gItems.empty()) {
-    fprintf(stderr, "No data, aborting.\n");
-    fprintf(stderr, "Provide the data set for the benchmark over stdin.\n");
+    noDataError();
     return 1;
   }
 

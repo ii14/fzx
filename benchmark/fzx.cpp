@@ -9,6 +9,7 @@
 #include "fzx/fzx.hpp"
 #include "fzx/line_scanner.hpp"
 #include "fzx/macros.hpp"
+#include "common.hpp"
 
 namespace chrono = std::chrono;
 using namespace std::chrono_literals;
@@ -82,8 +83,7 @@ int main(int argc, char** argv)
   // Load data from stdin
   {
     if (isatty(0)) {
-      fprintf(stderr, "No data, aborting.\n");
-      fprintf(stderr, "Provide the data set for the benchmark over stdin.\n");
+      noDataError();
       return 1;
     }
 
@@ -98,6 +98,7 @@ int main(int argc, char** argv)
       gFzx.pushItem(s);
     };
 
+    fprintf(stderr, "reading stdin... ");
     for (;;) {
       auto len = fread(buf, 1, std::size(buf), stdin);
       if (len > 0) {
@@ -107,10 +108,10 @@ int main(int argc, char** argv)
         break;
       }
     }
+    fprintf(stderr, "done\n");
 
     if (gFzx.itemsSize() == 0) {
-      fprintf(stderr, "No data, aborting.\n");
-      fprintf(stderr, "Provide the data set for the benchmark over stdin.\n");
+      noDataError();
       return 1;
     }
 
