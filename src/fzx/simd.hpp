@@ -44,7 +44,7 @@ INLINE void store(T* p, const __m128i& r) noexcept
 # if defined(FZX_SSE41)
   return _mm_blendv_ps(a, b, c);
 # else
-  return _mm_or_ps(_mm_and_ps(a, c), _mm_andnot_ps(c, b));
+  return _mm_or_ps(_mm_and_ps(b, c), _mm_andnot_ps(c, a));
 # endif
 }
 

@@ -288,8 +288,8 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       s = _mm_move_ss(s, _mm_add_ss(gapLeading, b));
       gapLeading = _mm_add_ss(gapLeading, kGapLeading);
       auto g = _mm_add_ps(m, kGap2);
-      d = simd::blendv(s, kMin, c);
-      m = simd::blendv(_mm_max_ps(s, g), g, c);
+      d = simd::blendv(kMin, s, c);
+      m = simd::blendv(g, _mm_max_ps(s, g), c);
     }
 
     return simd::extractv(m, (needle.size() + 3) & 0b11);
@@ -323,10 +323,10 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 
       auto g1 = _mm_add_ps(m1, kGap1);
       auto g2 = _mm_add_ps(m2, kGap2);
-      d1 = simd::blendv(s1, kMin, c1);
-      d2 = simd::blendv(s2, kMin, c2);
-      m1 = simd::blendv(_mm_max_ps(s1, g1), g1, c1);
-      m2 = simd::blendv(_mm_max_ps(s2, g2), g2, c2);
+      d1 = simd::blendv(kMin, s1, c1);
+      d2 = simd::blendv(kMin, s2, c2);
+      m1 = simd::blendv(g1, _mm_max_ps(s1, g1), c1);
+      m2 = simd::blendv(g2, _mm_max_ps(s2, g2), c2);
     }
 
     return simd::extractv(m2, (needle.size() + 3) & 0b11);
@@ -369,12 +369,12 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto g1 = _mm_add_ps(m1, kGap1);
       auto g2 = _mm_add_ps(m2, kGap1);
       auto g3 = _mm_add_ps(m3, kGap2);
-      d1 = simd::blendv(s1, kMin, c1);
-      d2 = simd::blendv(s2, kMin, c2);
-      d3 = simd::blendv(s3, kMin, c3);
-      m1 = simd::blendv(_mm_max_ps(s1, g1), g1, c1);
-      m2 = simd::blendv(_mm_max_ps(s2, g2), g2, c2);
-      m3 = simd::blendv(_mm_max_ps(s3, g3), g3, c3);
+      d1 = simd::blendv(kMin, s1, c1);
+      d2 = simd::blendv(kMin, s2, c2);
+      d3 = simd::blendv(kMin, s3, c3);
+      m1 = simd::blendv(g1, _mm_max_ps(s1, g1), c1);
+      m2 = simd::blendv(g2, _mm_max_ps(s2, g2), c2);
+      m3 = simd::blendv(g3, _mm_max_ps(s3, g3), c3);
     }
 
     return simd::extractv(m3, (needle.size() + 3) & 0b11);
@@ -425,14 +425,14 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto g2 = _mm_add_ps(m2, kGap1);
       auto g3 = _mm_add_ps(m3, kGap1);
       auto g4 = _mm_add_ps(m4, kGap2);
-      d1 = simd::blendv(s1, kMin, c1);
-      d2 = simd::blendv(s2, kMin, c2);
-      d3 = simd::blendv(s3, kMin, c3);
-      d4 = simd::blendv(s4, kMin, c4);
-      m1 = simd::blendv(_mm_max_ps(s1, g1), g1, c1);
-      m2 = simd::blendv(_mm_max_ps(s2, g2), g2, c2);
-      m3 = simd::blendv(_mm_max_ps(s3, g3), g3, c3);
-      m4 = simd::blendv(_mm_max_ps(s4, g4), g4, c4);
+      d1 = simd::blendv(kMin, s1, c1);
+      d2 = simd::blendv(kMin, s2, c2);
+      d3 = simd::blendv(kMin, s3, c3);
+      d4 = simd::blendv(kMin, s4, c4);
+      m1 = simd::blendv(g1, _mm_max_ps(s1, g1), c1);
+      m2 = simd::blendv(g2, _mm_max_ps(s2, g2), c2);
+      m3 = simd::blendv(g3, _mm_max_ps(s3, g3), c3);
+      m4 = simd::blendv(g4, _mm_max_ps(s4, g4), c4);
     }
 
     return simd::extractv(m4, (needle.size() + 3) & 0b11);
