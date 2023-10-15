@@ -15,15 +15,15 @@
 # define NOINLINE
 #endif
 
-#if defined(FZX_HAS_RESTRICT1)
+#if defined(_MSC_VER)
 # define RESTRICT __restrict
-#elif defined(FZX_HAS_RESTRICT2)
+#elif defined(__GNUC__) || defined(__clang__)
 # define RESTRICT __restrict__
 #else
 # define RESTRICT
 #endif
 
-#if defined(FZX_HAS_BUILTIN_EXPECT)
+#if defined(__GNUC__) || defined(__clang__)
 # define LIKELY(x) __builtin_expect(static_cast<bool>(x), 1)
 # define UNLIKELY(x) __builtin_expect(static_cast<bool>(x), 0)
 #else
@@ -39,11 +39,11 @@
 #endif
 
 #if defined(FZX_OPTIMIZE)
-# if defined(FZX_HAS_BUILTIN_ASSUME)
+# if defined(__clang__)
 #  define ASSUME(x) __builtin_assume(x)
-# elif defined(FZX_HAS_BUILTIN_UNREACHABLE)
+# elif defined(__GNUC__)
 #  define ASSUME(x) (static_cast<bool>(x) ? void(0) : __builtin_unreachable())
-# elif defined(FZX_HAS_ASSUME)
+# elif defined(_MSC_VER)
 #  define ASSUME(x) __assume(x)
 # else
 #  define ASSUME(x) UNUSED(x)
@@ -53,9 +53,9 @@
 #endif
 
 #if defined(FZX_OPTIMIZE)
-# if defined(FZX_HAS_BUILTIN_UNREACHABLE)
+# if defined(__GNUC__) || defined(__clang__)
 #  define UNREACHABLE() __builtin_unreachable()
-# elif defined(FZX_HAS_ASSUME)
+# elif defined(_MSC_VER)
 #  define UNREACHABLE() __assume(false)
 # else
 #  define UNREACHABLE()
@@ -64,7 +64,7 @@
 # define UNREACHABLE() ::fzx::detail::unreachableFail(__FILE__, __LINE__)
 #endif
 
-#if defined(FZX_HAS_BUILTIN_PREFETCH)
+#if defined(__GNUC__) || defined(__clang__)
 # define PREFETCH(...) __builtin_prefetch(__VA_ARGS__)
 #else
 # define PREFETCH(...)

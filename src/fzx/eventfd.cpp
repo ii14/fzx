@@ -1,5 +1,8 @@
 // Licensed under LGPLv3 - see LICENSE file for details.
 
+// TODO: windows support
+#if !defined(_WIN32)
+
 #include "fzx/eventfd.hpp"
 
 #include <stdexcept>
@@ -98,3 +101,5 @@ void EventFd::notify()
 }
 
 } // namespace fzx
+
+#endif

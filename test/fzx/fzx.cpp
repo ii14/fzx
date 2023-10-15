@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <condition_variable>
 #include <iostream>
-#include <unistd.h>
+#include <mutex>
 
-#include "fzx/eventfd.hpp"
 #include "fzx/fzx.hpp"
 #include "fzx/macros.hpp"
 
@@ -13,37 +13,41 @@ using namespace std::chrono_literals;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
-static timespec toTimeval(chrono::nanoseconds duration)
-{
-  timespec ts {};
-  auto sec = chrono::duration_cast<chrono::seconds>(duration);
-  ts.tv_sec = sec.count();
-  ts.tv_nsec = chrono::duration_cast<chrono::nanoseconds>(duration - sec).count();
-  return ts;
-}
+namespace {
 
-static bool wait(int fd, chrono::nanoseconds timeout)
+struct Notify
 {
-  fd_set fds {};
-  FD_ZERO(&fds);
-  FD_SET(fd, &fds);
-  auto ts = toTimeval(timeout);
-  int res = pselect(fd + 1, &fds, nullptr, nullptr, &ts, nullptr);
-  if (res <= 0)
-    return false;
-  ASSERT(FD_ISSET(fd, &fds));
-  return true;
-}
+  std::mutex mMutex;
+  std::condition_variable mCv;
+  bool mActive { false };
+
+  void notify()
+  {
+    std::unique_lock lock { mMutex };
+    mActive = true;
+    mCv.notify_one();
+  }
+
+  template <typename Rep, typename Period>
+  bool wait(const chrono::duration<Rep, Period>& reltime)
+  {
+    std::unique_lock lock { mMutex };
+    bool res = mCv.wait_for(lock, reltime, [this] { return mActive; });
+    mActive = false;
+    return res;
+  }
+};
+
+} // namespace
 
 TEST_CASE("fzx::Fzx")
 {
-  fzx::EventFd e;
   fzx::Fzx f;
+  Notify notify;
 
-  REQUIRE(e.open().empty());
   f.setCallback([](void* userData) {
-    static_cast<fzx::EventFd*>(userData)->notify();
-  }, &e);
+    static_cast<Notify*>(userData)->notify();
+  }, &notify);
 
   SECTION("starts and stops") {
     f.start();
@@ -65,8 +69,7 @@ TEST_CASE("fzx::Fzx")
     f.setQuery("b"s);
 
     for (unsigned i = 0; i < 2; ++i) {
-      REQUIRE(wait(e.fd(), 100ms));
-      e.consume();
+      REQUIRE(notify.wait(100ms));
       REQUIRE(f.loadResults());
       if (!f.processing())
         break;

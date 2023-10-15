@@ -65,10 +65,10 @@ template <size_t N, typename T>
 /// Find-first-set
 [[nodiscard]] inline int ffs32(uint32_t x) noexcept
 {
-#if defined(FZX_HAS_BUILTIN_FFS)
+#if defined(__GNUC__) || defined(__clang__)
   static_assert(sizeof(int) == 4);
   return __builtin_ffs(static_cast<int>(x));
-#elif defined(FZX_HAS_BIT_SCAN_FORWARD)
+#elif defined(_MSC_VER)
   unsigned long index;
   return static_cast<int>(_BitScanForward(&index, static_cast<unsigned long>(x)) ? index + 1 : 0);
 #else
@@ -80,10 +80,10 @@ template <size_t N, typename T>
 /// Find-first-set
 [[nodiscard]] inline int ffs64(uint64_t x) noexcept
 {
-#if defined(FZX_HAS_BUILTIN_FFSL)
+#if defined(__GNUC__) || defined(__clang__)
   static_assert(sizeof(long) == 8);
   return __builtin_ffsl(static_cast<long>(x));
-#elif defined(FZX_HAS_BIT_SCAN_FORWARD_64)
+#elif defined(_MSC_VER)
   unsigned long index;
   return static_cast<int>(_BitScanForward64(&index, static_cast<__int64>(x)) ? index + 1 : 0);
 #else
@@ -96,9 +96,7 @@ template <size_t N, typename T>
 
 inline void* alignedAlloc(size_t alignment, size_t size)
 {
-  // TODO: _WIN32 should be enough, but I think it's somehow
-  // not being defined? I don't know anything about windows.
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64)
+#if defined(_WIN32)
   return _aligned_malloc(size, alignment);
 #else
   return std::aligned_alloc(alignment, size);
@@ -107,7 +105,7 @@ inline void* alignedAlloc(size_t alignment, size_t size)
 
 inline void alignedFree(void* ptr)
 {
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64)
+#if defined(_WIN32)
   return _aligned_free(ptr);
 #else
   return std::free(ptr);
