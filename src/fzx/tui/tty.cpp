@@ -1,4 +1,4 @@
-#include "fzx/term/tty.hpp"
+#include "fzx/tui/tty.hpp"
 
 #include <cstdio>
 #include <cstring>

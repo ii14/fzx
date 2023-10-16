@@ -1,7 +1,8 @@
 #include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
 #include "fzx/match/fzy/fzy.hpp"
-#include "fzx/eventfd.hpp"
+#include "fzx/helper/eventfd.hpp"
+#include "fzx/helper/line_scanner.hpp"
 
 #include <algorithm>
 

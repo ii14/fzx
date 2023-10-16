@@ -10,7 +10,6 @@
 #include "fzx/macros.hpp"
 #include "fzx/match/fzy/fzy.hpp"
 #include "fzx/match/match.hpp"
-#include "fzx/thread.hpp"
 
 namespace fzx {
 

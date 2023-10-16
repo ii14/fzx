@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "fzx/fzx.hpp"
-#include "fzx/line_scanner.hpp"
+#include "fzx/helper/line_scanner.hpp"
 #include "fzx/macros.hpp"
 #include "common.hpp"
 

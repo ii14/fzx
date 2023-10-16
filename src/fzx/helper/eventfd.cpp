@@ -3,7 +3,7 @@
 // TODO: windows support
 #if !defined(_WIN32)
 
-#include "fzx/eventfd.hpp"
+#include "fzx/helper/eventfd.hpp"
 
 #include <stdexcept>
 #include <cstring>

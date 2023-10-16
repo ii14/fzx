@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "fzx/aligned_string.hpp"
-#include "fzx/line_scanner.hpp"
+#include "fzx/helper/line_scanner.hpp"
 #include "fzx/match/fzy/fzy.hpp"
 #include "fzx/match/match.hpp"
 #include "common.hpp"

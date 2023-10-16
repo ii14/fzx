@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "fzx/items.hpp"
-#include "fzx/line_scanner.hpp"
+#include "fzx/helper/line_scanner.hpp"
 
 using namespace std::string_view_literals;
 

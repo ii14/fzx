@@ -1,4 +1,4 @@
-#include "fzx/term/input.hpp"
+#include "fzx/tui/input.hpp"
 
 #include <cstdio>
 

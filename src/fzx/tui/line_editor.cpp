@@ -1,6 +1,6 @@
-#include "fzx/term/line_editor.hpp"
+#include "fzx/tui/line_editor.hpp"
 
-#include "fzx/term/key.hpp"
+#include "fzx/tui/key.hpp"
 
 namespace fzx {
 

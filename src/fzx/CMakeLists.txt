@@ -2,15 +2,15 @@ file(GLOB_RECURSE LIB_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_LIST_DIR}"
   "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/*.hpp")
-file(GLOB_RECURSE TERM_FILES CONFIGURE_DEPENDS RELATIVE
+file(GLOB_RECURSE TUI_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_LIST_DIR}"
-  "${CMAKE_CURRENT_LIST_DIR}/term/*.cpp"
-  "${CMAKE_CURRENT_LIST_DIR}/term/*.hpp")
+  "${CMAKE_CURRENT_LIST_DIR}/tui/*.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/tui/*.hpp")
 file(GLOB_RECURSE LUA_FILES CONFIGURE_DEPENDS RELATIVE
   "${CMAKE_CURRENT_LIST_DIR}"
   "${CMAKE_CURRENT_LIST_DIR}/lua/*.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/lua/*.hpp")
-list(REMOVE_ITEM LIB_FILES ${TERM_FILES})
+list(REMOVE_ITEM LIB_FILES ${TUI_FILES})
 list(REMOVE_ITEM LIB_FILES ${LUA_FILES})
 
 add_library(libfzx STATIC ${LIB_FILES})
@@ -20,7 +20,7 @@ target_include_directories(libfzx PUBLIC ..)
 target_link_libraries(libfzx PRIVATE fzxopts PUBLIC Threads::Threads)
 
 if(FZX_BUILD_EXECUTABLE)
-  add_executable(fzx ${TERM_FILES})
+  add_executable(fzx ${TUI_FILES})
   target_link_libraries(fzx PRIVATE fzxopts libfzx fmt::fmt)
 endif()
 

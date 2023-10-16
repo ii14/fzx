@@ -1,4 +1,4 @@
-#include "fzx/term/term_app.hpp"
+#include "fzx/tui/term_app.hpp"
 
 #include <cstdio>
 #include <string_view>
@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "fzx/term/key.hpp"
+#include "fzx/tui/key.hpp"
 #include "fzx/macros.hpp"
 
 using namespace std::string_view_literals;

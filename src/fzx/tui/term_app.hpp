@@ -1,11 +1,11 @@
 #pragma once
 
 #include "fzx/fzx.hpp"
-#include "fzx/term/input.hpp"
-#include "fzx/term/line_editor.hpp"
-#include "fzx/term/tty.hpp"
-#include "fzx/eventfd.hpp"
-#include "fzx/line_scanner.hpp"
+#include "fzx/tui/input.hpp"
+#include "fzx/tui/line_editor.hpp"
+#include "fzx/tui/tty.hpp"
+#include "fzx/helper/eventfd.hpp"
+#include "fzx/helper/line_scanner.hpp"
 
 namespace fzx {
 

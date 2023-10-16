@@ -49,8 +49,6 @@ struct Thread
   void join() { mThread.join(); }
   void detach() { mThread.detach(); }
 
-  static void pin(int cpu);
-
 private:
   std::thread mThread;
 };

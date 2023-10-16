@@ -14,7 +14,6 @@
 #include "fzx/aligned_string.hpp"
 #include "fzx/item_queue.hpp"
 #include "fzx/items.hpp"
-#include "fzx/line_scanner.hpp"
 #include "fzx/match.hpp"
 #include "fzx/worker.hpp"
 
@@ -120,7 +119,6 @@ private:
   std::shared_ptr<AlignedString> mQuery;
   std::shared_ptr<ItemQueue> mQueue;
 
-  LineScanner mLineScanner;
   /// Worker threads. This vector is shared with workers, so after
   /// starting and before joining threads, it cannot be modified.
   std::vector<std::unique_ptr<Worker>> mWorkers {};

@@ -1,4 +1,4 @@
-#include "fzx/term/term_app.hpp"
+#include "fzx/tui/term_app.hpp"
 #include "fzx/macros.hpp"
 
 #include <atomic>
