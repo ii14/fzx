@@ -2,8 +2,9 @@
 
 nothing to see here yet
 
+Build and install Lua module:
 ```sh
-git submodule update --init
-cmake -B build -D FZX_BUILD_EXECUTABLE=OFF
+cmake -B build
 cmake --build build --target install-plugin
 ```
+Add to runtime path and run `:Fzx files`.

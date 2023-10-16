@@ -29,7 +29,9 @@
       "name": "release-common",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "FZX_BUILD_EXECUTABLE": true,
+        "FZX_BUILD_LUA_MODULE": true
       }
     },
     {
@@ -39,6 +41,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "FZX_ENABLE_ASAN": true,
         "FZX_ENABLE_UBSAN": true,
+        "FZX_BUILD_EXECUTABLE": true,
+        "FZX_BUILD_LUA_MODULE": true,
         "FZX_BUILD_TESTS": true
       }
     },
@@ -48,6 +52,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "FZX_ENABLE_TSAN": true,
+        "FZX_BUILD_EXECUTABLE": true,
+        "FZX_BUILD_LUA_MODULE": true,
         "FZX_BUILD_TESTS": true
       }
     },
