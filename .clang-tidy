@@ -36,6 +36,7 @@ Checks:
   -readability-implicit-bool-conversion,
   -readability-magic-numbers,
   -readability-redundant-access-specifiers,
+  -readability-use-anyofallof,
 
 CheckOptions:
   - key: 'bugprone-assert-side-effect.AssertMacros'

@@ -3,11 +3,46 @@
 #include "fzx/query.hpp"
 
 #include <iomanip>
+#include <limits>
 #include <stdexcept>
 
 #include "fzx/match/match.hpp"
 
 namespace fzx {
+
+// TODO: refactor
+
+bool Query::match(std::string_view s) const
+{
+  for (const auto& item : mMatch) {
+    switch (item.mType) {
+    case Type::kExact:
+      if (!matchExact(item.mText, s))
+        return false;
+      break;
+    case Type::kBegin:
+      if (!matchBegin(item.mText, s))
+        return false;
+      break;
+    case Type::kEnd:
+      if (!matchEnd(item.mText, s))
+        return false;
+      break;
+    case Type::kSubstr:
+      return false; // TODO
+    case Type::kFuzzy:
+      UNREACHABLE();
+    }
+  }
+
+  for (const auto& item : mScore) {
+    DEBUG_ASSERT(item.mType == Type::kFuzzy);
+    if (!matchFuzzy(item.mText, s))
+      return false;
+  }
+
+  return true;
+}
 
 void Query::Builder::clear() noexcept
 {
@@ -199,9 +234,73 @@ std::shared_ptr<Query> Query::Builder::build() const
   if (mItems.empty())
     return {};
   auto q = std::make_shared<Query>();
-  for (const auto& item : mItems)
-    q->mItems.emplace_back(item.mText, item.mType);
+  for (const auto& item : mItems) {
+    if (item.mType == Type::kFuzzy) {
+      q->mScore.emplace_back(item.mText, item.mType);
+    } else {
+      q->mMatch.emplace_back(item.mText, item.mType);
+    }
+  }
   return q;
+}
+
+[[nodiscard]] std::shared_ptr<Query> Query::Builder::parse(std::string_view str)
+{
+  if (str.empty())
+    return {};
+  Query::Builder b;
+
+  auto parseType = [](std::string_view& s) {
+    uint8_t anchors = 0b00;
+
+    if (!s.empty()) {
+      if (s.front() == '^')
+        anchors |= 0b10;
+      if (s.back() == '$')
+        anchors |= 0b01;
+    }
+
+    switch (anchors) {
+    case 0b00:
+      return Type::kFuzzy;
+    case 0b10:
+      s = s.substr(1);
+      return Type::kBegin;
+    case 0b01:
+      s = s.substr(0, s.size() - 1);
+      return Type::kEnd;
+    case 0b11:
+      s = s.substr(1, s.size() - 2);
+      return Type::kExact;
+    }
+    UNREACHABLE();
+  };
+
+  constexpr size_t npos = std::numeric_limits<size_t>::max();
+  size_t start = npos;
+
+  for (size_t i = 0; i < str.size(); ++i) {
+    if (str[i] == ' ') {
+      if (start != npos) {
+        std::string_view s { &str[start], i - start };
+        Type type = parseType(s);
+        b.add(std::string{s}, type);
+        start = npos;
+      }
+    } else {
+      if (start == npos) {
+        start = i;
+      }
+    }
+  }
+
+  if (start != npos) {
+    std::string_view s { &str[start], str.size() - start };
+    Type type = parseType(s);
+    b.add(std::string{s}, type);
+  }
+
+  return b.build();
 }
 
 std::ostream& operator<<(std::ostream& os, Query::Type v)

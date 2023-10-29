@@ -22,7 +22,7 @@ struct Query
     kEnd,    ///< foo$
     kSubstr, ///< 'foo
     kFuzzy,  ///< foo
-    // TODO: negated
+    // TODO: negation
   };
 
   struct Item
@@ -32,10 +32,38 @@ struct Query
 
     AlignedString mText;
     Query::Type mType;
+
+    friend bool operator==(const Item& a, const Item& b) noexcept
+    {
+      return a.mType == b.mType && a.mText == b.mText;
+    }
+
+    friend bool operator!=(const Item& a, const Item& b) noexcept
+    {
+      return a.mType != b.mType || a.mText != b.mText;
+    }
   };
 
-  std::vector<Item> mItems;
+  [[nodiscard]] bool match(std::string_view s) const;
+
+  std::vector<Item> mMatch;
+  std::vector<Item> mScore;
   // TODO: bump allocator for strings
+
+  [[nodiscard]] bool empty() const noexcept
+  {
+    return mMatch.empty() && mScore.empty();
+  }
+
+  friend bool operator==(const Query& a, const Query& b) noexcept
+  {
+    return a.mMatch == b.mMatch && a.mScore == b.mScore;
+  }
+
+  friend bool operator!=(const Query& a, const Query& b) noexcept
+  {
+    return a.mMatch != b.mMatch || a.mScore != b.mScore;
+  }
 };
 
 struct Query::Builder
@@ -67,6 +95,7 @@ struct Query::Builder
   [[nodiscard]] const Items& items() const noexcept { return mItems; }
 
   [[nodiscard]] std::shared_ptr<Query> build() const;
+  [[nodiscard]] static std::shared_ptr<Query> parse(std::string_view s);
 
 private:
   Items mItems;

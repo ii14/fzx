@@ -66,13 +66,14 @@ void Fzx::stop()
 
 void Fzx::setQuery(std::string_view query)
 {
-  if (mQuery && mQuery->str() == query)
+  // Query::Builder b;
+  // b.add(std::string{query}, Query::Type::kFuzzy);
+  // auto p = b.build();
+  auto p = Query::Builder::parse(query);
+
+  if (mQuery && mQuery == p)
     return;
-  if (!query.empty()) {
-    mQuery = std::make_shared<AlignedString>(query);
-  } else {
-    mQuery.reset();
-  }
+  mQuery = p;
   commit();
 }
 
@@ -151,7 +152,8 @@ Result Fzx::getResult(size_t i) const noexcept
 std::string_view Fzx::query() const
 {
   if (const Results* res = getResults(); res != nullptr && res->mQuery)
-    return res->mQuery->str();
+    if (const auto& s = res->mQuery->mScore; !s.empty())
+      return s.front().mText.str();
   return {};
 }
 

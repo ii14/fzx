@@ -241,50 +241,68 @@ start:
       if (start >= end)
         break;
 
-      // Match items and calculate scores.
-      auto process = [&](auto&& scoreFunc) {
-        for (size_t i = start; i < end; ++i) {
-          auto item = job.mItems.at(i);
-          if (matchFuzzy(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), scoreFunc(query, item) });
+      auto selectScore = [](size_t needleSize, auto&& fn) {
+        switch (needleSize) {
+        default:
+          fn(fzy::score);
+          break;
+        case 1:
+          fn(fzy::score1);
+          break;
+#if defined(FZX_SSE2)
+        case 2: case 3: case 4:
+          fn(fzy::scoreSSE<4>);
+          break;
+        case 5: case 6: case 7: case 8:
+          fn(fzy::scoreSSE<8>);
+          break;
+        case 9: case 10: case 11: case 12:
+          fn(fzy::scoreSSE<12>);
+          break;
+        case 13: case 14: case 15: case 16:
+          fn(fzy::scoreSSE<16>);
+          break;
+#elif defined(FZX_NEON)
+        case 2: case 3: case 4:
+          fn(fzy::scoreNeon<4>);
+          break;
+        case 5: case 6: case 7: case 8:
+          fn(fzy::scoreNeon<8>);
+          break;
+        case 9: case 10: case 11: case 12:
+          fn(fzy::scoreNeon<12>);
+          break;
+        case 13: case 14: case 15: case 16:
+          fn(fzy::scoreNeon<16>);
+          break;
+#endif
         }
       };
 
-      switch (query.size()) {
-      default:
-        process(fzy::score);
-        break;
-      case 1:
-        process(fzy::score1);
-        break;
-#if defined(FZX_SSE2)
-      case 2: case 3: case 4:
-        process(fzy::scoreSSE<4>);
-        break;
-      case 5: case 6: case 7: case 8:
-        process(fzy::scoreSSE<8>);
-        break;
-      case 9: case 10: case 11: case 12:
-        process(fzy::scoreSSE<12>);
-        break;
-      case 13: case 14: case 15: case 16:
-        process(fzy::scoreSSE<16>);
-        break;
-#elif defined(FZX_NEON)
-      case 2: case 3: case 4:
-        process(fzy::scoreNeon<4>);
-        break;
-      case 5: case 6: case 7: case 8:
-        process(fzy::scoreNeon<8>);
-        break;
-      case 9: case 10: case 11: case 12:
-        process(fzy::scoreNeon<12>);
-        break;
-      case 13: case 14: case 15: case 16:
-        process(fzy::scoreNeon<16>);
-        break;
-#endif
-      }
+      // if (query.mMatch.empty() && query.mScore.size() == 1) {
+      //   // Single fuzzy search fast path
+      //   const auto& needle = query.mScore.front().mText;
+      //   selectScore(needle.size(), [&](auto&& fn) {
+      //     for (size_t i = start; i < end; ++i) {
+      //       auto item = job.mItems.at(i);
+      //       if (matchFuzzy(needle, item))
+      //         out.mItems.push_back({ static_cast<uint32_t>(i), fn(needle, item) });
+      //     }
+      //   });
+      // } else {
+        for (size_t i = start; i < end; ++i) {
+          auto item = job.mItems.at(i);
+          if (!query.match(item))
+            continue;
+          fzy::Score score = 0; // TODO: calculate score from exact/begin/end/substr
+          for (const auto& needle : query.mScore) {
+            selectScore(needle.mText.size(), [&](auto&& fn) {
+              score += fn(needle.mText, item);
+            });
+          }
+          out.mItems.push_back({ static_cast<uint32_t>(i), score });
+        }
+      // }
 
       // Ignore kMerge events from other workers, we don't care about
       // them at this stage, as we don't even have out own results yet.

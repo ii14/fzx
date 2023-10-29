@@ -77,6 +77,16 @@ struct AlignedString
     return mPtr[i];
   }
 
+  friend bool operator==(const AlignedString& a, const AlignedString& b) noexcept
+  {
+    return a.str() == b.str();
+  }
+
+  friend bool operator!=(const AlignedString& a, const AlignedString& b) noexcept
+  {
+    return a.str() != b.str();
+  }
+
 private:
   char* mPtr { nullptr };
   char* mEnd { nullptr };

@@ -15,6 +15,7 @@
 #include "fzx/item_queue.hpp"
 #include "fzx/items.hpp"
 #include "fzx/match.hpp"
+#include "fzx/query.hpp"
 #include "fzx/worker.hpp"
 
 namespace fzx {
@@ -33,7 +34,7 @@ struct Job
   /// Items to process. The size is monotonically increasing.
   Items mItems;
   /// Active query.
-  std::shared_ptr<AlignedString> mQuery;
+  std::shared_ptr<Query> mQuery;
   /// Shared atomic counter for reserving the items for processing.
   std::shared_ptr<ItemQueue> mQueue;
   /// Monotonically increasing timestamp identifying the active query.
@@ -116,7 +117,7 @@ private:
 
 private:
   Items mItems;
-  std::shared_ptr<AlignedString> mQuery;
+  std::shared_ptr<Query> mQuery;
   std::shared_ptr<ItemQueue> mQueue;
 
   /// Worker threads. This vector is shared with workers, so after
