@@ -36,12 +36,13 @@ INLINE void store(T* p, const __m128i& r) noexcept
   return _mm_add_epi8(r, t); // Apply offset
 }
 
-[[nodiscard]] INLINE __m128 blendv(const __m128& a, const __m128& b, const __m128& c)
+/// c ? a : b
+[[nodiscard]] INLINE __m128 blendv(const __m128& c, const __m128& a, const __m128& b)
 {
 # if defined(FZX_SSE41)
-  return _mm_blendv_ps(a, b, c);
+  return _mm_blendv_ps(b, a, c);
 # else
-  return _mm_or_ps(_mm_and_ps(b, c), _mm_andnot_ps(c, a));
+  return _mm_or_ps(_mm_and_ps(a, c), _mm_andnot_ps(c, b));
 # endif
 }
 
