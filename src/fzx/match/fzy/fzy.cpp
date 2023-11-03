@@ -242,7 +242,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
 
   uint8_t lastCh = '/';
-  auto gapLeading = _mm_set_ss(0);
+  auto g = _mm_set_ss(0); // Leading gap score
   auto nt = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(needle.data())));
 
   if constexpr (N == 4) {
@@ -262,11 +262,10 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto pm = _mm_shuffle_ps(m, m, _MM_SHUFFLE(2, 1, 0, 3));
       auto pd = _mm_shuffle_ps(d, d, _MM_SHUFFLE(2, 1, 0, 3));
       auto s = _mm_max_ps(_mm_add_ps(pm, b), _mm_add_ps(pd, kConsecutive));
-      s = _mm_move_ss(s, _mm_add_ss(gapLeading, b));
-      gapLeading = _mm_add_ss(gapLeading, kGapLeading);
-      auto g = _mm_add_ps(m, kGap2);
+      s = _mm_move_ss(s, _mm_add_ss(g, b));
+      g = _mm_add_ss(g, kGapLeading);
       d = simd::blendv(c, s, kMin);
-      m = simd::blendv(c, _mm_max_ps(s, g), g);
+      m = _mm_max_ps(d, _mm_add_ps(m, kGap2));
     }
 
     return simd::extractv(m, (needle.size() + 3) & 0b11);
@@ -293,17 +292,16 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto pd2 = _mm_shuffle_ps(d2, d2, _MM_SHUFFLE(2, 1, 0, 3));
       pm2 = _mm_move_ss(pm2, pm1);
       pd2 = _mm_move_ss(pd2, pd1);
+
       auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
       auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
-      s1 = _mm_move_ss(s1, _mm_add_ss(gapLeading, b));
-      gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+      s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
+      g = _mm_add_ss(g, kGapLeading);
 
-      auto g1 = _mm_add_ps(m1, kGap1);
-      auto g2 = _mm_add_ps(m2, kGap2);
       d1 = simd::blendv(c1, s1, kMin);
       d2 = simd::blendv(c2, s2, kMin);
-      m1 = simd::blendv(c1, _mm_max_ps(s1, g1), g1);
-      m2 = simd::blendv(c2, _mm_max_ps(s2, g2), g2);
+      m1 = _mm_max_ps(d1, _mm_add_ps(m1, kGap1));
+      m2 = _mm_max_ps(d2, _mm_add_ps(m2, kGap2));
     }
 
     return simd::extractv(m2, (needle.size() + 3) & 0b11);
@@ -337,21 +335,19 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       pd3 = _mm_move_ss(pd3, pd2);
       pm2 = _mm_move_ss(pm2, pm1);
       pd2 = _mm_move_ss(pd2, pd1);
+
       auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
       auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
       auto s3 = _mm_max_ps(_mm_add_ps(pm3, b), _mm_add_ps(pd3, kConsecutive));
-      s1 = _mm_move_ss(s1, _mm_add_ss(gapLeading, b));
-      gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+      s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
+      g = _mm_add_ss(g, kGapLeading);
 
-      auto g1 = _mm_add_ps(m1, kGap1);
-      auto g2 = _mm_add_ps(m2, kGap1);
-      auto g3 = _mm_add_ps(m3, kGap2);
       d1 = simd::blendv(c1, s1, kMin);
       d2 = simd::blendv(c2, s2, kMin);
       d3 = simd::blendv(c3, s3, kMin);
-      m1 = simd::blendv(c1, _mm_max_ps(s1, g1), g1);
-      m2 = simd::blendv(c2, _mm_max_ps(s2, g2), g2);
-      m3 = simd::blendv(c3, _mm_max_ps(s3, g3), g3);
+      m1 = _mm_max_ps(d1, _mm_add_ps(m1, kGap1));
+      m2 = _mm_max_ps(d2, _mm_add_ps(m2, kGap1));
+      m3 = _mm_max_ps(d3, _mm_add_ps(m3, kGap2));
     }
 
     return simd::extractv(m3, (needle.size() + 3) & 0b11);
@@ -391,25 +387,22 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       pd3 = _mm_move_ss(pd3, pd2);
       pm2 = _mm_move_ss(pm2, pm1);
       pd2 = _mm_move_ss(pd2, pd1);
+
       auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
       auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
       auto s3 = _mm_max_ps(_mm_add_ps(pm3, b), _mm_add_ps(pd3, kConsecutive));
       auto s4 = _mm_max_ps(_mm_add_ps(pm4, b), _mm_add_ps(pd4, kConsecutive));
-      s1 = _mm_move_ss(s1, _mm_add_ss(gapLeading, b));
-      gapLeading = _mm_add_ss(gapLeading, kGapLeading);
+      s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
+      g = _mm_add_ss(g, kGapLeading);
 
-      auto g1 = _mm_add_ps(m1, kGap1);
-      auto g2 = _mm_add_ps(m2, kGap1);
-      auto g3 = _mm_add_ps(m3, kGap1);
-      auto g4 = _mm_add_ps(m4, kGap2);
       d1 = simd::blendv(c1, s1, kMin);
       d2 = simd::blendv(c2, s2, kMin);
       d3 = simd::blendv(c3, s3, kMin);
       d4 = simd::blendv(c4, s4, kMin);
-      m1 = simd::blendv(c1, _mm_max_ps(s1, g1), g1);
-      m2 = simd::blendv(c2, _mm_max_ps(s2, g2), g2);
-      m3 = simd::blendv(c3, _mm_max_ps(s3, g3), g3);
-      m4 = simd::blendv(c4, _mm_max_ps(s4, g4), g4);
+      m1 = _mm_max_ps(d1, _mm_add_ps(m1, kGap1));
+      m2 = _mm_max_ps(d2, _mm_add_ps(m2, kGap1));
+      m3 = _mm_max_ps(d3, _mm_add_ps(m3, kGap1));
+      m4 = _mm_max_ps(d4, _mm_add_ps(m4, kGap2));
     }
 
     return simd::extractv(m4, (needle.size() + 3) & 0b11);
@@ -445,7 +438,7 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
   const float kGapLeading = kScoreGapLeading;
 
   uint8_t lastCh = '/';
-  float gapLeading = 0.f;
+  float g = 0.f; // Leading gap score
   auto nt = simd::toLower(vld1q_u8(reinterpret_cast<const uint8_t*>(needle.data())));
 
   if constexpr (N == 4) {
@@ -465,11 +458,10 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       auto pm = vextq_f32(m, m, 3);
       auto pd = vextq_f32(d, d, 3);
       auto s = vmaxq_f32(vaddq_f32(pm, b), vaddq_f32(pd, kConsecutive));
-      s = vsetq_lane_f32(gapLeading + bonus, s, 0);
-      gapLeading += kGapLeading;
-      auto g = vaddq_f32(m, kGap2);
+      s = vsetq_lane_f32(g + bonus, s, 0);
+      g += kGapLeading;
       d = vbslq_f32(c, s, kMin);
-      m = vbslq_f32(c, vmaxq_f32(s, g), g);
+      m = vmaxq_f32(d, vaddq_f32(m, kGap2));
     }
 
     return simd::extractv(m, (needle.size() + 3) & 0b11);
@@ -496,17 +488,16 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       auto pd2 = vextq_f32(d2, d2, 3);
       pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
       pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
+
       auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
       auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
-      s1 = vsetq_lane_f32(gapLeading + bonus, s1, 0);
-      gapLeading += kGapLeading;
+      s1 = vsetq_lane_f32(g + bonus, s1, 0);
+      g += kGapLeading;
 
-      auto g1 = vaddq_f32(m1, kGap1);
-      auto g2 = vaddq_f32(m2, kGap2);
       d1 = vbslq_f32(c1, s1, kMin);
       d2 = vbslq_f32(c2, s2, kMin);
-      m1 = vbslq_f32(c1, vmaxq_f32(s1, g1), g1);
-      m2 = vbslq_f32(c2, vmaxq_f32(s2, g2), g2);
+      m1 = vmaxq_f32(d1, vaddq_f32(m1, kGap1));
+      m2 = vmaxq_f32(d2, vaddq_f32(m2, kGap2));
     }
 
     return simd::extractv(m2, (needle.size() + 3) & 0b11);
@@ -540,21 +531,19 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       pd3 = vsetq_lane_f32(vgetq_lane_f32(pd2, 0), pd3, 0);
       pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
       pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
+
       auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
       auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
       auto s3 = vmaxq_f32(vaddq_f32(pm3, b), vaddq_f32(pd3, kConsecutive));
-      s1 = vsetq_lane_f32(gapLeading + bonus, s1, 0);
-      gapLeading += kGapLeading;
+      s1 = vsetq_lane_f32(g + bonus, s1, 0);
+      g += kGapLeading;
 
-      auto g1 = vaddq_f32(m1, kGap1);
-      auto g2 = vaddq_f32(m2, kGap1);
-      auto g3 = vaddq_f32(m3, kGap2);
       d1 = vbslq_f32(c1, s1, kMin);
       d2 = vbslq_f32(c2, s2, kMin);
       d3 = vbslq_f32(c3, s3, kMin);
-      m1 = vbslq_f32(c1, vmaxq_f32(s1, g1), g1);
-      m2 = vbslq_f32(c2, vmaxq_f32(s2, g2), g2);
-      m3 = vbslq_f32(c3, vmaxq_f32(s3, g3), g3);
+      m1 = vmaxq_f32(d1, vaddq_f32(m1, kGap1));
+      m2 = vmaxq_f32(d2, vaddq_f32(m2, kGap1));
+      m3 = vmaxq_f32(d3, vaddq_f32(m3, kGap2));
     }
 
     return simd::extractv(m3, (needle.size() + 3) & 0b11);
@@ -594,25 +583,22 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       pd3 = vsetq_lane_f32(vgetq_lane_f32(pd2, 0), pd3, 0);
       pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
       pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
+
       auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
       auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
       auto s3 = vmaxq_f32(vaddq_f32(pm3, b), vaddq_f32(pd3, kConsecutive));
       auto s4 = vmaxq_f32(vaddq_f32(pm4, b), vaddq_f32(pd4, kConsecutive));
-      s1 = vsetq_lane_f32(gapLeading + bonus, s1, 0);
-      gapLeading += kGapLeading;
+      s1 = vsetq_lane_f32(g + bonus, s1, 0);
+      g += kGapLeading;
 
-      auto g1 = vaddq_f32(m1, kGap1);
-      auto g2 = vaddq_f32(m2, kGap1);
-      auto g3 = vaddq_f32(m3, kGap1);
-      auto g4 = vaddq_f32(m4, kGap2);
       d1 = vbslq_f32(c1, s1, kMin);
       d2 = vbslq_f32(c2, s2, kMin);
       d3 = vbslq_f32(c3, s3, kMin);
       d4 = vbslq_f32(c4, s4, kMin);
-      m1 = vbslq_f32(c1, vmaxq_f32(s1, g1), g1);
-      m2 = vbslq_f32(c2, vmaxq_f32(s2, g2), g2);
-      m3 = vbslq_f32(c3, vmaxq_f32(s3, g3), g3);
-      m4 = vbslq_f32(c4, vmaxq_f32(s4, g4), g4);
+      m1 = vmaxq_f32(d1, vaddq_f32(m1, kGap1));
+      m2 = vmaxq_f32(d2, vaddq_f32(m2, kGap1));
+      m3 = vmaxq_f32(d3, vaddq_f32(m3, kGap1));
+      m4 = vmaxq_f32(d4, vaddq_f32(m4, kGap2));
     }
 
     return simd::extractv(m4, (needle.size() + 3) & 0b11);
