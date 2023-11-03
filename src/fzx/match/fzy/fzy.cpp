@@ -259,11 +259,12 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto r = _mm_set1_ps(toLower(ch));
       auto b = _mm_set1_ps(bonus);
       auto c = _mm_cmpeq_ps(n, r);
-      auto pm = _mm_shuffle_ps(m, m, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd = _mm_shuffle_ps(d, d, _MM_SHUFFLE(2, 1, 0, 3));
-      auto s = _mm_max_ps(_mm_add_ps(pm, b), _mm_add_ps(pd, kConsecutive));
+
+      auto s = _mm_max_ps(_mm_add_ps(m, b), _mm_add_ps(d, kConsecutive));
+      s = _mm_shuffle_ps(s, s, _MM_SHUFFLE(2, 1, 0, 3));
       s = _mm_move_ss(s, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
+
       d = simd::blendv(c, s, kMin);
       m = _mm_max_ps(d, _mm_add_ps(m, kGap2));
     }
@@ -286,15 +287,11 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto c1 = _mm_cmpeq_ps(n1, r);
       auto c2 = _mm_cmpeq_ps(n2, r);
 
-      auto pm1 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pm2 = _mm_shuffle_ps(m2, m2, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd1 = _mm_shuffle_ps(d1, d1, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd2 = _mm_shuffle_ps(d2, d2, _MM_SHUFFLE(2, 1, 0, 3));
-      pm2 = _mm_move_ss(pm2, pm1);
-      pd2 = _mm_move_ss(pd2, pd1);
-
-      auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
-      auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
+      auto s1 = _mm_max_ps(_mm_add_ps(m1, b), _mm_add_ps(d1, kConsecutive));
+      auto s2 = _mm_max_ps(_mm_add_ps(m2, b), _mm_add_ps(d2, kConsecutive));
+      s1 = _mm_shuffle_ps(s1, s1, _MM_SHUFFLE(2, 1, 0, 3));
+      s2 = _mm_shuffle_ps(s2, s2, _MM_SHUFFLE(2, 1, 0, 3));
+      s2 = _mm_move_ss(s2, s1);
       s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
@@ -325,20 +322,14 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto c2 = _mm_cmpeq_ps(n2, r);
       auto c3 = _mm_cmpeq_ps(n3, r);
 
-      auto pm1 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pm2 = _mm_shuffle_ps(m2, m2, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pm3 = _mm_shuffle_ps(m3, m3, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd1 = _mm_shuffle_ps(d1, d1, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd2 = _mm_shuffle_ps(d2, d2, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd3 = _mm_shuffle_ps(d3, d3, _MM_SHUFFLE(2, 1, 0, 3));
-      pm3 = _mm_move_ss(pm3, pm2);
-      pd3 = _mm_move_ss(pd3, pd2);
-      pm2 = _mm_move_ss(pm2, pm1);
-      pd2 = _mm_move_ss(pd2, pd1);
-
-      auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
-      auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
-      auto s3 = _mm_max_ps(_mm_add_ps(pm3, b), _mm_add_ps(pd3, kConsecutive));
+      auto s1 = _mm_max_ps(_mm_add_ps(m1, b), _mm_add_ps(d1, kConsecutive));
+      auto s2 = _mm_max_ps(_mm_add_ps(m2, b), _mm_add_ps(d2, kConsecutive));
+      auto s3 = _mm_max_ps(_mm_add_ps(m3, b), _mm_add_ps(d3, kConsecutive));
+      s1 = _mm_shuffle_ps(s1, s1, _MM_SHUFFLE(2, 1, 0, 3));
+      s2 = _mm_shuffle_ps(s2, s2, _MM_SHUFFLE(2, 1, 0, 3));
+      s3 = _mm_shuffle_ps(s3, s3, _MM_SHUFFLE(2, 1, 0, 3));
+      s3 = _mm_move_ss(s3, s2);
+      s2 = _mm_move_ss(s2, s1);
       s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
@@ -373,25 +364,17 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       auto c3 = _mm_cmpeq_ps(n3, r);
       auto c4 = _mm_cmpeq_ps(n4, r);
 
-      auto pm1 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pm2 = _mm_shuffle_ps(m2, m2, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pm3 = _mm_shuffle_ps(m3, m3, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pm4 = _mm_shuffle_ps(m4, m4, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd1 = _mm_shuffle_ps(d1, d1, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd2 = _mm_shuffle_ps(d2, d2, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd3 = _mm_shuffle_ps(d3, d3, _MM_SHUFFLE(2, 1, 0, 3));
-      auto pd4 = _mm_shuffle_ps(d4, d4, _MM_SHUFFLE(2, 1, 0, 3));
-      pm4 = _mm_move_ss(pm4, pm3);
-      pd4 = _mm_move_ss(pd4, pd3);
-      pm3 = _mm_move_ss(pm3, pm2);
-      pd3 = _mm_move_ss(pd3, pd2);
-      pm2 = _mm_move_ss(pm2, pm1);
-      pd2 = _mm_move_ss(pd2, pd1);
-
-      auto s1 = _mm_max_ps(_mm_add_ps(pm1, b), _mm_add_ps(pd1, kConsecutive));
-      auto s2 = _mm_max_ps(_mm_add_ps(pm2, b), _mm_add_ps(pd2, kConsecutive));
-      auto s3 = _mm_max_ps(_mm_add_ps(pm3, b), _mm_add_ps(pd3, kConsecutive));
-      auto s4 = _mm_max_ps(_mm_add_ps(pm4, b), _mm_add_ps(pd4, kConsecutive));
+      auto s1 = _mm_max_ps(_mm_add_ps(m1, b), _mm_add_ps(d1, kConsecutive));
+      auto s2 = _mm_max_ps(_mm_add_ps(m2, b), _mm_add_ps(d2, kConsecutive));
+      auto s3 = _mm_max_ps(_mm_add_ps(m3, b), _mm_add_ps(d3, kConsecutive));
+      auto s4 = _mm_max_ps(_mm_add_ps(m4, b), _mm_add_ps(d4, kConsecutive));
+      s1 = _mm_shuffle_ps(s1, s1, _MM_SHUFFLE(2, 1, 0, 3));
+      s2 = _mm_shuffle_ps(s2, s2, _MM_SHUFFLE(2, 1, 0, 3));
+      s3 = _mm_shuffle_ps(s3, s3, _MM_SHUFFLE(2, 1, 0, 3));
+      s4 = _mm_shuffle_ps(s4, s4, _MM_SHUFFLE(2, 1, 0, 3));
+      s4 = _mm_move_ss(s4, s3);
+      s3 = _mm_move_ss(s3, s2);
+      s2 = _mm_move_ss(s2, s1);
       s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
@@ -455,9 +438,8 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       auto r = vmovq_n_f32(toLower(ch));
       auto b = vmovq_n_f32(bonus);
       auto c = vceqq_f32(n, r);
-      auto pm = vextq_f32(m, m, 3);
-      auto pd = vextq_f32(d, d, 3);
-      auto s = vmaxq_f32(vaddq_f32(pm, b), vaddq_f32(pd, kConsecutive));
+      auto s = vmaxq_f32(vaddq_f32(m, b), vaddq_f32(d, kConsecutive));
+      s = vextq_f32(s, s, 3);
       s = vsetq_lane_f32(g + bonus, s, 0);
       g += kGapLeading;
       d = vbslq_f32(c, s, kMin);
@@ -482,15 +464,11 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       auto c1 = vceqq_f32(n1, r);
       auto c2 = vceqq_f32(n2, r);
 
-      auto pm1 = vextq_f32(m1, m1, 3);
-      auto pm2 = vextq_f32(m2, m2, 3);
-      auto pd1 = vextq_f32(d1, d1, 3);
-      auto pd2 = vextq_f32(d2, d2, 3);
-      pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
-      pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
-
-      auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
-      auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
+      auto s1 = vmaxq_f32(vaddq_f32(m1, b), vaddq_f32(d1, kConsecutive));
+      auto s2 = vmaxq_f32(vaddq_f32(m2, b), vaddq_f32(d2, kConsecutive));
+      s1 = vextq_f32(s1, s1, 3);
+      s2 = vextq_f32(s2, s2, 3);
+      s2 = vsetq_lane_f32(vgetq_lane_f32(s1, 0), s2, 0);
       s1 = vsetq_lane_f32(g + bonus, s1, 0);
       g += kGapLeading;
 
@@ -521,20 +499,14 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       auto c2 = vceqq_f32(n2, r);
       auto c3 = vceqq_f32(n3, r);
 
-      auto pm1 = vextq_f32(m1, m1, 3);
-      auto pm2 = vextq_f32(m2, m2, 3);
-      auto pm3 = vextq_f32(m3, m3, 3);
-      auto pd1 = vextq_f32(d1, d1, 3);
-      auto pd2 = vextq_f32(d2, d2, 3);
-      auto pd3 = vextq_f32(d3, d3, 3);
-      pm3 = vsetq_lane_f32(vgetq_lane_f32(pm2, 0), pm3, 0);
-      pd3 = vsetq_lane_f32(vgetq_lane_f32(pd2, 0), pd3, 0);
-      pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
-      pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
-
-      auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
-      auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
-      auto s3 = vmaxq_f32(vaddq_f32(pm3, b), vaddq_f32(pd3, kConsecutive));
+      auto s1 = vmaxq_f32(vaddq_f32(m1, b), vaddq_f32(d1, kConsecutive));
+      auto s2 = vmaxq_f32(vaddq_f32(m2, b), vaddq_f32(d2, kConsecutive));
+      auto s3 = vmaxq_f32(vaddq_f32(m3, b), vaddq_f32(d3, kConsecutive));
+      s1 = vextq_f32(s1, s1, 3);
+      s2 = vextq_f32(s2, s2, 3);
+      s3 = vextq_f32(s3, s3, 3);
+      s3 = vsetq_lane_f32(vgetq_lane_f32(s2, 0), s3, 0);
+      s2 = vsetq_lane_f32(vgetq_lane_f32(s1, 0), s2, 0);
       s1 = vsetq_lane_f32(g + bonus, s1, 0);
       g += kGapLeading;
 
@@ -569,25 +541,17 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       auto c3 = vceqq_f32(n3, r);
       auto c4 = vceqq_f32(n4, r);
 
-      auto pm1 = vextq_f32(m1, m1, 3);
-      auto pm2 = vextq_f32(m2, m2, 3);
-      auto pm3 = vextq_f32(m3, m3, 3);
-      auto pm4 = vextq_f32(m4, m4, 3);
-      auto pd1 = vextq_f32(d1, d1, 3);
-      auto pd2 = vextq_f32(d2, d2, 3);
-      auto pd3 = vextq_f32(d3, d3, 3);
-      auto pd4 = vextq_f32(d4, d4, 3);
-      pm4 = vsetq_lane_f32(vgetq_lane_f32(pm3, 0), pm4, 0);
-      pd4 = vsetq_lane_f32(vgetq_lane_f32(pd3, 0), pd4, 0);
-      pm3 = vsetq_lane_f32(vgetq_lane_f32(pm2, 0), pm3, 0);
-      pd3 = vsetq_lane_f32(vgetq_lane_f32(pd2, 0), pd3, 0);
-      pm2 = vsetq_lane_f32(vgetq_lane_f32(pm1, 0), pm2, 0);
-      pd2 = vsetq_lane_f32(vgetq_lane_f32(pd1, 0), pd2, 0);
-
-      auto s1 = vmaxq_f32(vaddq_f32(pm1, b), vaddq_f32(pd1, kConsecutive));
-      auto s2 = vmaxq_f32(vaddq_f32(pm2, b), vaddq_f32(pd2, kConsecutive));
-      auto s3 = vmaxq_f32(vaddq_f32(pm3, b), vaddq_f32(pd3, kConsecutive));
-      auto s4 = vmaxq_f32(vaddq_f32(pm4, b), vaddq_f32(pd4, kConsecutive));
+      auto s1 = vmaxq_f32(vaddq_f32(m1, b), vaddq_f32(d1, kConsecutive));
+      auto s2 = vmaxq_f32(vaddq_f32(m2, b), vaddq_f32(d2, kConsecutive));
+      auto s3 = vmaxq_f32(vaddq_f32(m3, b), vaddq_f32(d3, kConsecutive));
+      auto s4 = vmaxq_f32(vaddq_f32(m4, b), vaddq_f32(d4, kConsecutive));
+      s1 = vextq_f32(s1, s1, 3);
+      s2 = vextq_f32(s2, s2, 3);
+      s3 = vextq_f32(s3, s3, 3);
+      s4 = vextq_f32(s4, s4, 3);
+      s4 = vsetq_lane_f32(vgetq_lane_f32(s3, 0), s4, 0);
+      s3 = vsetq_lane_f32(vgetq_lane_f32(s2, 0), s3, 0);
+      s2 = vsetq_lane_f32(vgetq_lane_f32(s1, 0), s2, 0);
       s1 = vsetq_lane_f32(g + bonus, s1, 0);
       g += kGapLeading;
 
