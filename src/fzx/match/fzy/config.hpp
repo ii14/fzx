@@ -32,14 +32,22 @@
 
 namespace fzx::fzy {
 
-constexpr Score kScoreGapLeading = -0.005;
-constexpr Score kScoreGapTrailing = -0.005;
-constexpr Score kScoreGapInner = -0.01;
-constexpr Score kScoreMatchConsecutive = 1.0;
-constexpr Score kScoreMatchSlash = 0.9;
-constexpr Score kScoreMatchWord = 0.8;
-constexpr Score kScoreMatchCapital = 0.7;
-constexpr Score kScoreMatchDot = 0.6;
+// Scores have been multiplied by 200 to operate on whole numbers, which simplifies things.
+// Multiply the result score by kScoreMultiplier to get back a more readable value.
+//
+// Be careful with changing the values. The maximum and minimum score value times kMatchMaxLen
+// should fit in [-16777216, 16777216] range. See the comments on fzx::Match class.
+
+constexpr Score kScoreMultiplier = 0.005;
+
+constexpr Score kScoreGapLeading = -1;
+constexpr Score kScoreGapTrailing = -1;
+constexpr Score kScoreGapInner = -2;
+constexpr Score kScoreMatchConsecutive = 200;
+constexpr Score kScoreMatchSlash = 180;
+constexpr Score kScoreMatchWord = 160;
+constexpr Score kScoreMatchCapital = 140;
+constexpr Score kScoreMatchDot = 120;
 
 constexpr Score kScoreMax = std::numeric_limits<Score>::infinity();
 constexpr Score kScoreMin = -std::numeric_limits<Score>::infinity();
