@@ -247,7 +247,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 
   if constexpr (N == 4) {
     nt = _mm_unpacklo_epi8(nt, kZero);
-    auto n = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nt, kZero));
+    auto n = _mm_unpacklo_epi16(nt, kZero);
     auto d = kMin;
     auto m = kMin;
 
@@ -256,24 +256,24 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_ps(toLower(ch));
+      auto r = _mm_set1_epi32(toLower(ch));
       auto b = _mm_set1_ps(bonus);
-      auto c = _mm_cmpeq_ps(n, r);
+      auto c = _mm_cmpeq_epi32(n, r);
 
       auto s = _mm_max_ps(_mm_add_ps(m, b), _mm_add_ps(d, kConsecutive));
       s = _mm_shuffle_ps(s, s, _MM_SHUFFLE(2, 1, 0, 3));
       s = _mm_move_ss(s, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
-      d = simd::blendv(c, s, kMin);
+      d = simd::blendv(_mm_castsi128_ps(c), s, kMin);
       m = _mm_max_ps(d, _mm_add_ps(m, kGap2));
     }
 
     return simd::extractv(m, (needle.size() + 3) & 0b11);
   } else if constexpr (N == 8) {
     nt = _mm_unpacklo_epi8(nt, kZero);
-    auto n1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nt, kZero));
-    auto n2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nt, kZero));
+    auto n1 = _mm_unpacklo_epi16(nt, kZero);
+    auto n2 = _mm_unpackhi_epi16(nt, kZero);
     auto d1 = kMin, d2 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin; // NOLINT(readability-isolate-declaration)
 
@@ -282,10 +282,10 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_ps(toLower(ch));
+      auto r = _mm_set1_epi32(toLower(ch));
       auto b = _mm_set1_ps(bonus);
-      auto c1 = _mm_cmpeq_ps(n1, r);
-      auto c2 = _mm_cmpeq_ps(n2, r);
+      auto c1 = _mm_cmpeq_epi32(n1, r);
+      auto c2 = _mm_cmpeq_epi32(n2, r);
 
       auto s1 = _mm_max_ps(_mm_add_ps(m1, b), _mm_add_ps(d1, kConsecutive));
       auto s2 = _mm_max_ps(_mm_add_ps(m2, b), _mm_add_ps(d2, kConsecutive));
@@ -295,8 +295,8 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
-      d1 = simd::blendv(c1, s1, kMin);
-      d2 = simd::blendv(c2, s2, kMin);
+      d1 = simd::blendv(_mm_castsi128_ps(c1), s1, kMin);
+      d2 = simd::blendv(_mm_castsi128_ps(c2), s2, kMin);
       m1 = _mm_max_ps(d1, _mm_add_ps(m1, kGap1));
       m2 = _mm_max_ps(d2, _mm_add_ps(m2, kGap2));
     }
@@ -305,9 +305,9 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   } else if constexpr (N == 12) {
     auto nlo = _mm_unpacklo_epi8(nt, kZero);
     auto nhi = _mm_unpackhi_epi8(nt, kZero);
-    auto n1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nlo, kZero));
-    auto n2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nlo, kZero));
-    auto n3 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nhi, kZero));
+    auto n1 = _mm_unpacklo_epi16(nlo, kZero);
+    auto n2 = _mm_unpackhi_epi16(nlo, kZero);
+    auto n3 = _mm_unpacklo_epi16(nhi, kZero);
     auto d1 = kMin, d2 = kMin, d3 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin; // NOLINT(readability-isolate-declaration)
 
@@ -316,11 +316,11 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_ps(toLower(ch));
+      auto r = _mm_set1_epi32(toLower(ch));
       auto b = _mm_set1_ps(bonus);
-      auto c1 = _mm_cmpeq_ps(n1, r);
-      auto c2 = _mm_cmpeq_ps(n2, r);
-      auto c3 = _mm_cmpeq_ps(n3, r);
+      auto c1 = _mm_cmpeq_epi32(n1, r);
+      auto c2 = _mm_cmpeq_epi32(n2, r);
+      auto c3 = _mm_cmpeq_epi32(n3, r);
 
       auto s1 = _mm_max_ps(_mm_add_ps(m1, b), _mm_add_ps(d1, kConsecutive));
       auto s2 = _mm_max_ps(_mm_add_ps(m2, b), _mm_add_ps(d2, kConsecutive));
@@ -333,9 +333,9 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
-      d1 = simd::blendv(c1, s1, kMin);
-      d2 = simd::blendv(c2, s2, kMin);
-      d3 = simd::blendv(c3, s3, kMin);
+      d1 = simd::blendv(_mm_castsi128_ps(c1), s1, kMin);
+      d2 = simd::blendv(_mm_castsi128_ps(c2), s2, kMin);
+      d3 = simd::blendv(_mm_castsi128_ps(c3), s3, kMin);
       m1 = _mm_max_ps(d1, _mm_add_ps(m1, kGap1));
       m2 = _mm_max_ps(d2, _mm_add_ps(m2, kGap1));
       m3 = _mm_max_ps(d3, _mm_add_ps(m3, kGap2));
@@ -345,10 +345,10 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   } else if constexpr (N == 16) {
     auto nlo = _mm_unpacklo_epi8(nt, kZero);
     auto nhi = _mm_unpackhi_epi8(nt, kZero);
-    auto n1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nlo, kZero));
-    auto n2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nlo, kZero));
-    auto n3 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(nhi, kZero));
-    auto n4 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(nhi, kZero));
+    auto n1 = _mm_unpacklo_epi16(nlo, kZero);
+    auto n2 = _mm_unpackhi_epi16(nlo, kZero);
+    auto n3 = _mm_unpacklo_epi16(nhi, kZero);
+    auto n4 = _mm_unpackhi_epi16(nhi, kZero);
     auto d1 = kMin, d2 = kMin, d3 = kMin, d4 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin, m4 = kMin; // NOLINT(readability-isolate-declaration)
 
@@ -357,12 +357,12 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_ps(toLower(ch));
+      auto r = _mm_set1_epi32(toLower(ch));
       auto b = _mm_set1_ps(bonus);
-      auto c1 = _mm_cmpeq_ps(n1, r);
-      auto c2 = _mm_cmpeq_ps(n2, r);
-      auto c3 = _mm_cmpeq_ps(n3, r);
-      auto c4 = _mm_cmpeq_ps(n4, r);
+      auto c1 = _mm_cmpeq_epi32(n1, r);
+      auto c2 = _mm_cmpeq_epi32(n2, r);
+      auto c3 = _mm_cmpeq_epi32(n3, r);
+      auto c4 = _mm_cmpeq_epi32(n4, r);
 
       auto s1 = _mm_max_ps(_mm_add_ps(m1, b), _mm_add_ps(d1, kConsecutive));
       auto s2 = _mm_max_ps(_mm_add_ps(m2, b), _mm_add_ps(d2, kConsecutive));
@@ -378,10 +378,10 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
       s1 = _mm_move_ss(s1, _mm_add_ss(g, b));
       g = _mm_add_ss(g, kGapLeading);
 
-      d1 = simd::blendv(c1, s1, kMin);
-      d2 = simd::blendv(c2, s2, kMin);
-      d3 = simd::blendv(c3, s3, kMin);
-      d4 = simd::blendv(c4, s4, kMin);
+      d1 = simd::blendv(_mm_castsi128_ps(c1), s1, kMin);
+      d2 = simd::blendv(_mm_castsi128_ps(c2), s2, kMin);
+      d3 = simd::blendv(_mm_castsi128_ps(c3), s3, kMin);
+      d4 = simd::blendv(_mm_castsi128_ps(c4), s4, kMin);
       m1 = _mm_max_ps(d1, _mm_add_ps(m1, kGap1));
       m2 = _mm_max_ps(d2, _mm_add_ps(m2, kGap1));
       m3 = _mm_max_ps(d3, _mm_add_ps(m3, kGap1));
@@ -426,7 +426,7 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
 
   if constexpr (N == 4) {
     auto nl = vmovl_u8(vget_low_u8(nt));
-    auto n = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
+    auto n = vmovl_u16(vget_low_u16(nl));
     auto d = kMin;
     auto m = kMin;
 
@@ -435,9 +435,9 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = vmovq_n_f32(toLower(ch));
+      auto r = vmovq_n_u32(toLower(ch));
       auto b = vmovq_n_f32(bonus);
-      auto c = vceqq_f32(n, r);
+      auto c = vceqq_u32(n, r);
       auto s = vmaxq_f32(vaddq_f32(m, b), vaddq_f32(d, kConsecutive));
       s = vextq_f32(s, s, 3);
       s = vsetq_lane_f32(g + bonus, s, 0);
@@ -449,8 +449,8 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
     return simd::extractv(m, (needle.size() + 3) & 0b11);
   } else if constexpr (N == 8) {
     auto nl = vmovl_u8(vget_low_u8(nt));
-    auto n1 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
-    auto n2 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nl)));
+    auto n1 = vmovl_u16(vget_low_u16(nl));
+    auto n2 = vmovl_u16(vget_high_u16(nl));
     auto d1 = kMin, d2 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin; // NOLINT(readability-isolate-declaration)
 
@@ -459,10 +459,10 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = vmovq_n_f32(toLower(ch));
+      auto r = vmovq_n_u32(toLower(ch));
       auto b = vmovq_n_f32(bonus);
-      auto c1 = vceqq_f32(n1, r);
-      auto c2 = vceqq_f32(n2, r);
+      auto c1 = vceqq_u32(n1, r);
+      auto c2 = vceqq_u32(n2, r);
 
       auto s1 = vmaxq_f32(vaddq_f32(m1, b), vaddq_f32(d1, kConsecutive));
       auto s2 = vmaxq_f32(vaddq_f32(m2, b), vaddq_f32(d2, kConsecutive));
@@ -482,9 +482,9 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
   } else if constexpr (N == 12) {
     auto nl = vmovl_u8(vget_low_u8(nt));
     auto nh = vmovl_u8(vget_high_u8(nt));
-    auto n1 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
-    auto n2 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nl)));
-    auto n3 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nh)));
+    auto n1 = vmovl_u16(vget_low_u16(nl));
+    auto n2 = vmovl_u16(vget_high_u16(nl));
+    auto n3 = vmovl_u16(vget_low_u16(nh));
     auto d1 = kMin, d2 = kMin, d3 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin; // NOLINT(readability-isolate-declaration)
 
@@ -493,11 +493,11 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = vmovq_n_f32(toLower(ch));
+      auto r = vmovq_n_u32(toLower(ch));
       auto b = vmovq_n_f32(bonus);
-      auto c1 = vceqq_f32(n1, r);
-      auto c2 = vceqq_f32(n2, r);
-      auto c3 = vceqq_f32(n3, r);
+      auto c1 = vceqq_u32(n1, r);
+      auto c2 = vceqq_u32(n2, r);
+      auto c3 = vceqq_u32(n3, r);
 
       auto s1 = vmaxq_f32(vaddq_f32(m1, b), vaddq_f32(d1, kConsecutive));
       auto s2 = vmaxq_f32(vaddq_f32(m2, b), vaddq_f32(d2, kConsecutive));
@@ -522,10 +522,10 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
   } else if constexpr (N == 16) {
     auto nl = vmovl_u8(vget_low_u8(nt));
     auto nh = vmovl_u8(vget_high_u8(nt));
-    auto n1 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nl)));
-    auto n2 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nl)));
-    auto n3 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(nh)));
-    auto n4 = vcvtq_f32_u32(vmovl_u16(vget_high_u16(nh)));
+    auto n1 = vmovl_u16(vget_low_u16(nl));
+    auto n2 = vmovl_u16(vget_high_u16(nl));
+    auto n3 = vmovl_u16(vget_low_u16(nh));
+    auto n4 = vmovl_u16(vget_high_u16(nh));
     auto d1 = kMin, d2 = kMin, d3 = kMin, d4 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin, m4 = kMin; // NOLINT(readability-isolate-declaration)
 
@@ -534,12 +534,12 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = vmovq_n_f32(toLower(ch));
+      auto r = vmovq_n_u32(toLower(ch));
       auto b = vmovq_n_f32(bonus);
-      auto c1 = vceqq_f32(n1, r);
-      auto c2 = vceqq_f32(n2, r);
-      auto c3 = vceqq_f32(n3, r);
-      auto c4 = vceqq_f32(n4, r);
+      auto c1 = vceqq_u32(n1, r);
+      auto c2 = vceqq_u32(n2, r);
+      auto c3 = vceqq_u32(n3, r);
+      auto c4 = vceqq_u32(n4, r);
 
       auto s1 = vmaxq_f32(vaddq_f32(m1, b), vaddq_f32(d1, kConsecutive));
       auto s2 = vmaxq_f32(vaddq_f32(m2, b), vaddq_f32(d2, kConsecutive));
