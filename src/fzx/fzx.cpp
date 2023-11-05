@@ -138,8 +138,8 @@ Result Fzx::getResult(size_t i) const noexcept
     DEBUG_ASSERT(i < res->mItems.size());
     if (i >= res->mItems.size())
       return {};
-    const Match& match = res->mItems[i];
-    return { mItems.at(match.index()), match.index(), match.score() * fzy::kScoreMultiplier };
+    const MatchedItem& match = res->mItems[i];
+    return { mItems.at(match.index()), match.index(), match.score() * kScoreMultiplier };
   } else {
     DEBUG_ASSERT(i < mItems.size());
     if (i >= mItems.size())

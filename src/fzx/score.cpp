@@ -24,7 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include "fzx/match/fzy/fzy.hpp"
+#include "fzx/score.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -34,15 +34,44 @@
 
 #include "fzx/config.hpp"
 #include "fzx/macros.hpp"
-#include "fzx/match/fzy/bonus.hpp"
-#include "fzx/match/fzy/config.hpp"
 #include "fzx/simd.hpp"
 #include "fzx/strings.hpp"
 #include "fzx/util.hpp"
 
-namespace fzx::fzy {
+namespace fzx {
 
 namespace {
+
+constexpr auto kBonusStates = []{
+  std::array<std::array<Score, 256>, 3> r {};
+
+  r[1]['/'] = kScoreMatchSlash;
+  r[1]['-'] = kScoreMatchWord;
+  r[1]['_'] = kScoreMatchWord;
+  r[1][' '] = kScoreMatchWord;
+  r[1]['.'] = kScoreMatchDot;
+
+  r[2]['/'] = kScoreMatchSlash;
+  r[2]['-'] = kScoreMatchWord;
+  r[2]['_'] = kScoreMatchWord;
+  r[2][' '] = kScoreMatchWord;
+  r[2]['.'] = kScoreMatchDot;
+  for (char i = 'a'; i <= 'z'; ++i)
+    r[2][i] = kScoreMatchCapital;
+
+  return r;
+}();
+
+constexpr auto kBonusIndex = []{
+  std::array<uint8_t, 256> r {};
+  for (char i = 'A'; i <= 'Z'; ++i)
+    r[i] = 2;
+  for (char i = 'a'; i <= 'z'; ++i)
+    r[i] = 1;
+  for (char i = '0'; i <= '9'; ++i)
+    r[i] = 1;
+  return r;
+}();
 
 void precomputeBonus(std::string_view haystack, Score* matchBonus) noexcept
 {
@@ -651,4 +680,4 @@ Score matchPositions(const AlignedString& needle, std::string_view haystack, Pos
   return m[needleLen - 1][haystackLen - 1];
 }
 
-} // namespace fzx::fzy
+} // namespace fzx

@@ -1,6 +1,6 @@
 // Licensed under LGPLv3 - see LICENSE file for details.
 
-#include "fzx/match/match.hpp"
+#include "fzx/match.hpp"
 
 #include <cstdint>
 

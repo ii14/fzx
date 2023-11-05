@@ -8,8 +8,8 @@
 #include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
 #include "fzx/macros.hpp"
-#include "fzx/match/fzy/fzy.hpp"
-#include "fzx/match/match.hpp"
+#include "fzx/score.hpp"
+#include "fzx/match.hpp"
 
 namespace fzx {
 
@@ -118,9 +118,9 @@ private:
 /// Merge results from sorted vectors `a` and `b` into the output vector `r`.
 /// `r` is an in/out parameter to reuse previously allocated memory.
 void merge2(
-    std::vector<Match>& RESTRICT r,
-    const std::vector<Match>& RESTRICT a,
-    const std::vector<Match>& RESTRICT b)
+    std::vector<MatchedItem>& RESTRICT r,
+    const std::vector<MatchedItem>& RESTRICT a,
+    const std::vector<MatchedItem>& RESTRICT b)
 {
   r.clear();
   r.resize(a.size() + b.size());
@@ -154,7 +154,7 @@ void Worker::run() try
   size_t lastQueryTick = 0;
 
   // Temporary vector for merging results
-  std::vector<Match> tmp;
+  std::vector<MatchedItem> tmp;
 
   const uint8_t kParentIndex = kParentMap[mIndex];
   MergeState mergeState { mIndex, mPool->mWorkers.size() };
@@ -252,36 +252,36 @@ start:
 
       switch (query.size()) {
       default:
-        process(fzy::score);
+        process(score);
         break;
       case 1:
-        process(fzy::score1);
+        process(score1);
         break;
 #if defined(FZX_SSE2)
       case 2: case 3: case 4:
-        process(fzy::scoreSSE<4>);
+        process(scoreSSE<4>);
         break;
       case 5: case 6: case 7: case 8:
-        process(fzy::scoreSSE<8>);
+        process(scoreSSE<8>);
         break;
       case 9: case 10: case 11: case 12:
-        process(fzy::scoreSSE<12>);
+        process(scoreSSE<12>);
         break;
       case 13: case 14: case 15: case 16:
-        process(fzy::scoreSSE<16>);
+        process(scoreSSE<16>);
         break;
 #elif defined(FZX_NEON)
       case 2: case 3: case 4:
-        process(fzy::scoreNeon<4>);
+        process(scoreNeon<4>);
         break;
       case 5: case 6: case 7: case 8:
-        process(fzy::scoreNeon<8>);
+        process(scoreNeon<8>);
         break;
       case 9: case 10: case 11: case 12:
-        process(fzy::scoreNeon<12>);
+        process(scoreNeon<12>);
         break;
       case 13: case 14: case 15: case 16:
-        process(fzy::scoreNeon<16>);
+        process(scoreNeon<16>);
         break;
 #endif
       }

@@ -29,14 +29,36 @@
 #include <cstddef>
 #include <string_view>
 #include <array>
+#include <limits>
 
 #include "fzx/aligned_string.hpp"
 
-namespace fzx::fzy {
+namespace fzx {
 
 using Score = float;
 
 static constexpr auto kMatchMaxLen = 1024;
+
+// Scores have been multiplied by 200 to operate on whole numbers, which simplifies things.
+// Multiply the result score by kScoreMultiplier to get back a more readable value.
+//
+// Be careful with changing the values. The maximum and minimum score value times kMatchMaxLen
+// should fit in [-16777216, 16777216] range. See the comments on fzx::MatchedItem class.
+
+static constexpr Score kScoreMultiplier = 0.005;
+
+static constexpr Score kScoreGapLeading = -1;
+static constexpr Score kScoreGapTrailing = -1;
+static constexpr Score kScoreGapInner = -2;
+static constexpr Score kScoreMatchConsecutive = 200;
+static constexpr Score kScoreMatchSlash = 180;
+static constexpr Score kScoreMatchWord = 160;
+static constexpr Score kScoreMatchCapital = 140;
+static constexpr Score kScoreMatchDot = 120;
+
+static constexpr Score kScoreMax = std::numeric_limits<Score>::infinity();
+static constexpr Score kScoreMin = -std::numeric_limits<Score>::infinity();
+
 
 Score score(const AlignedString& needle, std::string_view haystack) noexcept;
 Score score1(const AlignedString& needle, std::string_view haystack) noexcept;
@@ -60,4 +82,4 @@ extern template Score scoreNeon<16>(const AlignedString& needle, std::string_vie
 using Positions = std::array<size_t, kMatchMaxLen>;
 Score matchPositions(const AlignedString& needle, std::string_view haystack, Positions* positions);
 
-} // namespace fzx::fzy
+} // namespace fzx

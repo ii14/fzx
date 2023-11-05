@@ -3,23 +3,23 @@
 
 #include <vector>
 
-#include "fzx/match.hpp"
+#include "fzx/matched_item.hpp"
 
 using namespace fzx;
 
-TEST_CASE("fzx::Match")
+TEST_CASE("fzx::MatchedItem")
 {
   constexpr auto kMax = std::numeric_limits<float>::infinity();
   constexpr auto kMin = -std::numeric_limits<float>::infinity();
 
   SECTION("prefers lower index") {
-    CHECK(Match{0,    0} < Match{1,    0});
-    CHECK(Match{0,    1} < Match{1,    1});
-    CHECK(Match{0,    2} < Match{1,    2});
-    CHECK(Match{0,   -1} < Match{1,   -1});
-    CHECK(Match{0,   -2} < Match{1,   -2});
-    CHECK(Match{0, kMax} < Match{1, kMax});
-    CHECK(Match{0, kMin} < Match{1, kMin});
+    CHECK(MatchedItem{0,    0} < MatchedItem{1,    0});
+    CHECK(MatchedItem{0,    1} < MatchedItem{1,    1});
+    CHECK(MatchedItem{0,    2} < MatchedItem{1,    2});
+    CHECK(MatchedItem{0,   -1} < MatchedItem{1,   -1});
+    CHECK(MatchedItem{0,   -2} < MatchedItem{1,   -2});
+    CHECK(MatchedItem{0, kMax} < MatchedItem{1, kMax});
+    CHECK(MatchedItem{0, kMin} < MatchedItem{1, kMin});
   }
 
   SECTION("prefers higher score") {
@@ -52,22 +52,22 @@ TEST_CASE("fzx::Match")
       auto snd = t.second;
       CAPTURE(fst);
       CAPTURE(snd);
-      CHECK(Match{0, fst} < Match{0, snd});
-      CHECK(Match{1, fst} < Match{0, snd});
-      CHECK(Match{0, fst} < Match{1, snd});
+      CHECK(MatchedItem{0, fst} < MatchedItem{0, snd});
+      CHECK(MatchedItem{1, fst} < MatchedItem{0, snd});
+      CHECK(MatchedItem{0, fst} < MatchedItem{1, snd});
     }
   }
 
   SECTION("decode") {
-    CHECK(Match{0, 0}.index() == 0);
-    CHECK(Match{1, 0}.index() == 1);
+    CHECK(MatchedItem{0, 0}.index() == 0);
+    CHECK(MatchedItem{1, 0}.index() == 1);
 
-    CHECK(Match{0, 2}.score() == 2);
-    CHECK(Match{0, 1}.score() == 1);
-    CHECK(Match{0, 0}.score() == 0);
-    CHECK(Match{0, -1}.score() == -1);
-    CHECK(Match{0, -2}.score() == -2);
-    CHECK(Match{0, kMin}.score() == kMin);
-    CHECK(Match{0, kMax}.score() == kMax);
+    CHECK(MatchedItem{0, 2}.score() == 2);
+    CHECK(MatchedItem{0, 1}.score() == 1);
+    CHECK(MatchedItem{0, 0}.score() == 0);
+    CHECK(MatchedItem{0, -1}.score() == -1);
+    CHECK(MatchedItem{0, -2}.score() == -2);
+    CHECK(MatchedItem{0, kMin}.score() == kMin);
+    CHECK(MatchedItem{0, kMax}.score() == kMax);
   }
 }

@@ -2,7 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "fzx/config.hpp"
-#include "fzx/match/match.hpp"
+#include "fzx/match.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

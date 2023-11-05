@@ -1,8 +1,8 @@
 #include "fzx/config.hpp"
 #include "fzx/fzx.hpp"
-#include "fzx/match/fzy/fzy.hpp"
 #include "fzx/helper/eventfd.hpp"
 #include "fzx/helper/line_scanner.hpp"
+#include "fzx/score.hpp"
 
 #include <algorithm>
 
@@ -267,10 +267,10 @@ static int getResults(lua_State* lstate) try
 
     lua_createtable(lstate, static_cast<int>(query.size()), 0);
     if (!query.empty()) {
-      fzy::Positions positions;
+      Positions positions;
       constexpr auto kInvalid = std::numeric_limits<size_t>::max();
       std::fill(positions.begin(), positions.end(), kInvalid);
-      fzy::matchPositions(query, item.mLine, &positions);
+      matchPositions(query, item.mLine, &positions);
 
       for (int i = 0; static_cast<size_t>(i) < positions.size() && positions[i] != kInvalid; ++i) {
         lua_pushinteger(lstate, static_cast<lua_Integer>(positions[i]));

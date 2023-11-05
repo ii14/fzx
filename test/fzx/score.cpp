@@ -2,12 +2,11 @@
 #include <catch2/catch_approx.hpp>
 
 #include "fzx/config.hpp"
-#include "fzx/match/fzy/config.hpp"
-#include "fzx/match/fzy/fzy.hpp"
+#include "fzx/score.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-using namespace fzx::fzy;
+using namespace fzx;
 using Catch::Approx;
 
 /// Overallocated std::string
@@ -18,7 +17,7 @@ static inline std::string operator""_s(const char* data, size_t size)
   return s;
 }
 
-TEST_CASE("fzx::fzy::score", "[fzy]")
+TEST_CASE("fzx::score", "[score]")
 {
   SECTION("should prefer starts of words") {
     // App/Models/Order is better than App/MOdels/zRder
@@ -152,7 +151,7 @@ TEST_CASE("fzx::fzy::score", "[fzy]")
 }
 
 #if defined(FZX_SSE2)
-TEST_CASE("fzx::fzy::score sse2", "[fzy]")
+TEST_CASE("fzx::scoreSse", "[score]")
 {
   auto h =
     "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"
@@ -221,7 +220,7 @@ TEST_CASE("fzx::fzy::score sse2", "[fzy]")
 #endif
 
 #if defined(FZX_NEON)
-TEST_CASE("fzx::fzy::score neon", "[fzy]")
+TEST_CASE("fzx::scoreNeon", "[score]")
 {
   auto h =
     "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"

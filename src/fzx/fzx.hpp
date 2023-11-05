@@ -14,7 +14,7 @@
 #include "fzx/aligned_string.hpp"
 #include "fzx/item_queue.hpp"
 #include "fzx/items.hpp"
-#include "fzx/match.hpp"
+#include "fzx/matched_item.hpp"
 #include "fzx/worker.hpp"
 
 namespace fzx {

@@ -11,7 +11,7 @@
 
 #include "fzx/aligned_string.hpp"
 #include "fzx/events.hpp"
-#include "fzx/match.hpp"
+#include "fzx/matched_item.hpp"
 #include "fzx/tx.hpp"
 
 namespace fzx {
@@ -21,7 +21,7 @@ struct Fzx;
 struct Results
 {
   /// Matched items.
-  std::vector<Match> mItems;
+  std::vector<MatchedItem> mItems;
   /// Original query.
   /// By the time the results are sent back, the active query could've changed, so
   /// it's necessary to pass it back to make sure matched positions are calculated
