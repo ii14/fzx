@@ -12,6 +12,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+include(FzxGitSubmodule)
 
 option(FZX_BUILD_EXECUTABLE "Build terminal application" OFF)
 option(FZX_BUILD_LUA_MODULE "Build Lua module" ON)
@@ -34,7 +37,7 @@ if(FZX_BUILD_LUA_MODULE)
 endif()
 if(FZX_BUILD_EXECUTABLE)
   if(FZX_BUNDLE_FMT)
-    # TODO: init submodule
+    fzx_git_submodule(deps/fmt)
     add_subdirectory(deps/fmt)
   else()
     find_package(fmt REQUIRED)
@@ -42,7 +45,7 @@ if(FZX_BUILD_EXECUTABLE)
 endif()
 if(FZX_BUILD_TESTS)
   if(FZX_BUNDLE_CATCH2)
-    # TODO: init submodule
+    fzx_git_submodule(deps/Catch2)
     add_subdirectory(deps/Catch2)
   else()
     find_package(Catch2 3 REQUIRED)
@@ -50,7 +53,7 @@ if(FZX_BUILD_TESTS)
 endif()
 if(FZX_BUILD_BENCHMARKS)
   if(FZX_BUNDLE_BENCHMARK)
-    # TODO: init submodule
+    fzx_git_submodule(deps/benchmark)
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "")
     set(BENCHMARK_ENABLE_WERROR OFF CACHE BOOL "")
     add_subdirectory(deps/benchmark)
@@ -59,8 +62,6 @@ if(FZX_BUILD_BENCHMARKS)
   endif()
 endif()
 
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(FZX_ENABLE_NATIVE  "Optimize for the current architecture" ON)
 option(FZX_ENABLE_LTO     "Enable link time optimizations" ON)
