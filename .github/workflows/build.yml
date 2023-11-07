@@ -95,3 +95,36 @@ jobs:
     - name: Run tests
       working-directory: ${{ github.workspace }}/build
       run: bin/Debug/test.exe
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Install dependencies
+      run: ./.github/workflows/install_deps.sh
+
+    - name: Configure CMake
+      run: >
+        cmake
+        -G Ninja
+        -B ${{ github.workspace }}/build
+        -D CMAKE_BUILD_TYPE=Debug
+        -D CMAKE_CXX_COMPILER=clang++
+        -D FZX_BUILD_EXECUTABLE=ON
+        -D FZX_BUILD_LUA_MODULE=ON
+        -D FZX_BUILD_TESTS=ON
+        ${{ matrix.flags }}
+        -S ${{ github.workspace }}
+
+    - name: Run clang-tidy
+      run: >
+        clang-tidy
+        --warnings-as-errors='*'
+        --use-color
+        -p ${{ github.workspace }}/build/compile_commands.json
+        src/**/*.hpp src/**/*.cpp

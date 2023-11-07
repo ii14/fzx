@@ -14,9 +14,13 @@ if [[ $os == Linux ]]; then
 
   wget https://apt.llvm.org/llvm.sh
   chmod +x llvm.sh
-  sudo ./llvm.sh $CLANG_VERSION
+  sudo ./llvm.sh $CLANG_VERSION all
   sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CLANG_VERSION 100
+  sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CLANG_VERSION 100
+  sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-$CLANG_VERSION 100
   sudo update-alternatives --set clang /usr/bin/clang-$CLANG_VERSION
+  sudo update-alternatives --set clang++ /usr/bin/clang++-$CLANG_VERSION
+  sudo update-alternatives --set clang-tidy /usr/bin/clang-tidy-$CLANG_VERSION
 
 elif [[ $os == Darwin ]]; then
   brew update --quiet
