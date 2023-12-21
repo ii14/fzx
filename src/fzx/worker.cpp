@@ -176,32 +176,31 @@ void Worker::run() try
     }
   };
 
-  // TODO: Not sure how to express this control flow, so use gotos for now.
-  // We can make it a proper clean code that is even harder to follow than gotos later.
-wait:
-  uint32_t ev = events.wait();
-start:
-  if (ev & kStop)
-    return;
-
-  bool itemsChanged = false;
-  bool queryChanged = false;
-
-  if (ev & kJob) {
+  auto loadJob = [&] {
+    bool res = false;
     mPool->loadJob(job);
 
     if (lastItemsTick < job.mItems.size()) {
       lastItemsTick = job.mItems.size();
-      itemsChanged = true;
+      res = true;
     }
 
     if (lastQueryTick < job.mQueryTick) {
       lastQueryTick = job.mQueryTick;
-      queryChanged = true;
+      res = true;
     }
-  }
 
-  if (queryChanged || itemsChanged) {
+    return res;
+  };
+
+wait:
+  uint32_t ev = events.wait();
+
+  if (ev & kStop)
+    return;
+
+  if ((ev & kJob) && loadJob()) {
+match:
     // A new job invalidates any merged results we got so far.
     published = false;
     mergeState.reset();
@@ -288,8 +287,11 @@ start:
 
       // Ignore kMerge events from other workers, we don't care about
       // them at this stage, as we don't even have out own results yet.
-      if (ev = events.get(); ev & (kStop | kJob))
-        goto start;
+      ev = events.get();
+      if (ev & kStop)
+        return;
+      if ((ev & kJob) && loadJob())
+        goto match;
     }
 
     // Sort the local batch of items.
