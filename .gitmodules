@@ -7,3 +7,6 @@
 [submodule "deps/benchmark"]
 	path = deps/benchmark
 	url = https://github.com/google/benchmark.git
+[submodule "deps/highway"]
+	path = deps/highway
+	url = https://github.com/google/highway.git

@@ -11,6 +11,10 @@
 #include "fzx/score.hpp"
 #include "fzx/match.hpp"
 
+#ifdef FZX_HIGHWAY
+# include <hwy/contrib/sort/vqsort.h>
+#endif
+
 namespace fzx {
 
 namespace {
@@ -295,7 +299,12 @@ match:
     }
 
     // Sort the local batch of items.
+#ifdef FZX_HIGHWAY
+    // TODO: this cast is UB, change mItems to std::vector<int64_t>
+    hwy::VQSort(reinterpret_cast<int64_t*>(out.mItems.data()), out.mItems.size(), hwy::SortAscending{});
+#else
     std::sort(out.mItems.begin(), out.mItems.end());
+#endif
   }
 
   // Merge results from other threads.

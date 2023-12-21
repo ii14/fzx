@@ -23,6 +23,7 @@ option(FZX_BUILD_BENCHMARKS "Build benchmarks" OFF)
 
 option(FZX_BUNDLE_DEPENDENCIES "Use bundled dependencies" ON)
 option(FZX_BUNDLE_FMT       "Use bundled dependency - fmt" ${FZX_BUNDLE_DEPENDENCIES})
+option(FZX_BUNDLE_HIGHWAY   "Use bundled dependency - highway" OFF)
 option(FZX_BUNDLE_LUA       "Use bundled dependency - Lua 5.1" ${FZX_BUNDLE_DEPENDENCIES})
 option(FZX_BUNDLE_CATCH2    "Use bundled dependency - Catch2" ${FZX_BUNDLE_DEPENDENCIES})
 option(FZX_BUNDLE_BENCHMARK "Use bundled dependency - benchmark" ${FZX_BUNDLE_DEPENDENCIES})
@@ -42,6 +43,13 @@ if(FZX_BUILD_EXECUTABLE)
   else()
     find_package(fmt REQUIRED)
   endif()
+endif()
+if(FZX_BUNDLE_HIGHWAY)
+  fzx_git_submodule(deps/highway)
+  set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "")
+  set(HWY_ENABLE_INSTALL OFF CACHE BOOL "")
+  set(HWY_ENABLE_TESTS OFF CACHE BOOL "")
+  add_subdirectory(deps/highway)
 endif()
 if(FZX_BUILD_TESTS)
   if(FZX_BUNDLE_CATCH2)
@@ -207,6 +215,13 @@ if(FZX_ENABLE_NEON)
   # TODO: detect
   message(STATUS "fzx: NEON enabled")
   target_compile_definitions(fzxopts INTERFACE FZX_NEON)
+endif()
+
+
+# TODO: option
+if(FZX_BUNDLE_HIGHWAY)
+  target_link_libraries(fzxopts INTERFACE hwy hwy_contrib)
+  target_compile_definitions(fzxopts INTERFACE FZX_HIGHWAY)
 endif()
 
 
