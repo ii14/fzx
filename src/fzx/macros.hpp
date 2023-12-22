@@ -5,6 +5,14 @@
 #define UNUSED(x) (::fzx::unused(x))
 
 #if defined(__GNUC__) || defined(__clang__)
+# define EXPORT __attribute__((visibility("default")))
+#elif defined(_MSC_VER)
+# define EXPORT __declspec(dllexport)
+#else
+# define EXPORT
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
 # define INLINE __attribute__((always_inline)) inline
 # define NOINLINE __attribute__((noinline))
 #elif defined(_MSC_VER)
