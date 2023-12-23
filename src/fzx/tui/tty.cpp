@@ -74,7 +74,10 @@ bool TTY::open() noexcept
   gActive = true;
 
   updateSize();
-  put("\x1B[?1049h\x1B[2J\x1B[H"sv);
+  put("\x1B[?1049h" // enter alternate screen buffer
+      "\x1B[2J" // clear the screen
+      "\x1B[H" // move cursor to 1,1
+      "\x1B[?7h"sv); // disable autowrap
   flush();
   return true;
 }
@@ -83,7 +86,8 @@ void TTY::close() noexcept
 {
   if (!isOpen())
     return;
-  put("\x1B[?1049l"sv);
+  put("\x1B[?7l" // enable autowrap
+      "\x1B[?1049l"sv); // exit alternate screen buffer
   flush();
   tcsetattr(mFd, TCSANOW, &gSavedAttrs);
   ::close(mFd);
@@ -140,7 +144,9 @@ void TTY::flush() noexcept
 {
   if (mBuffer.empty() || !isOpen())
     return;
+  ::fcntl(mFd, F_SETFL, O_RDWR); // Blocking write
   UNUSED(::write(mFd, mBuffer.data(), mBuffer.size()));
+  ::fcntl(mFd, F_SETFL, O_RDWR | O_NONBLOCK);
   mBuffer.clear();
 }
 

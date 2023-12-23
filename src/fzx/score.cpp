@@ -605,7 +605,7 @@ template Score scoreNeon<16>(const AlignedString& needle, std::string_view hayst
 
 #endif // defined(FZX_NEON)
 
-Score matchPositions(const AlignedString& needle, std::string_view haystack, Positions* positions)
+Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions)
 {
   if (needle.empty())
     return kScoreMin;

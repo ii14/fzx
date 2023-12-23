@@ -80,6 +80,6 @@ extern template Score scoreNeon<16>(const AlignedString& needle, std::string_vie
 #endif // defined(FZX_NEON)
 
 using Positions = std::array<size_t, kMatchMaxLen>;
-Score matchPositions(const AlignedString& needle, std::string_view haystack, Positions* positions);
+Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions);
 
 } // namespace fzx

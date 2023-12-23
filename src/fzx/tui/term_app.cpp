@@ -90,18 +90,51 @@ void TermApp::processResize()
 
 void TermApp::redraw()
 {
-  mTTY.put("\x1B[2J\x1B[H"sv);
+  if (mTTY.height() < 4 || mTTY.width() < 4)
+    return;
 
-  ASSERT(mTTY.height() > 3);
-  auto maxHeight = mTTY.height() - 2;
-  for (uint16_t i = 0; i < maxHeight && i < mFzx.resultsSize(); ++i) {
-    auto s = mFzx.getResult(i).mLine;
-    s = { s.data(), std::min(s.size(), size_t { 80 }) };
-    mTTY.put("\x1B[{};0H  {}", maxHeight - i, s);
+  int maxHeight = mTTY.height() - 2;
+  int itemWidth = mTTY.width() - 2;
+  size_t items = mFzx.resultsSize();
+
+  Positions positions;
+  constexpr auto kInvalid = std::numeric_limits<size_t>::max();
+  std::string_view query = mFzx.query();
+
+  for (int i = 0; i < maxHeight; ++i) {
+    mTTY.put("\x1B[{};0H\x1B[K  ", maxHeight - i);
+    if (static_cast<size_t>(i) < items) {
+      std::string_view item = mFzx.getResult(i).mLine;
+
+      std::fill(positions.begin(), positions.end(), kInvalid);
+      matchPositions(query, item, &positions);
+
+      bool highlighted = false;
+      std::string_view sub = item.substr(0, itemWidth);
+      for (size_t i = 0, p = 0; i < sub.size(); ++i) {
+        if (p < positions.size() && positions[p] == i) {
+          ++p;
+          if (!highlighted) {
+            highlighted = true;
+            mTTY.put("\x1B[33m"sv);
+          }
+        } else {
+          if (highlighted) {
+            highlighted = false;
+            mTTY.put("\x1B[0m"sv);
+          }
+        }
+        mTTY.put(sub[i]);
+      }
+      if (highlighted) {
+        mTTY.put("\x1B[0m"sv);
+      }
+    }
   }
 
-  mTTY.put("\x1B[{};0H{}/{}", mTTY.height() - 1, mFzx.resultsSize(), mFzx.itemsSize());
-  mTTY.put("\x1B[{};0H> {}", mTTY.height(), mLine.line());
+  mTTY.put("\x1B[{};0H\x1B[K{}/{}", mTTY.height() - 1, mFzx.resultsSize(), mFzx.itemsSize());
+  mTTY.put("\x1B[{};0H\x1B[K> {}", mTTY.height(), mLine.line());
+
   mTTY.flush();
 }
 
