@@ -233,70 +233,10 @@ wait:
         break;
 
       // Match items and calculate scores.
-      auto process = [&](auto&& scoreFunc) {
-        for (size_t i = start; i < end; ++i) {
-          auto item = job.mItems.at(i);
-          if (matchFuzzy(query, item))
-            out.mItems.push_back({ static_cast<uint32_t>(i), scoreFunc(query, item) });
-        }
-      };
-
-      switch (query.size()) {
-      default:
-        process(score);
-        break;
-      case 1:
-        process(score1);
-        break;
-#if defined(FZX_SSE2)
-      case 2:
-      case 3:
-      case 4:
-        process(scoreSSE<4>);
-        break;
-      case 5:
-      case 6:
-      case 7:
-      case 8:
-        process(scoreSSE<8>);
-        break;
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-        process(scoreSSE<12>);
-        break;
-      case 13:
-      case 14:
-      case 15:
-      case 16:
-        process(scoreSSE<16>);
-        break;
-#elif defined(FZX_NEON)
-      case 2:
-      case 3:
-      case 4:
-        process(scoreNeon<4>);
-        break;
-      case 5:
-      case 6:
-      case 7:
-      case 8:
-        process(scoreNeon<8>);
-        break;
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-        process(scoreNeon<12>);
-        break;
-      case 13:
-      case 14:
-      case 15:
-      case 16:
-        process(scoreNeon<16>);
-        break;
-#endif
+      for (size_t i = start; i < end; ++i) {
+        auto item = job.mItems.at(i);
+        if (query.match(item))
+          out.mItems.emplace_back(static_cast<uint32_t>(i), query.score(item));
       }
 
       // Ignore kMerge events from other workers, we don't care about

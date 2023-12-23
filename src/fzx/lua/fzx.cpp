@@ -234,7 +234,7 @@ try {
     offset = static_cast<lua_Integer>(maxoff);
   const auto end = std::min(static_cast<size_t>(offset) + static_cast<size_t>(max), size);
 
-  const auto query = p->mFzx.query();
+  const Query* query = p->mFzx.query();
 
   lua_createtable(lstate, 0, 5);
 
@@ -254,7 +254,7 @@ try {
   lua_setfield(lstate, -2, "progress");
 
   lua_createtable(lstate, static_cast<int>(max), 0);
-  const int tableSize = query.empty() ? 3 : 4;
+  const int tableSize = query && query->empty() ? 3 : 4;
   int n = 1;
   for (size_t i = offset; i < end; ++i, ++n) {
     auto item = p->mFzx.getResult(i);
@@ -266,15 +266,13 @@ try {
     lua_pushlstring(lstate, item.mLine.data(), item.mLine.size());
     lua_setfield(lstate, -2, "text");
 
-    lua_createtable(lstate, static_cast<int>(query.size()), 0);
-    if (!query.empty()) {
-      Positions positions;
-      constexpr auto kInvalid = std::numeric_limits<size_t>::max();
-      std::fill(positions.begin(), positions.end(), kInvalid);
-      matchPositions(query, item.mLine, &positions);
-
-      for (int i = 0; static_cast<size_t>(i) < positions.size() && positions[i] != kInvalid; ++i) {
-        lua_pushinteger(lstate, static_cast<lua_Integer>(positions[i]));
+    lua_createtable(lstate, static_cast<int>(item.mLine.size()), 0);
+    if (query && !query->empty()) {
+      std::vector<bool> positions;
+      positions.reserve(p->mFzx.maxStrSize());
+      query->matchPositions(item.mLine, positions);
+      for (int i = 0; i < static_cast<int>(positions.size()); ++i) {
+        lua_pushboolean(lstate, positions[i]);
         lua_rawseti(lstate, -2, i + 1);
       }
     }

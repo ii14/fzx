@@ -111,48 +111,118 @@ TEST_CASE("fzx::score", "[score]")
   }
 
   SECTION("positions consecutive") {
-    Positions positions {};
+    std::vector<bool> positions {};
+    positions.resize(14);
     matchPositions("amo"sv, "app/models/foo"_s, &positions);
-    CHECK(positions[0] == 0);
-    CHECK(positions[1] == 4);
-    CHECK(positions[2] == 5);
+    CHECK(positions
+          == std::vector<bool> {
+              true,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+          });
   }
 
   SECTION("positions start of word") {
     // We should prefer matching the 'o' in order, since it's the beginning of a word.
-    Positions positions {};
+    std::vector<bool> positions {};
+    positions.resize(16);
     matchPositions("amor"sv, "app/models/order"_s, &positions);
-    CHECK(positions[0] == 0);
-    CHECK(positions[1] == 4);
-    CHECK(positions[2] == 11);
-    CHECK(positions[3] == 12);
+    CHECK(positions
+          == std::vector<bool> {
+              true,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+          });
   }
 
   SECTION("positions no bonuses") {
-    Positions positions {};
-    matchPositions("as"sv, "tags"_s, &positions);
-    CHECK(1 == positions[0]);
-    CHECK(3 == positions[1]);
+    {
+      std::vector<bool> positions {};
+      positions.resize(4);
+      matchPositions("as"sv, "tags"_s, &positions);
+      CHECK(positions
+            == std::vector<bool> {
+                false,
+                true,
+                false,
+                true,
+            });
+    }
 
-    matchPositions("as"sv, "examples.txt"_s, &positions);
-    CHECK(2 == positions[0]);
-    CHECK(7 == positions[1]);
+    {
+      std::vector<bool> positions {};
+      positions.resize(12);
+      matchPositions("as"sv, "examples.txt"_s, &positions);
+      CHECK(positions
+            == std::vector<bool> {
+                false,
+                false,
+                true,
+                false,
+                false,
+                false,
+                false,
+                true,
+                false,
+                false,
+                false,
+                false,
+            });
+    }
   }
 
   SECTION("positions multiple candidates start of words") {
-    Positions positions {};
+    std::vector<bool> positions {};
+    positions.resize(9);
     matchPositions("abc"sv, "a/a/b/c/c"_s, &positions);
-    CHECK(2 == positions[0]);
-    CHECK(4 == positions[1]);
-    CHECK(6 == positions[2]);
+    CHECK(positions
+          == std::vector<bool> {
+              false,
+              false,
+              true,
+              false,
+              true,
+              false,
+              true,
+              false,
+              false,
+          });
   }
 
   SECTION("positions exact match") {
-    Positions positions {};
+    std::vector<bool> positions {};
+    positions.resize(3);
     matchPositions("foo"sv, "foo"_s, &positions);
-    CHECK(0 == positions[0]);
-    CHECK(1 == positions[1]);
-    CHECK(2 == positions[2]);
+    CHECK(positions
+          == std::vector<bool> {
+              true,
+              true,
+              true,
+          });
   }
 }
 

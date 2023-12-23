@@ -10,10 +10,10 @@ namespace fzx {
 
 bool matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept;
 
-// unused
 bool matchBegin(const AlignedString& needle, std::string_view haystack) noexcept;
 bool matchEnd(const AlignedString& needle, std::string_view haystack) noexcept;
 bool matchExact(const AlignedString& needle, std::string_view haystack) noexcept;
-// bool matchSubstr(const AlignedString& needle, std::string_view haystack) noexcept; // TODO
+bool matchSubstr(const AlignedString& needle, std::string_view haystack) noexcept;
+int matchSubstrIndex(const AlignedString& needle, std::string_view haystack) noexcept;
 
 } // namespace fzx

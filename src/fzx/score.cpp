@@ -596,8 +596,14 @@ template Score scoreNeon<16>(const AlignedString& needle, std::string_view hayst
 
 #endif // defined(FZX_NEON)
 
-Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions)
+Score matchPositions(std::string_view needle,
+                     std::string_view haystack,
+                     std::vector<bool>* positions)
 {
+  if (positions) {
+    ASSERT(positions->size() == haystack.size());
+  }
+
   if (needle.empty())
     return kScoreMin;
 
@@ -616,8 +622,8 @@ Score matchPositions(std::string_view needle, std::string_view haystack, Positio
     // matches needle. If the lengths of the strings are equal the
     // strings themselves must also be equal (ignoring case).
     if (positions)
-      for (int i = 0; i < needleLen; ++i)
-        (*positions)[i] = i;
+      for (auto&& position : *positions)
+        position = true;
     return kScoreMax;
   }
 
@@ -659,7 +665,7 @@ Score matchPositions(std::string_view needle, std::string_view haystack, Positio
           // kScoreMatchConsecutive, the
           // previous character MUST be a match
           matchRequired = i && j && m[i][j] == d[i - 1][j - 1] + kScoreMatchConsecutive;
-          (*positions)[i] = j--;
+          positions->at(j--) = true;
           break;
         }
       }

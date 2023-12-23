@@ -26,10 +26,11 @@
 
 #pragma once
 
-#include <cstddef>
-#include <string_view>
 #include <array>
+#include <cstddef>
 #include <limits>
+#include <string_view>
+#include <vector>
 
 #include "fzx/aligned_string.hpp"
 
@@ -83,7 +84,8 @@ extern template Score scoreNeon<16>(const AlignedString& needle,
                                     std::string_view haystack) noexcept;
 #endif // defined(FZX_NEON)
 
-using Positions = std::array<size_t, kMatchMaxLen>;
-Score matchPositions(std::string_view needle, std::string_view haystack, Positions* positions);
+Score matchPositions(std::string_view needle,
+                     std::string_view haystack,
+                     std::vector<bool>* positions);
 
 } // namespace fzx

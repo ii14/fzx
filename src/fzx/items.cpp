@@ -89,6 +89,7 @@ Items::Items(const Items& b) noexcept
   , mItemsPtr(b.mItemsPtr)
   , mItemsSize(b.mItemsSize)
   , mItemsCap(b.mItemsCap)
+  , mMaxStrSize(b.mMaxStrSize)
 {
   incRef(mStrsPtr);
   incRef(mItemsPtr);
@@ -101,6 +102,7 @@ Items::Items(Items&& b) noexcept
   , mItemsPtr(std::exchange(b.mItemsPtr, nullptr))
   , mItemsSize(std::exchange(b.mItemsSize, 0))
   , mItemsCap(std::exchange(b.mItemsCap, 0))
+  , mMaxStrSize(std::exchange(b.mMaxStrSize, 0))
 {
 }
 
@@ -125,6 +127,8 @@ Items& Items::operator=(const Items& b) noexcept
   mItemsSize = b.mItemsSize;
   mItemsCap = b.mItemsCap;
 
+  mMaxStrSize = b.mMaxStrSize;
+
   return *this;
 }
 
@@ -143,6 +147,8 @@ Items& Items::operator=(Items&& b) noexcept
   mItemsSize = std::exchange(b.mItemsSize, 0);
   mItemsCap = std::exchange(b.mItemsCap, 0);
 
+  mMaxStrSize = std::exchange(b.mMaxStrSize, 0);
+
   return *this;
 }
 
@@ -154,6 +160,7 @@ void Items::swap(Items& b) noexcept
   std::swap(mItemsPtr, b.mItemsPtr);
   std::swap(mItemsSize, b.mItemsSize);
   std::swap(mItemsCap, b.mItemsCap);
+  std::swap(mMaxStrSize, b.mMaxStrSize);
 }
 
 void Items::clear() noexcept
@@ -167,6 +174,8 @@ void Items::clear() noexcept
   mItemsPtr = nullptr;
   mItemsSize = 0;
   mItemsCap = 0;
+
+  mMaxStrSize = 0;
 }
 
 std::string_view Items::at(size_t n) const noexcept
@@ -220,6 +229,8 @@ void Items::push(std::string_view s)
 
   mStrsSize = strsSize;
   mItemsSize = itemsSize;
+  if (s.size() > mMaxStrSize)
+    mMaxStrSize = s.size();
 }
 
 } // namespace fzx

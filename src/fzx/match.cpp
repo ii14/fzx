@@ -121,7 +121,6 @@ bool matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept
 
 bool matchBegin(const AlignedString& needle, std::string_view haystack) noexcept
 {
-  // TODO: sse
   if (needle.size() > haystack.size())
     return false;
   const char* n = needle.data();
@@ -138,7 +137,6 @@ bool matchBegin(const AlignedString& needle, std::string_view haystack) noexcept
 
 bool matchEnd(const AlignedString& needle, std::string_view haystack) noexcept
 {
-  // TODO: sse
   if (needle.size() > haystack.size())
     return false;
   const char* n = needle.data();
@@ -155,7 +153,6 @@ bool matchEnd(const AlignedString& needle, std::string_view haystack) noexcept
 
 bool matchExact(const AlignedString& needle, std::string_view haystack) noexcept
 {
-  // TODO: sse
   if (needle.size() != haystack.size())
     return false;
   const char* n = needle.data();
@@ -168,6 +165,59 @@ bool matchExact(const AlignedString& needle, std::string_view haystack) noexcept
     ++h;
   }
   return true;
+}
+
+bool matchSubstr(const AlignedString& needle, std::string_view haystack) noexcept
+{
+  if (needle.empty())
+    return true;
+  if (needle.size() > haystack.size())
+    return false;
+
+  const char* n = needle.data();
+  const char* nend = n + needle.size();
+  const char* h = haystack.data();
+  const char* hend = h + haystack.size() - needle.size() + 1;
+
+  while (h != hend) {
+    auto cmp = [&]() -> bool {
+      for (const char *np = n, *hp = h; np != nend; ++np, ++hp)
+        if (toLower(*np) != toLower(*hp))
+          return false;
+      return true;
+    };
+
+    if (cmp())
+      return true;
+    ++h;
+  }
+
+  return false;
+}
+
+int matchSubstrIndex(const AlignedString& needle, std::string_view haystack) noexcept
+{
+  if (needle.empty())
+    return 0;
+  if (needle.size() > haystack.size())
+    return -1;
+
+  const int nEnd = static_cast<int>(needle.size());
+  const int hEnd = static_cast<int>(haystack.size() - needle.size()) + 1;
+
+  for (int i = 0; i != hEnd; ++i) {
+    auto cmp = [&]() -> bool {
+      for (int n = 0, h = i; n != nEnd; ++n, ++h)
+        if (toLower(needle[n]) != toLower(haystack[h]))
+          return false;
+      return true;
+    };
+
+    if (cmp())
+      return i;
+  }
+
+  return -1;
 }
 
 } // namespace fzx

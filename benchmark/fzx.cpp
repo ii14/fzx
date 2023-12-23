@@ -123,13 +123,13 @@ int main(int argc, char** argv)
     std::unique_lock lock { gMutex };
 
     // Reset query
-    gFzx.setQuery({});
-    while (!gFzx.synchronized())
-      gCv.wait(lock);
+    if (gFzx.setQuery({}))
+      while (!gFzx.synchronized())
+        gCv.wait(lock);
 
     gSamples.push_back({ chrono::system_clock::now(), {} });
     gGatherSample = true;
-    gFzx.setQuery(query);
+    ASSERT(gFzx.setQuery(query));
     while (!gFzx.synchronized())
       gCv.wait(lock);
     gGatherSample = false;

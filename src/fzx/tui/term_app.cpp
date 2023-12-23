@@ -118,9 +118,9 @@ void TermApp::redraw()
   size_t items = mFzx.resultsSize();
   mCursor = std::clamp(mCursor, (size_t)0, items - 1);
 
-  Positions positions;
-  constexpr auto kInvalid = std::numeric_limits<size_t>::max();
-  std::string_view query = mFzx.query();
+  std::vector<bool> positions;
+  positions.reserve(mFzx.maxStrSize());
+  const Query* query = mFzx.query();
 
   for (int i = 0; i < maxHeight; ++i) {
     mTTY.setFg(mPalette.mDefaultFg);
@@ -139,15 +139,18 @@ void TermApp::redraw()
       } else {
         mTTY.put(" ", maxHeight - i);
       }
-      std::fill(positions.begin(), positions.end(), kInvalid);
-      matchPositions(query, item, &positions);
+
+      if (query) {
+        query->matchPositions(item, positions);
+      } else {
+        positions.clear();
+      }
 
       bool highlighted = false;
       std::string_view sub = item.substr(0, itemWidth);
 
-      for (size_t i = 0, p = 0; i < sub.size(); ++i) {
-        if (p < positions.size() && positions[p] == i) {
-          ++p;
+      for (size_t i = 0; i < sub.size(); ++i) {
+        if (i < positions.size() && positions[i]) {
           if (!highlighted) {
             highlighted = true;
             mTTY.setFg(mPalette.mMatchFg);

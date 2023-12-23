@@ -64,16 +64,22 @@ void Fzx::stop()
   mWorkers.clear();
 }
 
-void Fzx::setQuery(std::string_view query)
+bool Fzx::setQuery(std::string_view query)
 {
-  if (mQuery && mQuery->str() == query)
-    return;
-  if (!query.empty()) {
-    mQuery = std::make_shared<AlignedString>(query);
+  // TODO: parse outside and pass a Query object to this function
+  Query q = Query::parse(query);
+
+  if ((q.empty() && !mQuery) || (!q.empty() && mQuery && *mQuery == q))
+    return false;
+
+  if (!q.empty()) {
+    mQuery = std::make_shared<Query>(std::move(q));
   } else {
     mQuery.reset();
   }
+
   commit();
+  return true;
 }
 
 void Fzx::commit()
@@ -148,11 +154,11 @@ Result Fzx::getResult(size_t i) const noexcept
   }
 }
 
-std::string_view Fzx::query() const
+const Query* Fzx::query() const
 {
   if (const Results* res = getResults(); res != nullptr && res->mQuery)
-    return res->mQuery->str();
-  return {};
+    return res->mQuery.get();
+  return nullptr;
 }
 
 bool Fzx::processing() const noexcept

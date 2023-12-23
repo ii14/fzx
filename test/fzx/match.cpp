@@ -112,3 +112,30 @@ TEST_CASE("fzx::matchExact")
   CHECK(!matchExact("a"sv, ""_s));
   CHECK(!matchExact(""sv, "a"_s));
 }
+
+TEST_CASE("fzx::matchSubstr")
+{
+  CHECK(matchSubstr(""sv, ""_s));
+  CHECK(matchSubstr(""sv, "abc"_s));
+  CHECK(matchSubstr("a"sv, "abc"_s));
+  CHECK(matchSubstr("b"sv, "abc"_s));
+  CHECK(matchSubstr("c"sv, "abc"_s));
+  CHECK(matchSubstr("ab"sv, "abc"_s));
+  CHECK(matchSubstr("bc"sv, "abc"_s));
+  CHECK(matchSubstr("abc"sv, "abc"_s));
+  CHECK(!matchSubstr("a"sv, ""_s));
+  CHECK(!matchSubstr("ac"sv, "abc"_s));
+  CHECK(!matchSubstr("d"sv, "abc"_s));
+
+  CHECK(matchSubstrIndex(""sv, ""_s) == 0);
+  CHECK(matchSubstrIndex(""sv, "abc"_s) == 0);
+  CHECK(matchSubstrIndex("a"sv, "abc"_s) == 0);
+  CHECK(matchSubstrIndex("b"sv, "abc"_s) == 1);
+  CHECK(matchSubstrIndex("c"sv, "abc"_s) == 2);
+  CHECK(matchSubstrIndex("ab"sv, "abc"_s) == 0);
+  CHECK(matchSubstrIndex("bc"sv, "abc"_s) == 1);
+  CHECK(matchSubstrIndex("abc"sv, "abc"_s) == 0);
+  CHECK(matchSubstrIndex("a"sv, ""_s) == -1);
+  CHECK(matchSubstrIndex("ac"sv, "abc"_s) == -1);
+  CHECK(matchSubstrIndex("d"sv, "abc"_s) == -1);
+}

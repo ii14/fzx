@@ -12,6 +12,7 @@
 #include "fzx/aligned_string.hpp"
 #include "fzx/events.hpp"
 #include "fzx/matched_item.hpp"
+#include "fzx/query.hpp"
 #include "fzx/tx.hpp"
 
 namespace fzx {
@@ -26,7 +27,7 @@ struct Results
   /// By the time the results are sent back, the active query could've changed, so
   /// it's necessary to pass it back to make sure matched positions are calculated
   /// using the correct query.
-  std::shared_ptr<AlignedString> mQuery;
+  std::shared_ptr<Query> mQuery;
   /// Timestamp identifying items. Last known items size.
   size_t mItemsTick { 0 };
   /// Timestamp identifying the query.

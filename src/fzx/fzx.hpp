@@ -15,6 +15,7 @@
 #include "fzx/item_queue.hpp"
 #include "fzx/items.hpp"
 #include "fzx/matched_item.hpp"
+#include "fzx/query.hpp"
 #include "fzx/worker.hpp"
 
 namespace fzx {
@@ -33,7 +34,7 @@ struct Job
   /// Items to process. The size is monotonically increasing.
   Items mItems;
   /// Active query.
-  std::shared_ptr<AlignedString> mQuery;
+  std::shared_ptr<Query> mQuery;
   /// Shared atomic counter for reserving the items for processing.
   std::shared_ptr<ItemQueue> mQueue;
   /// Monotonically increasing timestamp identifying the active query.
@@ -64,10 +65,13 @@ struct Fzx
   /// Push string to the list of items.
   void pushItem(std::string_view s) { mItems.push(s); }
   [[nodiscard]] size_t itemsSize() const noexcept { return mItems.size(); }
+  /// Returned string_view can be invalidated after calling `pushItem`.
   [[nodiscard]] std::string_view getItem(size_t i) const noexcept { return mItems.at(i); }
+  [[nodiscard]] size_t maxStrSize() const noexcept { return mItems.maxStrSize(); }
 
   /// Set query
-  void setQuery(std::string_view query);
+  /// @return false if query didn't change
+  bool setQuery(std::string_view query);
 
   /// Publish changes and wake up worker threads.
   void commit();
@@ -75,10 +79,12 @@ struct Fzx
   /// Load results accessed with resultsSize, getResult, query, processing.
   bool loadResults() noexcept;
   [[nodiscard]] size_t resultsSize() const noexcept;
+  /// Returned value can be invalidated after calling `commit` or `pushItem`.
   [[nodiscard]] Result getResult(size_t i) const noexcept;
   /// Get the original query for the current results.
   /// Might not be in sync with what was just set with setQuery.
-  [[nodiscard]] std::string_view query() const;
+  /// Can be null. Returned pointer can be invalidated after calling `commit`.
+  [[nodiscard]] const Query* query() const;
   /// Check if the current results are up-to-date.
   [[nodiscard]] bool processing() const noexcept;
   /// Get estimated progress, value between 0.0 and 1.0.
@@ -116,7 +122,7 @@ private:
 
 private:
   Items mItems;
-  std::shared_ptr<AlignedString> mQuery;
+  std::shared_ptr<Query> mQuery;
   std::shared_ptr<ItemQueue> mQueue;
 
   /// Worker threads. This vector is shared with workers, so after

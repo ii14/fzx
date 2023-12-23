@@ -95,13 +95,15 @@ function mt.__index:redraw_display()
   api.nvim_buf_clear_namespace(self._ui.display.buf, ns, 0, -1)
   api.nvim_buf_set_lines(self._ui.display.buf, 0, -1, false, lines)
   for lnum, item in ipairs(res.items) do
-    for _, pos in ipairs(item.positions) do
-      api.nvim_buf_set_extmark(self._ui.display.buf, ns, lnum - 1, pos, {
-        end_row = lnum - 1,
-        end_col = pos + 1,
-        hl_group = 'FzxMatch',
-        priority = 150,
-      })
+    for col, matched in ipairs(item.positions) do
+      if matched then
+        api.nvim_buf_set_extmark(self._ui.display.buf, ns, lnum - 1, col - 1, {
+          end_row = lnum - 1,
+          end_col = col,
+          hl_group = 'FzxMatch',
+          priority = 150,
+        })
+      end
     end
   end
 

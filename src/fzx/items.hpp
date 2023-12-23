@@ -38,6 +38,8 @@ struct Items
   /// copy can call this method. Otherwise it's undefined behavior (data race).
   void push(std::string_view s);
 
+  [[nodiscard]] size_t maxStrSize() const noexcept { return mMaxStrSize; }
+
 private:
   char* mStrsPtr { nullptr };
   size_t mStrsSize { 0 };
@@ -45,6 +47,7 @@ private:
   char* mItemsPtr { nullptr };
   size_t mItemsSize { 0 };
   size_t mItemsCap { 0 };
+  size_t mMaxStrSize { 0 };
 };
 
 inline void swap(Items& a, Items& b) noexcept
