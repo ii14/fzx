@@ -6,6 +6,7 @@ namespace fzx {
 
 enum Key : uint8_t {
   kEnter = 0x0D,
+  kEscape = 0x1B,
   kReturn = 0x1B,
   kNewLine = 0x0A,
   kBackspace = 0x7F,

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include "color.hpp"
 
 namespace fzx {
 
@@ -44,6 +45,10 @@ struct TTY
   }
 
   void flush() noexcept;
+
+  void setFg(Color color);
+  void setBg(Color color);
+  void clearColor();
 
 private:
   int mFd { kInvalidFd };

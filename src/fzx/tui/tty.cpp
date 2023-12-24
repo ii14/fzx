@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <fmt/core.h>
+#include <variant>
 
 extern "C" {
 #include <fcntl.h>
@@ -151,6 +153,43 @@ void TTY::flush() noexcept
   UNUSED(::write(mFd, mBuffer.data(), mBuffer.size()));
   ::fcntl(mFd, F_SETFL, O_RDWR | O_NONBLOCK);
   mBuffer.clear();
+}
+
+void TTY::setFg(Color color)
+{
+  if (std::holds_alternative<TrueColor>(color.mInner)) {
+    const auto truecolor = std::get<TrueColor>(color.mInner);
+    put("\x1b[38;2;{};{};{}m", truecolor.mRed, truecolor.mGreen, truecolor.mBlue);
+  } else {
+    const auto termcolor = std::get<TermColor>(color.mInner);
+    const uint8_t code = termcolor.mCode;
+    if (termcolor.mBright) {
+      put("\e[9{}m", code);
+    } else {
+      put("\e[3{}m", code);
+    }
+  }
+}
+
+void TTY::setBg(Color color)
+{
+  if (std::holds_alternative<TrueColor>(color.mInner)) {
+    const auto truecolor = std::get<TrueColor>(color.mInner);
+    put("\x1b[48;2;{};{};{}m", truecolor.mRed, truecolor.mGreen, truecolor.mBlue);
+  } else {
+    const auto termcolor = std::get<TermColor>(color.mInner);
+    const uint8_t code = termcolor.mCode;
+    if (termcolor.mBright) {
+      put("\e[10{}m", code);
+    } else {
+      put("\e[4{}m", code);
+    }
+  }
+}
+
+void TTY::clearColor()
+{
+  put("\x1b[0m");
 }
 
 } // namespace fzx
