@@ -91,6 +91,7 @@ void TTY::close() noexcept
   flush();
   tcsetattr(mFd, TCSANOW, &gSavedAttrs);
   ::close(mFd);
+  void printSelection();
   mFd = kInvalidFd;
   gActive = false;
 }

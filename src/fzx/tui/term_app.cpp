@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string_view>
 #include <iostream>
+#include <fstream>
 #include <array>
 #include <algorithm>
 
@@ -63,11 +64,24 @@ void TermApp::processTTY()
       continue;
     }
     if (*key == kEnter || *key == kCtrlU) {
+      if (*key == kEnter) {
+        quit();
+        return;
+      }
       mLine.clear();
       updateQuery = true;
     } else if (*key == kCtrlC) {
       quit();
       return;
+    } else if (*key == kCtrlP) {
+      mCurpos++;
+    } else if (*key == kCtrlN) {
+      if (mCurpos > 0) {
+        mCurpos--;
+      }
+    } else if (*key == kTab) {
+      mSelection.push_back(mFzx.getResult(mCurpos).mLine);
+      mCurpos++;
     }
   }
   if (updateQuery) {
@@ -142,5 +156,28 @@ void TermApp::quit()
 {
   mQuit = true;
 }
+
+void TermApp::printResults()
+{
+  auto stream = std::ofstream("results");
+  stream << "WRITING RESULTS" << std::endl;
+  mFzx.loadResults();
+  const auto resultsSize = mFzx.resultsSize();
+  for (size_t i = 0; i < resultsSize; i++) {
+    stream << mFzx.getResult(i).mLine << std::endl;
+  }
+}
+
+void TermApp::printSelection()
+{
+  for (const auto& thing : mSelection) {
+    std::cout << thing << std::endl;
+  }
+}
+
+std::string_view TermApp::currentItem() const {
+  return mFzx.getResult(mCurpos).mLine;
+}
+
 
 } // namespace fzx

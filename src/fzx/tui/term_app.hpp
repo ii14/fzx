@@ -6,6 +6,7 @@
 #include "fzx/tui/tty.hpp"
 #include "fzx/helper/eventfd.hpp"
 #include "fzx/helper/line_scanner.hpp"
+#include <vector>
 
 namespace fzx {
 
@@ -23,6 +24,8 @@ struct TermApp
   void processWakeup();
   void redraw();
   void quit();
+  void printSelection();
+  std::string_view currentItem() const;
   [[nodiscard]] bool running() const noexcept { return !mQuit; }
 
   EventFd mEventFd;
@@ -38,6 +41,11 @@ struct TermApp
   uint32_t mScanPos { 0 };
 
   bool mQuit { false };
+  std::vector<std::string_view> mSelection = {};
+private:
+  void printResults();
+private:
+  size_t mCurpos = 0;
 };
 
 } // namespace fzx

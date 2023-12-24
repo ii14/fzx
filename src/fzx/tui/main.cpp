@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <csignal>
 #include <thread>
+#include <iostream>
 
 extern "C" {
 #include <sys/select.h>
@@ -116,5 +117,11 @@ int main(int argc, char** argv)
         app.processWakeup();
       }
     }
+  }
+  fzx::TTY::exitAltScreen();
+  if (app.mSelection.empty()) {
+    std::cout << app.currentItem() << std::endl;
+  } else {
+    app.printSelection();
   }
 }
