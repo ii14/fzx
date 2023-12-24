@@ -1,9 +1,9 @@
 #include "fzx/tui/term_app.hpp"
 
+#include <cstdint>
 #include <cstdio>
 #include <string_view>
 #include <iostream>
-#include <fstream>
 #include <array>
 #include <algorithm>
 
@@ -63,25 +63,31 @@ void TermApp::processTTY()
       updateQuery = true;
       continue;
     }
-    if (*key == kEnter || *key == kCtrlU) {
-      if (*key == kEnter) {
-        quit();
-        return;
-      }
+    if (*key == kEnter) {
+      quit(true);
+      return;
+    } else if (*key == kCtrlU) {
       mLine.clear();
       updateQuery = true;
     } else if (*key == kCtrlC) {
-      quit();
+      quit(false);
       return;
     } else if (*key == kCtrlP) {
-      mCurpos++;
+      mCursor++;
     } else if (*key == kCtrlN) {
-      if (mCurpos > 0) {
-        mCurpos--;
+      if (mCursor > 0) {
+        mCursor--;
       }
     } else if (*key == kTab) {
-      mSelection.push_back(mFzx.getResult(mCurpos).mLine);
-      mCurpos++;
+      if (mCursor < mFzx.resultsSize()) {
+        const uint32_t index = mFzx.getResult(mCursor).mIndex;
+        if (mSelection.find(index) != mSelection.end()) {
+          mSelection.erase(index);
+        } else {
+          mSelection.insert(index);
+        }
+        mCursor++;
+      }
     }
   }
   if (updateQuery) {
@@ -110,7 +116,7 @@ void TermApp::redraw()
   int maxHeight = mTTY.height() - 2;
   int itemWidth = mTTY.width() - 2;
   size_t items = mFzx.resultsSize();
-  mCurpos = std::clamp(mCurpos, (size_t)0, items - 1);
+  mCursor = std::clamp(mCursor, (size_t)0, items - 1);
 
   Positions positions;
   constexpr auto kInvalid = std::numeric_limits<size_t>::max();
@@ -119,13 +125,14 @@ void TermApp::redraw()
   for (int i = 0; i < maxHeight; ++i) {
     mTTY.put("\x1B[{};0H\x1B[K", maxHeight - i);
     if (static_cast<size_t>(i) < items) {
-      std::string_view item = mFzx.getResult(i).mLine;
-      if (mCurpos == static_cast<size_t>(i)) {
-        mTTY.put("→ ", maxHeight - i);
+      const auto result = mFzx.getResult(i);
+      std::string_view item = result.mLine;
+      if (mCursor == static_cast<size_t>(i)) {
+        mTTY.put("► ", maxHeight - i);
       } else {
         mTTY.put("  ", maxHeight - i);
       }
-      if (std::find(mSelection.begin(), mSelection.end(), item) != mSelection.end()) {
+      if (mSelection.find(result.mIndex) != mSelection.end()) {
         mTTY.put("•", maxHeight - i);
       } else {
         mTTY.put(" ", maxHeight - i);
@@ -153,8 +160,6 @@ void TermApp::redraw()
       if (highlighted) {
         mTTY.put("\x1B[0m"sv);
       }
-    } else {
-      mTTY.put("  ", maxHeight - i);
     }
   }
 
@@ -164,20 +169,26 @@ void TermApp::redraw()
   mTTY.flush();
 }
 
-void TermApp::quit()
+void TermApp::quit(bool success)
 {
-  mQuit = true;
+  if (success) {
+    mStatus = Status::ExitSuccess;
+  } else {
+    mStatus = Status::ExitFailure;
+  }
 }
 
 void TermApp::printSelection()
 {
-  for (const auto& thing : mSelection) {
-    std::cout << thing << std::endl;
+  for (const auto& index : mSelection) {
+    std::cout << mFzx.getItem(index) << std::endl;
   }
 }
 
 std::string_view TermApp::currentItem() const {
-  return mFzx.getResult(mCurpos).mLine;
+  if (mCursor < mFzx.resultsSize())
+    return mFzx.getResult(mCursor).mLine;
+  return {};
 }
 
 

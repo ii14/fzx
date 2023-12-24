@@ -6,10 +6,12 @@
 #include "fzx/tui/tty.hpp"
 #include "fzx/helper/eventfd.hpp"
 #include "fzx/helper/line_scanner.hpp"
-#include <vector>
+#include <set>
 
 namespace fzx {
-
+enum class Status {
+  Running, ExitSuccess, ExitFailure
+};
 // all of this sucks atm, it's just to get things going
 struct TermApp
 {
@@ -23,10 +25,10 @@ struct TermApp
   void processResize();
   void processWakeup();
   void redraw();
-  void quit();
+  void quit(bool success);
   void printSelection();
   std::string_view currentItem() const;
-  [[nodiscard]] bool running() const noexcept { return !mQuit; }
+  [[nodiscard]] bool running() const noexcept { return mStatus == Status::Running; }
 
   EventFd mEventFd;
   Fzx mFzx;
@@ -40,10 +42,10 @@ struct TermApp
   std::vector<char> mInputBuffer;
   uint32_t mScanPos { 0 };
 
-  bool mQuit { false };
-  std::vector<std::string_view> mSelection = {};
+  Status mStatus { Status::Running };
+  std::set<uint32_t> mSelection = {};
 private:
-  size_t mCurpos = 0;
+  size_t mCursor = 0;
 };
 
 } // namespace fzx
