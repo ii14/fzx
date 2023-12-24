@@ -118,7 +118,7 @@ int main(int argc, char** argv)
       }
     }
   }
-  fzx::TTY::exitAltScreen();
+  app.mTTY.close();
   if (app.mSelection.empty()) {
     std::cout << app.currentItem() << std::endl;
   } else {

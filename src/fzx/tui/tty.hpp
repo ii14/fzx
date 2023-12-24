@@ -37,13 +37,6 @@ struct TTY
   void put(std::string_view s);
   void put(const std::string& s);
 
-  static void enterAltScreen() {
-    printf("\x1B[?1049h");
-  }
-  static void exitAltScreen() {
-    printf("\x1B[?1049l");
-  }
-
   template <typename... Ts>
   void put(fmt::format_string<Ts...> fmt, Ts&&... ts)
   {
