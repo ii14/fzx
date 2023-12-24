@@ -1,10 +1,12 @@
 #include "fzx/tui/term_app.hpp"
 #include "fzx/macros.hpp"
+#include "fzx/tui/tty.hpp"
 
 #include <atomic>
 #include <cerrno>
 #include <csignal>
 #include <thread>
+#include <iostream>
 
 extern "C" {
 #include <sys/select.h>
@@ -62,7 +64,7 @@ int main(int argc, char** argv)
   auto processSignals = [&]() -> bool {
     if (gQuitSignal.load(std::memory_order_relaxed)) {
       gQuitSignal.store(false, std::memory_order_relaxed);
-      app.quit();
+      app.quit(false);
       return true;
     }
 
@@ -115,6 +117,14 @@ int main(int argc, char** argv)
         app.mEventFd.consume();
         app.processWakeup();
       }
+    }
+  }
+  app.mTTY.close();
+  if (app.mStatus == fzx::Status::ExitSuccess) {
+    if (app.mSelection.empty()) {
+      std::cout << app.currentItem() << std::endl;
+    } else {
+      app.printSelection();
     }
   }
 }

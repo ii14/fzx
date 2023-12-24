@@ -1,5 +1,6 @@
 #include "fzx/tui/term_app.hpp"
 
+#include <cstdint>
 #include <cstdio>
 #include <string_view>
 #include <iostream>
@@ -62,12 +63,31 @@ void TermApp::processTTY()
       updateQuery = true;
       continue;
     }
-    if (*key == kEnter || *key == kCtrlU) {
+    if (*key == kEnter) {
+      quit(true);
+      return;
+    } else if (*key == kCtrlU) {
       mLine.clear();
       updateQuery = true;
     } else if (*key == kCtrlC) {
-      quit();
+      quit(false);
       return;
+    } else if (*key == kCtrlP) {
+      mCursor++;
+    } else if (*key == kCtrlN) {
+      if (mCursor > 0) {
+        mCursor--;
+      }
+    } else if (*key == kTab) {
+      if (mCursor < mFzx.resultsSize()) {
+        const uint32_t index = mFzx.getResult(mCursor).mIndex;
+        if (mSelection.find(index) != mSelection.end()) {
+          mSelection.erase(index);
+        } else {
+          mSelection.insert(index);
+        }
+        mCursor++;
+      }
     }
   }
   if (updateQuery) {
@@ -96,16 +116,27 @@ void TermApp::redraw()
   int maxHeight = mTTY.height() - 2;
   int itemWidth = mTTY.width() - 2;
   size_t items = mFzx.resultsSize();
+  mCursor = std::clamp(mCursor, (size_t)0, items - 1);
 
   Positions positions;
   constexpr auto kInvalid = std::numeric_limits<size_t>::max();
   std::string_view query = mFzx.query();
 
   for (int i = 0; i < maxHeight; ++i) {
-    mTTY.put("\x1B[{};0H\x1B[K  ", maxHeight - i);
+    mTTY.put("\x1B[{};0H\x1B[K", maxHeight - i);
     if (static_cast<size_t>(i) < items) {
-      std::string_view item = mFzx.getResult(i).mLine;
-
+      const auto result = mFzx.getResult(i);
+      std::string_view item = result.mLine;
+      if (mCursor == static_cast<size_t>(i)) {
+        mTTY.put("► ", maxHeight - i);
+      } else {
+        mTTY.put("  ", maxHeight - i);
+      }
+      if (mSelection.find(result.mIndex) != mSelection.end()) {
+        mTTY.put("•", maxHeight - i);
+      } else {
+        mTTY.put(" ", maxHeight - i);
+      }
       std::fill(positions.begin(), positions.end(), kInvalid);
       matchPositions(query, item, &positions);
 
@@ -138,9 +169,27 @@ void TermApp::redraw()
   mTTY.flush();
 }
 
-void TermApp::quit()
+void TermApp::quit(bool success)
 {
-  mQuit = true;
+  if (success) {
+    mStatus = Status::ExitSuccess;
+  } else {
+    mStatus = Status::ExitFailure;
+  }
 }
+
+void TermApp::printSelection()
+{
+  for (const auto& index : mSelection) {
+    std::cout << mFzx.getItem(index) << std::endl;
+  }
+}
+
+std::string_view TermApp::currentItem() const {
+  if (mCursor < mFzx.resultsSize())
+    return mFzx.getResult(mCursor).mLine;
+  return {};
+}
+
 
 } // namespace fzx
