@@ -43,8 +43,6 @@ struct TermApp
   bool mQuit { false };
   std::vector<std::string_view> mSelection = {};
 private:
-  void printResults();
-private:
   size_t mCurpos = 0;
 };
 

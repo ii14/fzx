@@ -120,12 +120,16 @@ void TermApp::redraw()
     mTTY.put("\x1B[{};0H\x1B[K", maxHeight - i);
     if (static_cast<size_t>(i) < items) {
       std::string_view item = mFzx.getResult(i).mLine;
-      if (std::find(mSelection.begin(), mSelection.end(), item) != mSelection.end()) {
-        mTTY.put("► ", maxHeight - i);
+      if (mCurpos == static_cast<size_t>(i)) {
+        mTTY.put("→ ", maxHeight - i);
       } else {
         mTTY.put("  ", maxHeight - i);
       }
-
+      if (std::find(mSelection.begin(), mSelection.end(), item) != mSelection.end()) {
+        mTTY.put("•", maxHeight - i);
+      } else {
+        mTTY.put(" ", maxHeight - i);
+      }
       std::fill(positions.begin(), positions.end(), kInvalid);
       matchPositions(query, item, &positions);
 
@@ -163,17 +167,6 @@ void TermApp::redraw()
 void TermApp::quit()
 {
   mQuit = true;
-}
-
-void TermApp::printResults()
-{
-  auto stream = std::ofstream("results");
-  stream << "WRITING RESULTS" << std::endl;
-  mFzx.loadResults();
-  const auto resultsSize = mFzx.resultsSize();
-  for (size_t i = 0; i < resultsSize; i++) {
-    stream << mFzx.getResult(i).mLine << std::endl;
-  }
 }
 
 void TermApp::printSelection()
