@@ -110,15 +110,21 @@ void TermApp::redraw()
   int maxHeight = mTTY.height() - 2;
   int itemWidth = mTTY.width() - 2;
   size_t items = mFzx.resultsSize();
+  mCurpos = std::clamp(mCurpos, (size_t)0, items - 1);
 
   Positions positions;
   constexpr auto kInvalid = std::numeric_limits<size_t>::max();
   std::string_view query = mFzx.query();
 
   for (int i = 0; i < maxHeight; ++i) {
-    mTTY.put("\x1B[{};0H\x1B[K  ", maxHeight - i);
+    mTTY.put("\x1B[{};0H\x1B[K", maxHeight - i);
     if (static_cast<size_t>(i) < items) {
       std::string_view item = mFzx.getResult(i).mLine;
+      if (std::find(mSelection.begin(), mSelection.end(), item) != mSelection.end()) {
+        mTTY.put("► ", maxHeight - i);
+      } else {
+        mTTY.put("  ", maxHeight - i);
+      }
 
       std::fill(positions.begin(), positions.end(), kInvalid);
       matchPositions(query, item, &positions);
@@ -143,6 +149,8 @@ void TermApp::redraw()
       if (highlighted) {
         mTTY.put("\x1B[0m"sv);
       }
+    } else {
+      mTTY.put("  ", maxHeight - i);
     }
   }
 
