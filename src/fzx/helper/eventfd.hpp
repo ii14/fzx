@@ -5,9 +5,9 @@
 // TODO: windows support
 #if !defined(_WIN32)
 
-#include <atomic>
-#include <mutex>
-#include <string>
+# include <atomic>
+# include <mutex>
+# include <string>
 
 namespace fzx {
 

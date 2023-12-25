@@ -185,7 +185,8 @@ void TermApp::printSelection()
   }
 }
 
-std::string_view TermApp::currentItem() const {
+std::string_view TermApp::currentItem() const
+{
   if (mCursor < mFzx.resultsSize())
     return mFzx.getResult(mCursor).mLine;
   return {};

@@ -32,16 +32,13 @@ struct ItemQueue
       desired = std::min(expected + n, max);
       if (desired == max)
         return { 0, 0 };
-    } while (!mIndex.compare_exchange_weak(expected, expected + n,
-          std::memory_order_relaxed, std::memory_order_relaxed));
+    } while (!mIndex.compare_exchange_weak(expected, expected + n, std::memory_order_relaxed,
+                                           std::memory_order_relaxed));
     return { expected, desired };
   }
 
   /// Get the current value, for reporting the progress.
-  [[nodiscard]] size_t get() const noexcept
-  {
-    return mIndex.load(std::memory_order_relaxed);
-  }
+  [[nodiscard]] size_t get() const noexcept { return mIndex.load(std::memory_order_relaxed); }
 
 private:
   alignas(kCacheLine) std::atomic<size_t> mIndex { 0 };

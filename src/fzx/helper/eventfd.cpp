@@ -3,17 +3,17 @@
 // TODO: windows support
 #if !defined(_WIN32)
 
-#include "fzx/helper/eventfd.hpp"
+# include "fzx/helper/eventfd.hpp"
 
-#include <stdexcept>
-#include <cstring>
+# include <stdexcept>
+# include <cstring>
 
 extern "C" {
-#include <fcntl.h>
-#include <unistd.h>
+# include <fcntl.h>
+# include <unistd.h>
 }
 
-#include "fzx/macros.hpp"
+# include "fzx/macros.hpp"
 
 namespace fzx {
 
@@ -39,17 +39,17 @@ std::string EventFd::open()
     mPipe[0] = -1;
     mPipe[1] = -1;
     const char* msg = strerror(err); // TODO: strerror is not thread safe
-    return std::string{expr} + " failed: "s + (msg != nullptr ? msg : "(null)");
+    return std::string { expr } + " failed: "s + (msg != nullptr ? msg : "(null)");
   };
 
-#define CHECK_SYSCALL(expr) \
-  if (auto msg = check(expr, #expr); !msg.empty()) \
-    return msg
+# define CHECK_SYSCALL(expr) \
+   if (auto msg = check(expr, #expr); !msg.empty()) \
+   return msg
   CHECK_SYSCALL(fcntl(mPipe[0], F_SETFL, O_NONBLOCK));
   CHECK_SYSCALL(fcntl(mPipe[1], F_SETFL, O_NONBLOCK));
   CHECK_SYSCALL(fcntl(mPipe[0], F_SETFD, FD_CLOEXEC));
   CHECK_SYSCALL(fcntl(mPipe[1], F_SETFD, FD_CLOEXEC));
-#undef CHECK_SYSCALL
+# undef CHECK_SYSCALL
 
   return {};
 }

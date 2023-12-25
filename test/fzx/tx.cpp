@@ -4,8 +4,7 @@
 
 TEST_CASE("fzx::Tx")
 {
-  SECTION("can store and load values")
-  {
+  SECTION("can store and load values") {
     fzx::Tx<size_t> tx;
 
     tx.writeBuffer() = 42;
@@ -24,8 +23,7 @@ TEST_CASE("fzx::Tx")
     REQUIRE(tx.readBuffer() == 12);
   }
 
-  SECTION("has no data races")
-  {
+  SECTION("has no data races") {
     fzx::Tx<size_t> tx;
     constexpr auto kIterations = 100'000;
 

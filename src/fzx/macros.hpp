@@ -99,7 +99,9 @@
 namespace fzx {
 
 template <typename T>
-constexpr void unused([[maybe_unused]] const T& x) noexcept { }
+constexpr void unused([[maybe_unused]] const T& x) noexcept
+{
+}
 
 namespace detail {
 

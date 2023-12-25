@@ -42,7 +42,7 @@ namespace fzx {
 
 namespace {
 
-constexpr auto kBonusStates = []{
+constexpr auto kBonusStates = [] {
   std::array<std::array<Score, 256>, 3> r {};
 
   r[1]['/'] = kScoreMatchSlash;
@@ -62,7 +62,7 @@ constexpr auto kBonusStates = []{
   return r;
 }();
 
-constexpr auto kBonusIndex = []{
+constexpr auto kBonusIndex = [] {
   std::array<uint8_t, 256> r {};
   for (char i = 'A'; i <= 'Z'; ++i)
     r[i] = 2;
@@ -98,20 +98,18 @@ struct MatchStruct
 
   MatchStruct(const AlignedString& needle, std::string_view haystack) noexcept;
 
-  inline void matchRow(
-    int row,
-    Score* RESTRICT currD,
-    Score* RESTRICT currM,
-    const Score* RESTRICT lastD,
-    const Score* RESTRICT lastM) noexcept;
+  inline void matchRow(int row,
+                       Score* RESTRICT currD,
+                       Score* RESTRICT currM,
+                       const Score* RESTRICT lastD,
+                       const Score* RESTRICT lastM) noexcept;
 };
 
 // "initialize all your variables" they said.
 // and now memset takes up 20% of the runtime of your program.
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 MatchStruct::MatchStruct(const AlignedString& needle, std::string_view haystack) noexcept
-  : mNeedleLen(static_cast<int>(needle.size()))
-  , mHaystackLen(static_cast<int>(haystack.size()))
+  : mNeedleLen(static_cast<int>(needle.size())), mHaystackLen(static_cast<int>(haystack.size()))
 {
   if (mHaystackLen > kMatchMaxLen || mNeedleLen > mHaystackLen)
     return;
@@ -123,12 +121,11 @@ MatchStruct::MatchStruct(const AlignedString& needle, std::string_view haystack)
   precomputeBonus(haystack, mMatchBonus);
 }
 
-void MatchStruct::matchRow(
-    int row,
-    Score* RESTRICT currD,
-    Score* RESTRICT currM,
-    const Score* RESTRICT lastD,
-    const Score* RESTRICT lastM) noexcept
+void MatchStruct::matchRow(int row,
+                           Score* RESTRICT currD,
+                           Score* RESTRICT currM,
+                           const Score* RESTRICT lastD,
+                           const Score* RESTRICT lastM) noexcept
 {
   Score prevScore = kScoreMin;
   Score gapScore = row == mNeedleLen - 1 ? kScoreGapTrailing : kScoreGapInner;
@@ -139,10 +136,9 @@ void MatchStruct::matchRow(
       if (!row) {
         score = (static_cast<Score>(i) * kScoreGapLeading) + mMatchBonus[i];
       } else if (i) { // row > 0 && i > 0
-        score = std::max(
-            lastM[i - 1] + mMatchBonus[i],
-            // consecutive match, doesn't stack with matchBonus
-            lastD[i - 1] + kScoreMatchConsecutive);
+        score = std::max(lastM[i - 1] + mMatchBonus[i],
+                         // consecutive match, doesn't stack with matchBonus
+                         lastD[i - 1] + kScoreMatchConsecutive);
       }
       currD[i] = score;
       currM[i] = prevScore = std::max(score, prevScore + gapScore);
@@ -235,13 +231,8 @@ Score score1(const AlignedString& needle, std::string_view haystack) noexcept
 #if defined(FZX_SSE2) || defined(FZX_NEON)
 namespace {
 alignas(32) constexpr Score kGapTable[7] {
-  kScoreGapInner,
-  kScoreGapInner,
-  kScoreGapTrailing,
-  kScoreGapInner,
-  kScoreGapInner,
-  kScoreGapInner,
-  kScoreGapTrailing,
+  kScoreGapInner, kScoreGapInner, kScoreGapTrailing, kScoreGapInner,
+  kScoreGapInner, kScoreGapInner, kScoreGapTrailing,
 };
 } // namespace
 #endif
@@ -667,9 +658,7 @@ Score matchPositions(std::string_view needle, std::string_view haystack, Positio
           // If this score was determined using
           // kScoreMatchConsecutive, the
           // previous character MUST be a match
-          matchRequired =
-              i && j &&
-              m[i][j] == d[i - 1][j - 1] + kScoreMatchConsecutive;
+          matchRequired = i && j && m[i][j] == d[i - 1][j - 1] + kScoreMatchConsecutive;
           (*positions)[i] = j--;
           break;
         }

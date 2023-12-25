@@ -9,16 +9,11 @@
 #include <set>
 
 namespace fzx {
-enum class Status {
-  Running, ExitSuccess, ExitFailure
-};
+enum class Status { Running, ExitSuccess, ExitFailure };
 // all of this sucks atm, it's just to get things going
 struct TermApp
 {
-  TermApp()
-  {
-    mInputBuffer.resize(1024);
-  }
+  TermApp() { mInputBuffer.resize(1024); }
 
   void processInput();
   void processTTY();
@@ -44,6 +39,7 @@ struct TermApp
 
   Status mStatus { Status::Running };
   std::set<uint32_t> mSelection = {};
+
 private:
   size_t mCursor = 0;
 };

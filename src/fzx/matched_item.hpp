@@ -46,13 +46,11 @@ public:
     } else {
       hi = std::signbit(score) ? kMax : kMin;
     }
-    mValue = static_cast<int64_t>((uint64_t{static_cast<uint32_t>(hi)} << 32) | uint64_t{index});
+    mValue =
+        static_cast<int64_t>((uint64_t { static_cast<uint32_t>(hi) } << 32) | uint64_t { index });
   }
 
-  [[nodiscard]] uint32_t index() const noexcept
-  {
-    return mValue & 0xFFFFFFFFU;
-  }
+  [[nodiscard]] uint32_t index() const noexcept { return mValue & 0xFFFFFFFFU; }
 
   [[nodiscard]] float score() const noexcept
   {

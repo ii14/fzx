@@ -30,8 +30,7 @@ struct AlignedString
   }
 
   AlignedString(AlignedString&& b) noexcept
-    : mPtr(std::exchange(b.mPtr, nullptr))
-    , mEnd(std::exchange(b.mEnd, nullptr))
+    : mPtr(std::exchange(b.mPtr, nullptr)), mEnd(std::exchange(b.mEnd, nullptr))
   {
   }
 
@@ -44,10 +43,7 @@ struct AlignedString
     return *this;
   }
 
-  ~AlignedString() noexcept
-  {
-    alignedFree(mPtr);
-  }
+  ~AlignedString() noexcept { alignedFree(mPtr); }
 
   void clear() noexcept
   {

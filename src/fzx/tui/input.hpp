@@ -11,16 +11,9 @@ struct Input
 
   Input() = default;
 
-  ~Input() noexcept
-  {
-    close();
-  }
+  ~Input() noexcept { close(); }
 
-  Input(Input&& b) noexcept
-    : mFd(b.mFd)
-  {
-    b.mFd = -1;
-  }
+  Input(Input&& b) noexcept : mFd(b.mFd) { b.mFd = -1; }
 
   Input& operator=(Input&& b) noexcept
   {

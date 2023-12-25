@@ -14,7 +14,8 @@ namespace fzx {
 
 namespace {
 
-[[maybe_unused]] bool matchFuzzyNaive(const AlignedString& needle, std::string_view haystack) noexcept
+[[maybe_unused]] bool matchFuzzyNaive(const AlignedString& needle,
+                                      std::string_view haystack) noexcept
 {
   const char* it = haystack.data();
   const char* const end = it + haystack.size();
@@ -59,7 +60,7 @@ namespace {
   DEBUG_ASSERT(end >= it);
 
   // Bit mask for the final chunk of memory.
-  const uint32_t maskEnd = ~(uint32_t{0xFFFF} << offsetEnd);
+  const uint32_t maskEnd = ~(uint32_t { 0xFFFF } << offsetEnd);
 
   // Load the initial state into the registers.
   auto xmm0 = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(it)));
@@ -70,7 +71,7 @@ namespace {
     uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(xmm0, xmm1));
 
     // Mask out of bounds memory out of the result.
-    mask &= uint32_t{0xFFFF} << offsetIt;
+    mask &= uint32_t { 0xFFFF } << offsetIt;
     if (it == end)
       mask &= maskEnd;
 

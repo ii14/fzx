@@ -16,10 +16,7 @@ struct Tx
   /// Write thread: Get write buffer.
   /// The returned reference is only valid up to the commit call.
   /// After that accessing the old reference is a data race.
-  T& writeBuffer() noexcept
-  {
-    return mBuffers[mWrite];
-  }
+  T& writeBuffer() noexcept { return mBuffers[mWrite]; }
 
   /// Write thread: Commit written data and get a new write buffer.
   /// The new buffer can contain previously written garbage.
@@ -33,10 +30,7 @@ struct Tx
   /// Read thread: Load received data.
   /// The returned reference is only valid up to the read call.
   /// After that accessing the old reference is a data race.
-  const T& readBuffer() const noexcept
-  {
-    return mBuffers[mRead];
-  }
+  const T& readBuffer() const noexcept { return mBuffers[mRead]; }
 
   /// Read thread: Read data.
   /// Returns false if there is no new data.

@@ -46,9 +46,8 @@ TEST_CASE("fzx::matchFuzzy")
   }
 
   SECTION("sse") {
-    auto b1 =
-      "abcdefghijklmnop"
-      "qrstuvwx01234567"_s;
+    auto b1 = "abcdefghijklmnop"
+              "qrstuvwx01234567"_s;
 
     CHECK(matchFuzzy("p"sv, { b1.data(), 16 }));
     CHECK(!matchFuzzy("q"sv, { b1.data(), 16 }));
@@ -62,9 +61,8 @@ TEST_CASE("fzx::matchFuzzy")
   }
 
   SECTION("avx") {
-    auto b1 =
-      "abcdefghijklmnop"
-      "qrstuvwx01234567yz"_s;
+    auto b1 = "abcdefghijklmnop"
+              "qrstuvwx01234567yz"_s;
 
     CHECK(matchFuzzy("7"sv, { b1.data(), 32 }));
     CHECK(!matchFuzzy("y"sv, { b1.data(), 32 }));

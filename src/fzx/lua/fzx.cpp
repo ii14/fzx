@@ -39,7 +39,8 @@ static int create(lua_State* lstate)
     if (!lua_isnil(lstate, -1)) {
       if (lua_type(lstate, -1) != LUA_TNUMBER)
         return luaL_error(lstate, "fzx: 'threads' has to be a number");
-      threads = std::clamp(lua_tointeger(lstate, -1), lua_Integer{1}, lua_Integer{kMaxThreads});
+      threads =
+          std::clamp(lua_tointeger(lstate, -1), lua_Integer { 1 }, lua_Integer { kMaxThreads });
     }
     lua_pop(lstate, 1);
   }
@@ -50,9 +51,8 @@ static int create(lua_State* lstate)
     p->mFzx.setThreads(threads);
     if (auto err = p->mEventFd.open(); !err.empty())
       return luaL_error(lstate, "fzx: %s", err.c_str());
-    p->mFzx.setCallback([](void* userData) {
-      static_cast<Instance*>(userData)->mEventFd.notify();
-    }, p);
+    p->mFzx.setCallback([](void* userData) { static_cast<Instance*>(userData)->mEventFd.notify(); },
+                        p);
   } catch (const std::exception& e) {
     return luaL_error(lstate, "fzx: %s", e.what());
   }
@@ -92,8 +92,8 @@ static int getFd(lua_State* lstate)
   return 1;
 }
 
-static int start(lua_State* lstate) try
-{
+static int start(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
@@ -103,8 +103,8 @@ static int start(lua_State* lstate) try
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int stop(lua_State* lstate) try
-{
+static int stop(lua_State* lstate)
+try {
   auto*& p = getUserdata(lstate);
   if (p == nullptr)
     return 0;
@@ -116,8 +116,8 @@ static int stop(lua_State* lstate) try
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int push(lua_State* lstate) try
-{
+static int push(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
@@ -146,8 +146,8 @@ static int push(lua_State* lstate) try
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int scanFeed(lua_State* lstate) try
-{
+static int scanFeed(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
@@ -161,8 +161,8 @@ static int scanFeed(lua_State* lstate) try
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int scanEnd(lua_State* lstate) try
-{
+static int scanEnd(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
@@ -174,8 +174,8 @@ static int scanEnd(lua_State* lstate) try
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int commit(lua_State* lstate) try
-{
+static int commit(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
@@ -185,14 +185,14 @@ static int commit(lua_State* lstate) try
   return luaL_error(lstate, "fzx: %s", e.what());
 }
 
-static int setQuery(lua_State* lstate) try
-{
+static int setQuery(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
   size_t len = 0;
   const char* str = luaL_checklstring(lstate, 2, &len);
-    p->mFzx.setQuery({ str, len });
+  p->mFzx.setQuery({ str, len });
   return 0;
 } catch (const std::exception& e) {
   return luaL_error(lstate, "fzx: %s", e.what());
@@ -208,8 +208,8 @@ static int loadResults(lua_State* lstate)
   return 1;
 }
 
-static int getResults(lua_State* lstate) try
-{
+static int getResults(lua_State* lstate)
+try {
   auto* p = getUserdata(lstate);
   if (p == nullptr)
     return luaL_error(lstate, "fzx: null pointer");
@@ -218,13 +218,13 @@ static int getResults(lua_State* lstate) try
   lua_Integer max = 50;
   if (!lua_isnil(lstate, 2)) {
     max = luaL_checkinteger(lstate, 2);
-    max = std::clamp(max, lua_Integer{0}, lua_Integer{std::numeric_limits<int>::max()});
+    max = std::clamp(max, lua_Integer { 0 }, lua_Integer { std::numeric_limits<int>::max() });
   }
 
   lua_Integer offset = 0;
   if (!lua_isnil(lstate, 3)) {
     offset = luaL_checkinteger(lstate, 3);
-    offset = std::max(offset, lua_Integer{0});
+    offset = std::max(offset, lua_Integer { 0 });
   }
 
   // TODO: use signed integers lol
@@ -296,6 +296,7 @@ static int getResults(lua_State* lstate) try
 // NOLINTNEXTLINE(readability-identifier-naming)
 extern "C" EXPORT int luaopen_fzxlua(lua_State* lstate)
 {
+  // clang-format off
   luaL_newmetatable(lstate, fzx::lua::kMetatable);
     lua_pushcfunction(lstate, fzx::lua::gc);
       lua_setfield(lstate, -2, "__gc");
@@ -332,5 +333,6 @@ extern "C" EXPORT int luaopen_fzxlua(lua_State* lstate)
       lua_setfield(lstate, -2, "new");
     lua_pushinteger(lstate, lua_Integer{std::numeric_limits<int>::max()});
       lua_setfield(lstate, -2, "MAX_OFFSET");
+  // clang-format on
   return 1;
 }

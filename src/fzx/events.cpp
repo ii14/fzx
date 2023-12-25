@@ -27,7 +27,9 @@ uint32_t Events::wait()
   // Enter the waiting state with kWaitFlag. If there
   // are currently no events available, go to sleep.
   if (!(mState.fetch_or(kWaitFlag) & kEventMask))
-    do mCv.wait(lock); while (!(mState.load() & kEventMask));
+    do
+      mCv.wait(lock);
+    while (!(mState.load() & kEventMask));
   // Exit the waiting state and consume events.
   return mState.exchange(0) & kEventMask;
 }

@@ -70,7 +70,7 @@ TEST_CASE("fzx::Items")
       REQUIRE(copy.at(1) == "bar"sv);
       REQUIRE(copy.at(2) == "baz"sv);
 
-      SECTION("then nothing") {}
+      SECTION("then nothing") { }
       SECTION("then add items the copy") {
         copy.push("foo"sv);
         copy.push("bar"sv);
@@ -87,7 +87,7 @@ TEST_CASE("fzx::Items")
       REQUIRE(copy.at(1) == "bar"sv);
       REQUIRE(copy.at(2) == "baz"sv);
 
-      SECTION("then nothing") {}
+      SECTION("then nothing") { }
       SECTION("then add more items to the copy") {
         copy.push("foo"sv);
         copy.push("bar"sv);
@@ -127,5 +127,4 @@ TEST_CASE("fzx::Items")
 
     REQUIRE(items.size() == 0);
   }
-
 }

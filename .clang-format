@@ -1,0 +1,47 @@
+BasedOnStyle: WebKit
+Standard: c++17
+
+ColumnLimit: 100
+IndentWidth: 2
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 2
+AccessModifierOffset: -2
+
+PointerBindsToType: true
+SpaceAfterTemplateKeyword: true
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: true
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+NamespaceIndentation: None
+IndentPPDirectives: AfterHash
+AlignAfterOpenBracket: true
+AlwaysBreakTemplateDeclarations: true
+AllowShortFunctionsOnASingleLine: Inline
+SortIncludes: false
+BreakConstructorInitializers: BeforeComma
+FixNamespaceComments: true
+AlignEscapedNewlines: DontAlign
+SpaceBeforeCpp11BracedList: true
+MaxEmptyLinesToKeep: 3
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: true
+ReflowComments: false
+PenaltyReturnTypeOnItsOwnLine: 99999
+PPIndentWidth: 1
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterIfMacros: false
+
+IfMacros: ['SECTION']

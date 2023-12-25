@@ -64,34 +64,40 @@ TEST_CASE("fzx::score", "[score]")
 
   SECTION("score gaps") {
     CHECK(Approx(kScoreGapLeading) == score("a"sv, "*a"_s));
-    CHECK(Approx(kScoreGapLeading*2) == score("a"sv, "*ba"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreGapTrailing) == score("a"sv, "**a*"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreGapTrailing*2) == score("a"sv, "**a**"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreMatchConsecutive + kScoreGapTrailing*2) == score("aa"sv, "**aa**"_s));
-    CHECK(Approx(kScoreGapLeading + kScoreGapLeading + kScoreGapInner + kScoreGapTrailing + kScoreGapTrailing) == score("aa"sv, "**a*a**"_s));
+    CHECK(Approx(kScoreGapLeading * 2) == score("a"sv, "*ba"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreGapTrailing) == score("a"sv, "**a*"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreGapTrailing * 2) == score("a"sv, "**a**"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchConsecutive + kScoreGapTrailing * 2)
+          == score("aa"sv, "**aa**"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreGapLeading + kScoreGapInner + kScoreGapTrailing
+                 + kScoreGapTrailing)
+          == score("aa"sv, "**a*a**"_s));
   }
 
   SECTION("score consecutive") {
     CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive) == score("aa"sv, "*aa"_s));
-    CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive*2) == score("aaa"sv, "*aaa"_s));
-    CHECK(Approx(kScoreGapLeading + kScoreGapInner + kScoreMatchConsecutive) == score("aaa"sv, "*a*aa"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive * 2) == score("aaa"sv, "*aaa"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreGapInner + kScoreMatchConsecutive)
+          == score("aaa"sv, "*a*aa"_s));
   }
 
   SECTION("score slash") {
     CHECK(Approx(kScoreGapLeading + kScoreMatchSlash) == score("a"sv, "/a"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreMatchSlash) == score("a"sv, "*/a"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreMatchSlash + kScoreMatchConsecutive) == score("aa"sv, "a/aa"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchSlash) == score("a"sv, "*/a"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchSlash + kScoreMatchConsecutive)
+          == score("aa"sv, "a/aa"_s));
   }
 
   SECTION("score capital") {
     CHECK(Approx(kScoreGapLeading + kScoreMatchCapital) == score("a"sv, "bA"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreMatchCapital) == score("a"sv, "baA"_s));
-    CHECK(Approx(kScoreGapLeading*2 + kScoreMatchCapital + kScoreMatchConsecutive) == score("aa"sv, "baAa"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchCapital) == score("a"sv, "baA"_s));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchCapital + kScoreMatchConsecutive)
+          == score("aa"sv, "baAa"_s));
   }
 
   SECTION("score dot") {
     CHECK(Approx(kScoreGapLeading + kScoreMatchDot) == score("a"sv, ".a"_s));
-    CHECK(Approx(kScoreGapLeading*3 + kScoreMatchDot) == score("a"sv, "*a.a"_s));
+    CHECK(Approx(kScoreGapLeading * 3 + kScoreMatchDot) == score("a"sv, "*a.a"_s));
     CHECK(Approx(kScoreGapLeading + kScoreGapInner + kScoreMatchDot) == score("a"sv, "*a.a"_s));
   }
 
@@ -153,9 +159,8 @@ TEST_CASE("fzx::score", "[score]")
 #if defined(FZX_SSE2)
 TEST_CASE("fzx::scoreSse", "[score]")
 {
-  auto h =
-    "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"
-    "Maecenas/mollis/odio/semper/nunc/convallis/accumsan/"_s;
+  auto h = "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"
+           "Maecenas/mollis/odio/semper/nunc/convallis/accumsan/"_s;
 
   const std::vector<std::string_view> kTestCases {
     "/"sv,
@@ -222,9 +227,8 @@ TEST_CASE("fzx::scoreSse", "[score]")
 #if defined(FZX_NEON)
 TEST_CASE("fzx::scoreNeon", "[score]")
 {
-  auto h =
-    "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"
-    "Maecenas/mollis/odio/semper/nunc/convallis/accumsan/"_s;
+  auto h = "/Lorem/ipsum/dolor/sit/amet/consectetur/adipiscing/elit/"
+           "Maecenas/mollis/odio/semper/nunc/convallis/accumsan/"_s;
 
   const std::vector<std::string_view> kTestCases {
     "/"sv,

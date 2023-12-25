@@ -16,7 +16,9 @@ using namespace std::string_view_literals;
 
 namespace fzx {
 
-static struct termios gSavedAttrs {};
+static struct termios gSavedAttrs
+{
+};
 static bool gActive { false };
 
 TTY::~TTY() noexcept
@@ -24,8 +26,7 @@ TTY::~TTY() noexcept
   close();
 }
 
-TTY::TTY(TTY&& b) noexcept
-  : mFd(b.mFd)
+TTY::TTY(TTY&& b) noexcept : mFd(b.mFd)
 {
   b.mFd = kInvalidFd;
 }
@@ -97,7 +98,9 @@ void TTY::close() noexcept
 
 void TTY::updateSize() noexcept
 {
-  struct winsize ws {};
+  struct winsize ws
+  {
+  };
   ioctl(mFd, TIOCGWINSZ, &ws);
   mWidth = ws.ws_col;
   mHeight = ws.ws_row;

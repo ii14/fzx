@@ -37,18 +37,19 @@ static_assert(kMaxThreads == 64);
 /// Map of worker index to the parent worker index. The parent is responsible for
 /// merging your results. It has to be notified about results being ready to merge.
 constexpr std::array<uint8_t, kMaxThreads> kParentMap {
+  // clang-format off
   // 0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
   0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x04, 0x06, 0x00, 0x08, 0x08, 0x0A, 0x08, 0x0C, 0x0C, 0x0E,
   0x00, 0x10, 0x10, 0x12, 0x10, 0x14, 0x14, 0x16, 0x10, 0x18, 0x18, 0x1A, 0x18, 0x1C, 0x1C, 0x1E,
   0x00, 0x20, 0x20, 0x22, 0x20, 0x24, 0x24, 0x26, 0x20, 0x28, 0x28, 0x2A, 0x28, 0x2C, 0x2C, 0x2E,
   0x20, 0x30, 0x30, 0x32, 0x30, 0x34, 0x34, 0x36, 0x30, 0x38, 0x38, 0x3A, 0x38, 0x3C, 0x3C, 0x3E,
+  // clang-format on
 };
 
 /// Keep track of results from what workers have been merged in a bitset.
 struct MergeState
 {
-  MergeState(const uint8_t workerIndex, const size_t workersCount) noexcept
-    : mIndex(workerIndex)
+  MergeState(const uint8_t workerIndex, const size_t workersCount) noexcept : mIndex(workerIndex)
   {
     ASSERT(workerIndex < kMaxThreads);
     ASSERT(workersCount <= kMaxThreads);
@@ -56,10 +57,12 @@ struct MergeState
     constexpr auto kMaxChildren = 6;
     // Map of worker index to max possible children count
     static constexpr std::array<uint8_t, kMaxThreads> kMaxChildrenMap {
+      // clang-format off
       6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
       4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
       5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
       4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+      // clang-format on
     };
 
     while (mCount < kMaxChildrenMap[workerIndex] && workerIndex + (1U << mCount) < workersCount)
@@ -71,10 +74,7 @@ struct MergeState
   }
 
   // Get children count.
-  [[nodiscard]] uint8_t size() const noexcept
-  {
-    return mCount;
-  }
+  [[nodiscard]] uint8_t size() const noexcept { return mCount; }
 
   [[nodiscard]] uint8_t at(uint8_t child) const noexcept
   {
@@ -83,10 +83,7 @@ struct MergeState
   }
 
   // Reset state.
-  void reset() noexcept
-  {
-    mState = mMask;
-  }
+  void reset() noexcept { mState = mMask; }
 
   // Mark nth child as merged.
   void set(uint8_t child) noexcept
@@ -96,10 +93,7 @@ struct MergeState
   }
 
   // Check if results from all children were merged.
-  [[nodiscard]] bool done() const noexcept
-  {
-    return mState == 0;
-  }
+  [[nodiscard]] bool done() const noexcept { return mState == 0; }
 
   // Check if results from nth child were merged.
   [[nodiscard]] bool contains(uint8_t child) const noexcept
@@ -117,10 +111,9 @@ private:
 
 /// Merge results from sorted vectors `a` and `b` into the output vector `r`.
 /// `r` is an in/out parameter to reuse previously allocated memory.
-void merge2(
-    std::vector<MatchedItem>& RESTRICT r,
-    const std::vector<MatchedItem>& RESTRICT a,
-    const std::vector<MatchedItem>& RESTRICT b)
+void merge2(std::vector<MatchedItem>& RESTRICT r,
+            const std::vector<MatchedItem>& RESTRICT a,
+            const std::vector<MatchedItem>& RESTRICT b)
 {
   r.clear();
   r.resize(a.size() + b.size());
@@ -141,8 +134,8 @@ void merge2(
 } // namespace
 
 // TODO: compile time option to disable try/catch
-void Worker::run() try
-{
+void Worker::run()
+try {
   ASSERT(mIndex < mPool->mWorkers.size());
   ASSERT(mPool->mWorkers.size() <= kMaxThreads);
 
@@ -200,7 +193,7 @@ wait:
     return;
 
   if ((ev & kJob) && loadJob()) {
-match:
+  match:
     // A new job invalidates any merged results we got so far.
     published = false;
     mergeState.reset();
@@ -257,29 +250,51 @@ match:
         process(score1);
         break;
 #if defined(FZX_SSE2)
-      case 2: case 3: case 4:
+      case 2:
+      case 3:
+      case 4:
         process(scoreSSE<4>);
         break;
-      case 5: case 6: case 7: case 8:
+      case 5:
+      case 6:
+      case 7:
+      case 8:
         process(scoreSSE<8>);
         break;
-      case 9: case 10: case 11: case 12:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
         process(scoreSSE<12>);
         break;
-      case 13: case 14: case 15: case 16:
+      case 13:
+      case 14:
+      case 15:
+      case 16:
         process(scoreSSE<16>);
         break;
 #elif defined(FZX_NEON)
-      case 2: case 3: case 4:
+      case 2:
+      case 3:
+      case 4:
         process(scoreNeon<4>);
         break;
-      case 5: case 6: case 7: case 8:
+      case 5:
+      case 6:
+      case 7:
+      case 8:
         process(scoreNeon<8>);
         break;
-      case 9: case 10: case 11: case 12:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
         process(scoreNeon<12>);
         break;
-      case 13: case 14: case 15: case 16:
+      case 13:
+      case 14:
+      case 15:
+      case 16:
         process(scoreNeon<16>);
         break;
 #endif

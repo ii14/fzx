@@ -49,12 +49,12 @@ int main(int argc, char** argv)
 
   // TODO: command line option
   app.mFzx.setThreads(std::thread::hardware_concurrency());
-  app.mFzx.setCallback([](void* app) {
-    static_cast<fzx::TermApp*>(app)->mEventFd.notify();
-  }, &app);
+  app.mFzx.setCallback([](void* app) { static_cast<fzx::TermApp*>(app)->mEventFd.notify(); }, &app);
 
   // TODO: handle SIGTERM, SIGQUIT, SIGHUP
-  struct sigaction sa {};
+  struct sigaction sa
+  {
+  };
   sa.sa_handler = signalHandler;
   sigaction(SIGINT, &sa, nullptr);
   sigaction(SIGWINCH, &sa, nullptr);

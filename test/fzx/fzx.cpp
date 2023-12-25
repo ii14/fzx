@@ -45,9 +45,7 @@ TEST_CASE("fzx::Fzx")
   fzx::Fzx f;
   Notify notify;
 
-  f.setCallback([](void* userData) {
-    static_cast<Notify*>(userData)->notify();
-  }, &notify);
+  f.setCallback([](void* userData) { static_cast<Notify*>(userData)->notify(); }, &notify);
 
   SECTION("starts and stops") {
     f.start();
