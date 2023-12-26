@@ -41,7 +41,9 @@ struct TermApp
   std::set<uint32_t> mSelection = {};
 
 private:
+  std::string mPrompt = ">";
   size_t mCursor = 0;
+  Theme mPalette = Theme();
 };
 
 } // namespace fzx

@@ -69,7 +69,7 @@ void TermApp::processTTY()
     } else if (*key == kCtrlU) {
       mLine.clear();
       updateQuery = true;
-    } else if (*key == kCtrlC) {
+    } else if (*key == kCtrlC || *key == kEscape) {
       quit(false);
       return;
     } else if (*key == kCtrlP) {
@@ -123,15 +123,17 @@ void TermApp::redraw()
   std::string_view query = mFzx.query();
 
   for (int i = 0; i < maxHeight; ++i) {
+    mTTY.setFg(mPalette.mDefaultFg);
     mTTY.put("\x1B[{};0H\x1B[K", maxHeight - i);
     if (static_cast<size_t>(i) < items) {
       const auto result = mFzx.getResult(i);
+      const bool iscursor = mCursor == static_cast<size_t>(i);
       std::string_view item = result.mLine;
-      if (mCursor == static_cast<size_t>(i)) {
-        mTTY.put("► ", maxHeight - i);
-      } else {
-        mTTY.put("  ", maxHeight - i);
+      if (iscursor) {
+        mTTY.setFg(mPalette.mCursorFg);
+        mTTY.setBg(mPalette.mCursorBg);
       }
+      mTTY.put("  ", maxHeight - i);
       if (mSelection.find(result.mIndex) != mSelection.end()) {
         mTTY.put("•", maxHeight - i);
       } else {
@@ -142,29 +144,41 @@ void TermApp::redraw()
 
       bool highlighted = false;
       std::string_view sub = item.substr(0, itemWidth);
+
       for (size_t i = 0, p = 0; i < sub.size(); ++i) {
         if (p < positions.size() && positions[p] == i) {
           ++p;
           if (!highlighted) {
             highlighted = true;
-            mTTY.put("\x1B[33m"sv);
+            mTTY.setFg(mPalette.mMatchFg);
           }
         } else {
           if (highlighted) {
             highlighted = false;
-            mTTY.put("\x1B[0m"sv);
+            if (iscursor) {
+              mTTY.setFg(mPalette.mCursorFg);
+            } else {
+              mTTY.setFg(mPalette.mDefaultFg);
+            }
           }
         }
         mTTY.put(sub[i]);
       }
-      if (highlighted) {
-        mTTY.put("\x1B[0m"sv);
-      }
+
+      if (iscursor)
+        mTTY.clearColor();
     }
   }
+  mTTY.setFg(mPalette.mDefaultFg);
 
   mTTY.put("\x1B[{};0H\x1B[K{}/{}", mTTY.height() - 1, mFzx.resultsSize(), mFzx.itemsSize());
-  mTTY.put("\x1B[{};0H\x1B[K> {}", mTTY.height(), mLine.line());
+  mTTY.put("\x1B[{};0H\x1B[K", mTTY.height());
+
+  mTTY.setFg(mPalette.mPromptFg);
+  mTTY.setBg(mPalette.mPromptBg);
+  mTTY.put(mPrompt);
+  mTTY.clearColor();
+  mTTY.put(" {}", mLine.line());
 
   mTTY.flush();
 }
@@ -191,6 +205,5 @@ std::string_view TermApp::currentItem() const
     return mFzx.getResult(mCursor).mLine;
   return {};
 }
-
 
 } // namespace fzx
