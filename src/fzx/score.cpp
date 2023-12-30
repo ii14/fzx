@@ -43,21 +43,23 @@ namespace fzx {
 namespace {
 
 constexpr auto kBonusStates = [] {
-  std::array<std::array<Score, 256>, 3> r {};
+  // Although we only need to represent 3 bonus pages, it's
+  // cheaper for the CPU to calculate the index for 4 pages.
+  std::array<Score, 256ULL * 4> r {};
 
-  r[1]['/'] = kScoreMatchSlash;
-  r[1]['-'] = kScoreMatchWord;
-  r[1]['_'] = kScoreMatchWord;
-  r[1][' '] = kScoreMatchWord;
-  r[1]['.'] = kScoreMatchDot;
+  r[uint64_t{'/'} * 4 + 1] = kScoreMatchSlash;
+  r[uint64_t{'-'} * 4 + 1] = kScoreMatchWord;
+  r[uint64_t{'_'} * 4 + 1] = kScoreMatchWord;
+  r[uint64_t{' '} * 4 + 1] = kScoreMatchWord;
+  r[uint64_t{'.'} * 4 + 1] = kScoreMatchDot;
 
-  r[2]['/'] = kScoreMatchSlash;
-  r[2]['-'] = kScoreMatchWord;
-  r[2]['_'] = kScoreMatchWord;
-  r[2][' '] = kScoreMatchWord;
-  r[2]['.'] = kScoreMatchDot;
-  for (char i = 'a'; i <= 'z'; ++i)
-    r[2][i] = kScoreMatchCapital;
+  r[uint64_t{'/'} * 4 + 2] = kScoreMatchSlash;
+  r[uint64_t{'-'} * 4 + 2] = kScoreMatchWord;
+  r[uint64_t{'_'} * 4 + 2] = kScoreMatchWord;
+  r[uint64_t{' '} * 4 + 2] = kScoreMatchWord;
+  r[uint64_t{'.'} * 4 + 2] = kScoreMatchDot;
+  for (uint64_t i = 'a'; i <= 'z'; ++i)
+    r[i * 4 + 2] = kScoreMatchCapital;
 
   return r;
 }();
@@ -79,7 +81,7 @@ void precomputeBonus(std::string_view haystack, Score* matchBonus) noexcept
   uint8_t lastCh = '/';
   for (size_t i = 0; i < haystack.size(); ++i) {
     uint8_t ch = haystack[i];
-    matchBonus[i] = kBonusStates[kBonusIndex[ch]][lastCh];
+    matchBonus[i] = kBonusStates[lastCh * 4 + kBonusIndex[ch]];;
     lastCh = ch;
   }
 }
@@ -208,7 +210,7 @@ Score score1(const AlignedString& needle, std::string_view haystack) noexcept
   {
     uint8_t ch = haystack[0];
     if (lowerNeedle == toLower(ch)) {
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];;
       score = bonus;
     }
     lastCh = ch;
@@ -218,7 +220,7 @@ Score score1(const AlignedString& needle, std::string_view haystack) noexcept
     uint8_t ch = haystack[i];
     score += kScoreGapTrailing;
     if (lowerNeedle == toLower(ch)) {
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];;
       if (Score ns = (static_cast<Score>(i) * kScoreGapLeading) + bonus; ns > score)
         score = ns;
     }
@@ -273,7 +275,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];
       lastCh = ch;
 
       auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
@@ -299,7 +301,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];;
       lastCh = ch;
 
       auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
@@ -333,7 +335,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];;
       lastCh = ch;
 
       auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
@@ -374,7 +376,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];;
       lastCh = ch;
 
       auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
@@ -452,7 +454,7 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];
       lastCh = ch;
 
       auto r = vmovq_n_u32(toLower(ch));
@@ -476,7 +478,7 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];
       lastCh = ch;
 
       auto r = vmovq_n_u32(toLower(ch));
@@ -510,7 +512,7 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];
       lastCh = ch;
 
       auto r = vmovq_n_u32(toLower(ch));
@@ -551,7 +553,7 @@ Score scoreNeon(const AlignedString& needle, std::string_view haystack) noexcept
 
     for (int i = 0; i < haystackLen; ++i) {
       uint8_t ch = haystack[i];
-      Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
+      Score bonus = kBonusStates[lastCh * 4 + kBonusIndex[ch]];
       lastCh = ch;
 
       auto r = vmovq_n_u32(toLower(ch));
