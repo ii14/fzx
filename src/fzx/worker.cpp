@@ -115,7 +115,6 @@ void merge2(std::vector<MatchedItem>& RESTRICT r,
             const std::vector<MatchedItem>& RESTRICT a,
             const std::vector<MatchedItem>& RESTRICT b)
 {
-  r.clear();
   r.resize(a.size() + b.size());
   const auto ae = a.end();
   const auto be = b.end();
