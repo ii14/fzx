@@ -17,23 +17,31 @@ Query Query::parse(std::string_view s)
 
   auto parseSubstr = [&](std::string_view ss) {
     DEBUG_ASSERT(!ss.empty());
+
+    bool negated = ss.front() == '!';
+    if (negated) {
+      ss = ss.substr(1);
+      if (ss.empty())
+        return;
+    }
+
     bool sub = ss.front() == '\'';
     bool begin = ss.front() == '^';
     bool end = ss.back() == '$';
     if (sub) {
-      if (s.size() > 1)
-        q.add(ss.substr(1, ss.size() - 1), MatchType::kSubstr);
+      if (ss.size() > 1)
+        q.add(ss.substr(1, ss.size() - 1), MatchType::kSubstr, negated);
     } else if (begin && end) {
-      if (s.size() > 2)
-        q.add(ss.substr(1, ss.size() - 2), MatchType::kExact);
+      if (ss.size() > 2)
+        q.add(ss.substr(1, ss.size() - 2), MatchType::kExact, negated);
     } else if (begin) {
-      if (s.size() > 1)
-        q.add(ss.substr(1, ss.size() - 1), MatchType::kBegin);
+      if (ss.size() > 1)
+        q.add(ss.substr(1, ss.size() - 1), MatchType::kBegin, negated);
     } else if (end) {
-      if (s.size() > 1)
-        q.add(ss.substr(0, ss.size() - 1), MatchType::kEnd);
+      if (ss.size() > 1)
+        q.add(ss.substr(0, ss.size() - 1), MatchType::kEnd, negated);
     } else {
-      q.add(ss, MatchType::kFuzzy);
+      q.add(ss, MatchType::kFuzzy, negated);
     }
   };
 
@@ -58,23 +66,23 @@ bool Query::match(std::string_view s) const
   for (const auto& item : mItems) {
     switch (item.mType) {
     case MatchType::kFuzzy:
-      if (!matchFuzzy(item.mText, s))
+      if (!matchFuzzy(item.mText, s) ^ item.mNot)
         return false;
       break;
     case MatchType::kSubstr:
-      if (!matchSubstr(item.mText, s))
+      if (!matchSubstr(item.mText, s) ^ item.mNot)
         return false;
       break;
     case MatchType::kBegin:
-      if (!matchBegin(item.mText, s))
+      if (!matchBegin(item.mText, s) ^ item.mNot)
         return false;
       break;
     case MatchType::kEnd:
-      if (!matchEnd(item.mText, s))
+      if (!matchEnd(item.mText, s) ^ item.mNot)
         return false;
       break;
     case MatchType::kExact:
-      if (!matchExact(item.mText, s))
+      if (!matchExact(item.mText, s) ^ item.mNot)
         return false;
       break;
     }
@@ -88,6 +96,8 @@ Score Query::score(std::string_view s) const
   uint32_t div = 0;
 
   for (const auto& item : mItems) {
+    if (item.mNot)
+      continue;
     switch (item.mType) {
     case MatchType::kFuzzy:
       switch (item.mText.size()) {
@@ -168,6 +178,8 @@ void Query::matchPositions(std::string_view s, std::vector<bool>& positions) con
   positions.clear();
   positions.resize(s.size());
   for (const auto& item : mItems) {
+    if (item.mNot)
+      continue;
     switch (item.mType) {
     case MatchType::kFuzzy:
       fzx::matchPositions(item.mText.str(), s, &positions);

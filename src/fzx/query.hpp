@@ -23,26 +23,28 @@ struct Query
   struct Item
   {
     MatchType mType;
+    bool mNot;
     AlignedString mText; // TODO: arena allocator
 
-    Item(MatchType type, AlignedString text) : mType(type), mText(std::move(text)) { }
+    Item(MatchType type, AlignedString text, bool negated = false)
+      : mType(type), mNot(negated), mText(std::move(text)) { }
 
     friend bool operator==(const Item& a, const Item& b) noexcept
     {
-      return a.mType == b.mType && a.mText == b.mText;
+      return a.mType == b.mType && a.mNot == b.mNot && a.mText == b.mText;
     }
 
     friend bool operator!=(const Item& a, const Item& b) noexcept
     {
-      return a.mType != b.mType || a.mText != b.mText;
+      return a.mType != b.mType || a.mNot != b.mNot || a.mText != b.mText;
     }
   };
 
   void clear() noexcept { mItems.clear(); }
 
-  void add(AlignedString text, MatchType type = MatchType::kFuzzy)
+  void add(AlignedString text, MatchType type = MatchType::kFuzzy, bool negated = false)
   {
-    mItems.emplace_back(type, std::move(text));
+    mItems.emplace_back(type, std::move(text), negated);
   }
 
   [[nodiscard]] static Query parse(std::string_view s);
