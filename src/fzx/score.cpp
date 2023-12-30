@@ -261,7 +261,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
   const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
 
-  uint8_t lastCh = '/';
+  uint32_t lastCh = '/';
   auto g = _mm_set_ss(0); // Leading gap score
   auto nt = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(needle.data())));
 
@@ -272,11 +272,11 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto m = kMin;
 
     for (int i = 0; i < haystackLen; ++i) {
-      uint8_t ch = haystack[i];
+      uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_epi32(toLower(ch));
+      auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
       auto b = _mm_set1_ps(bonus);
       auto c = _mm_cmpeq_epi32(n, r);
 
@@ -298,11 +298,11 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto m1 = kMin, m2 = kMin; // NOLINT(readability-isolate-declaration)
 
     for (int i = 0; i < haystackLen; ++i) {
-      uint8_t ch = haystack[i];
+      uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_epi32(toLower(ch));
+      auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
       auto b = _mm_set1_ps(bonus);
       auto c1 = _mm_cmpeq_epi32(n1, r);
       auto c2 = _mm_cmpeq_epi32(n2, r);
@@ -332,11 +332,11 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto m1 = kMin, m2 = kMin, m3 = kMin; // NOLINT(readability-isolate-declaration)
 
     for (int i = 0; i < haystackLen; ++i) {
-      uint8_t ch = haystack[i];
+      uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_epi32(toLower(ch));
+      auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
       auto b = _mm_set1_ps(bonus);
       auto c1 = _mm_cmpeq_epi32(n1, r);
       auto c2 = _mm_cmpeq_epi32(n2, r);
@@ -373,11 +373,11 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto m1 = kMin, m2 = kMin, m3 = kMin, m4 = kMin; // NOLINT(readability-isolate-declaration)
 
     for (int i = 0; i < haystackLen; ++i) {
-      uint8_t ch = haystack[i];
+      uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
 
-      auto r = _mm_set1_epi32(toLower(ch));
+      auto r = _mm_set1_epi32(static_cast<int>(toLower(ch)));
       auto b = _mm_set1_ps(bonus);
       auto c1 = _mm_cmpeq_epi32(n1, r);
       auto c2 = _mm_cmpeq_epi32(n2, r);

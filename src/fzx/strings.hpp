@@ -11,12 +11,14 @@
 
 namespace fzx {
 
-[[nodiscard]] constexpr uint8_t toUpper(uint8_t ch) noexcept
+template <typename T>
+[[nodiscard]] constexpr T toUpper(T ch) noexcept
 {
   return ch >= 'a' && ch <= 'z' ? ch - 32 : ch;
 }
 
-[[nodiscard]] constexpr uint8_t toLower(uint8_t ch) noexcept
+template <typename T>
+[[nodiscard]] constexpr T toLower(T ch) noexcept
 {
   return ch >= 'A' && ch <= 'Z' ? ch + 32 : ch;
 }
