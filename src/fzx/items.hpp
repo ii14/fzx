@@ -3,8 +3,9 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 #include <string_view>
+
+#include "fzx/rc_mem.hpp"
 
 namespace fzx {
 
@@ -13,16 +14,16 @@ namespace fzx {
 /// The internal storage is shared (and reference counted) between the copies. This assumes that
 /// only the most up to date instance pushes the items. Otherwise strings can get overwritten which
 /// also potentially makes it a data race, because read-only copies should be safely accessed from
-/// different threads. TODO: Could be made safer to use by splitting this into two classes.
+/// different threads.
 struct Items
 {
   Items() noexcept = default;
-  Items(const Items& b) noexcept;
-  Items(Items&& b) noexcept;
-  Items& operator=(const Items& b) noexcept;
-  Items& operator=(Items&& b) noexcept;
-  ~Items() noexcept { clear(); }
-  void swap(Items& b) noexcept;
+  Items(const Items&) noexcept = default;
+  Items& operator=(const Items&) noexcept = default;
+  Items(Items&&) noexcept;
+  Items& operator=(Items&&) noexcept;
+  ~Items() noexcept = default;
+
   void clear() noexcept;
 
   [[nodiscard]] size_t size() const noexcept { return mItemsSize; }
@@ -41,18 +42,17 @@ struct Items
   [[nodiscard]] size_t maxStrSize() const noexcept { return mMaxStrSize; }
 
 private:
-  char* mStrsPtr { nullptr };
+  /// Allocate space for new item, append it to the items array and return the item base pointer
+  uint8_t* allocItem(size_t bytes);
+
+private:
+  RcMem mStrs; ///< Item storage
+  RcMem mItems; ///< Item offsets, for random access
   size_t mStrsSize { 0 };
-  size_t mStrsCap { 0 };
-  char* mItemsPtr { nullptr };
   size_t mItemsSize { 0 };
+  size_t mStrsCap { 0 };
   size_t mItemsCap { 0 };
   size_t mMaxStrSize { 0 };
 };
-
-inline void swap(Items& a, Items& b) noexcept
-{
-  a.swap(b);
-}
 
 } // namespace fzx

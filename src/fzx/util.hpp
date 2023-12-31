@@ -5,8 +5,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <type_traits>
 #include <utility>
+
+#include "fzx/macros.hpp"
 
 namespace fzx {
 
@@ -46,6 +49,40 @@ template <size_t N, typename T>
   static_assert(isPow2(N));
   constexpr size_t mask = N - 1;
   return (n & ~mask) + static_cast<T>(!isMulOf<N>(n)) * N;
+}
+
+template <typename T>
+[[nodiscard]] inline T load(const void* p)
+{
+  static_assert(std::is_trivially_constructible_v<T>);
+  static_assert(std::is_trivially_copyable_v<T>);
+  T v; // NOLINT(cppcoreguidelines-init-variables)
+  std::memcpy(&v, p, sizeof(T));
+  return v;
+}
+
+template <typename T>
+[[nodiscard]] inline T loadAligned(const void* p)
+{
+  static_assert(std::is_trivially_constructible_v<T>);
+  static_assert(std::is_trivially_copyable_v<T>);
+  T v; // NOLINT(cppcoreguidelines-init-variables)
+  std::memcpy(&v, ASSUME_ALIGNED(p, alignof(T)), sizeof(T));
+  return v;
+}
+
+template <typename T>
+inline void store(void* p, const T& v)
+{
+  static_assert(std::is_trivially_copyable_v<T>);
+  std::memcpy(p, &v, sizeof(T));
+}
+
+template <typename T>
+inline void storeAligned(void* p, const T& v)
+{
+  static_assert(std::is_trivially_copyable_v<T>);
+  std::memcpy(ASSUME_ALIGNED(p, alignof(T)), &v, sizeof(T));
 }
 
 // NOLINTBEGIN(google-runtime-int)

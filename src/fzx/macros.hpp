@@ -73,6 +73,12 @@
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
+# define ASSUME_ALIGNED(ptr, align) __builtin_assume_aligned(ptr, align)
+#else
+# define ASSUME_ALIGNED(ptr, align) ptr
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
 # define PREFETCH(...) __builtin_prefetch(__VA_ARGS__)
 #else
 # define PREFETCH(...)
