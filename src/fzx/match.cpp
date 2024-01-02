@@ -31,79 +31,50 @@ namespace {
 }
 
 #if defined(FZX_SSE2)
+// TODO: port to neon
 [[maybe_unused]] bool matchFuzzySSE(const AlignedString& needle, std::string_view haystack) noexcept
 {
-  // Technically needle and haystack never will be empty,
-  // so maybe fix the tests and turn it into debug asserts
-  if (needle.empty())
+  // TODO: haystack is padded with zeros. if needle includes zeros, it can match those.
+  //       i think it's best to just ban zeros from queries.
+  constexpr auto kAlign = 16;
+
+  const char* ndIt = needle.data();
+  const char* const ndEnd = ndIt + needle.size();
+  if (ndIt == ndEnd)
     return true;
-  if (haystack.empty()) // Otherwise can lead to end < it
+
+  const char* hsIt = haystack.data();
+  DEBUG_ASSERT(isAligned<kAlign>(hsIt));
+  const char* const hsEnd = hsIt + roundUp<kAlign>(haystack.size());
+  if (hsIt == hsEnd)
     return false;
 
-  constexpr ptrdiff_t kWidth { 16 }; // Register width
-  static_assert(isPow2(kWidth)); // -1 has to yield a mask for unaligned bytes
-  constexpr uintptr_t kMisaligned { kWidth - 1 };
-
-  const char* nit = needle.data();
-  const char* nend = nit + needle.size();
-  const char* it = haystack.data();
-  const char* end = it + haystack.size();
-
-  // Loading memory from unaligned addresses is way slower.
-  // Align the start and the end pointer to the width of the xmm register.
-  auto offsetIt = reinterpret_cast<uintptr_t>(it) & kMisaligned;
-  auto offsetEnd = reinterpret_cast<uintptr_t>(end) & kMisaligned;
-  it -= offsetIt;
-  if (offsetEnd == 0)
-    offsetEnd = kWidth;
-  end -= offsetEnd;
-  DEBUG_ASSERT(end >= it);
-
-  // Bit mask for the final chunk of memory.
-  const uint32_t maskEnd = ~(uint32_t { 0xFFFF } << offsetEnd);
-
-  // Load the initial state into the registers.
-  auto xmm0 = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(it)));
-  auto xmm1 = _mm_set1_epi8(static_cast<char>(toLower(nit[0])));
+  // Initial state of registers
+  auto hs = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(hsIt)));
+  auto nd = _mm_set1_epi8(static_cast<char>(toLower(*ndIt)));
+  uint32_t pos = 0; // Current position in a 16-byte chunk
 
   for (;;) {
-    // Find positions in the chunk that match the current needle character.
-    uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(xmm0, xmm1));
+    uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(hs, nd));
+    mask &= uint32_t { 0xFFFF } << pos; // Mask out past positions
 
-    // Mask out of bounds memory out of the result.
-    mask &= uint32_t { 0xFFFF } << offsetIt;
-    if (it == end)
-      mask &= maskEnd;
+    if (mask != 0) { // Found a character
+      if (++ndIt == ndEnd) // No characters left in the needle...
+        return true; // ...success
+      nd = _mm_set1_epi8(static_cast<char>(toLower(*ndIt))); // Load the next needle character
 
-    // Find the first occurence of the matched character in the haystack.
-    // TODO: Mispredicted branch. Testing more characters at once might improve it.
-    //       What might be worth to try is cramming in some speculative work and
-    //       also checking nit[1]?
-    if (int pos = ffs32(mask); pos != 0) {
-      // Found the character. If this was the last character in the needle, we have our match.
-      if (++nit == nend)
-        return true;
-
-      // Load the next needle character.
-      xmm1 = _mm_set1_epi8(static_cast<char>(toLower(nit[0])));
-
-      // If it wasn't the last byte in the chunk, increment
-      // the offset and match within the same chunk again.
-      if (pos != kWidth) {
-        offsetIt = pos;
-        continue;
-      }
-      // If it was the last byte, load the next chunk of memory.
+      // We *know* there is a bit here somewhere, find its position
+      pos = ffs32(mask) & (kAlign - 1); // Last (16th) position masked out
+      if (pos != 0) // It wasn't the last character in this chunk...
+        continue; // ...try matching this chunk again...
+      // ...otherwise load the next 16 bytes from the haystack
     }
 
-    // No more data in the haystack, no match.
-    if (it == end)
-      return false;
-
-    // Load the next chunk of memory.
-    it += kWidth;
-    xmm0 = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(it)));
-    offsetIt = 0;
+    hsIt += kAlign;
+    if (hsIt == hsEnd) // Nothing left in the haystack, characters still left in the needle...
+      return false; // ...no match
+    hs = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(hsIt))); // Next 16 bytes
+    pos = 0; // Reset current position in the chunk
   }
 }
 #endif

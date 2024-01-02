@@ -3,17 +3,15 @@
 
 #include "fzx/config.hpp"
 #include "fzx/match.hpp"
+#include "fzx/aligned_string.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace fzx;
 
-/// Overallocated std::string
-static inline std::string operator""_s(const char* data, size_t size)
+static inline AlignedString operator""_s(const char* data, size_t size)
 {
-  std::string s { data, size };
-  s.reserve(s.size() + fzx::kOveralloc);
-  return s;
+  return { std::string_view { data, size }};
 }
 
 TEST_CASE("fzx::matchFuzzy")
@@ -45,34 +43,26 @@ TEST_CASE("fzx::matchFuzzy")
     CHECK(matchFuzzy(""sv, "a"_s));
   }
 
-  SECTION("sse") {
-    auto b1 = "abcdefghijklmnop"
-              "qrstuvwx01234567"_s;
+  SECTION("simd") {
+    CHECK(matchFuzzy("p"sv, "abcdefghijklmnop"_s));
+    CHECK(!matchFuzzy("q"sv, "abcdefghijklmnop"_s));
+    CHECK(matchFuzzy("q"sv, "abcdefghijklmnopq"_s));
+    CHECK(!matchFuzzy("r"sv, "abcdefghijklmnopq"_s));
 
-    CHECK(matchFuzzy("p"sv, { b1.data(), 16 }));
-    CHECK(!matchFuzzy("q"sv, { b1.data(), 16 }));
-    CHECK(matchFuzzy("q"sv, { b1.data(), 17 }));
-    CHECK(!matchFuzzy("r"sv, { b1.data(), 17 }));
+    CHECK(matchFuzzy("ep"sv, "abcdefghijklmnop"_s));
+    CHECK(!matchFuzzy("eq"sv, "abcdefghijklmnop"_s));
+    CHECK(matchFuzzy("eq"sv, "abcdefghijklmnopq"_s));
+    CHECK(!matchFuzzy("er"sv, "abcdefghijklmnopq"_s));
 
-    CHECK(matchFuzzy("ep"sv, { b1.data(), 16 }));
-    CHECK(!matchFuzzy("eq"sv, { b1.data(), 16 }));
-    CHECK(matchFuzzy("eq"sv, { b1.data(), 17 }));
-    CHECK(!matchFuzzy("er"sv, { b1.data(), 17 }));
-  }
+    CHECK(matchFuzzy("7"sv, "abcdefghijklmnopqrstuvwx01234567"_s));
+    CHECK(!matchFuzzy("y"sv, "abcdefghijklmnopqrstuvwx01234567"_s));
+    CHECK(matchFuzzy("y"sv, "abcdefghijklmnopqrstuvwx01234567y"_s));
+    CHECK(!matchFuzzy("z"sv, "abcdefghijklmnopqrstuvwx01234567y"_s));
 
-  SECTION("avx") {
-    auto b1 = "abcdefghijklmnop"
-              "qrstuvwx01234567yz"_s;
-
-    CHECK(matchFuzzy("7"sv, { b1.data(), 32 }));
-    CHECK(!matchFuzzy("y"sv, { b1.data(), 32 }));
-    CHECK(matchFuzzy("y"sv, { b1.data(), 33 }));
-    CHECK(!matchFuzzy("z"sv, { b1.data(), 33 }));
-
-    CHECK(matchFuzzy("e7"sv, { b1.data(), 32 }));
-    CHECK(!matchFuzzy("ey"sv, { b1.data(), 32 }));
-    CHECK(matchFuzzy("ey"sv, { b1.data(), 33 }));
-    CHECK(!matchFuzzy("ez"sv, { b1.data(), 33 }));
+    CHECK(matchFuzzy("e7"sv, "abcdefghijklmnopqrstuvwx01234567"_s));
+    CHECK(!matchFuzzy("ey"sv, "abcdefghijklmnopqrstuvwx01234567"_s));
+    CHECK(matchFuzzy("ey"sv, "abcdefghijklmnopqrstuvwx01234567y"_s));
+    CHECK(!matchFuzzy("ez"sv, "abcdefghijklmnopqrstuvwx01234567y"_s));
   }
 }
 

@@ -61,6 +61,7 @@ struct AlignedString
   [[nodiscard]] bool empty() const noexcept { return mPtr == mEnd; }
 
   [[nodiscard]] std::string_view str() const noexcept { return { mPtr, size() }; }
+  operator std::string_view() const noexcept { return { mPtr, size() }; }
 
   [[nodiscard]] const char* begin() const noexcept { return mPtr; }
   [[nodiscard]] const char* end() const noexcept { return mEnd; }

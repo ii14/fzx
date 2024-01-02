@@ -41,6 +41,12 @@ template <size_t N, typename T>
   return (n & (N - 1)) == 0;
 }
 
+template <size_t N>
+[[nodiscard]] bool isAligned(const void* p) noexcept
+{
+  return isMulOf<N>(reinterpret_cast<uintptr_t>(p));
+}
+
 /// Round an integer up to a multiple of N, where N is a power of two
 template <size_t N, typename T>
 [[nodiscard]] constexpr T roundUp(T n) noexcept
