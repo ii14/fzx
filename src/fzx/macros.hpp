@@ -43,7 +43,7 @@
 #if !defined(FZX_OPTIMIZE)
 # define DEBUG_ASSERT(x) ASSERT(x)
 #else
-# define DEBUG_ASSERT(x) UNUSED(x)
+# define DEBUG_ASSERT(x)
 #endif
 
 #if defined(FZX_OPTIMIZE)

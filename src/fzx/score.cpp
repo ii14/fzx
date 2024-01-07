@@ -241,7 +241,7 @@ alignas(32) constexpr Score kGapTable[7] {
 // TODO: variable sized needle
 
 template <size_t N>
-Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
+Score scoreSSE(const AlignedString& needle, std::string_view haystack, int pos) noexcept
 {
   static_assert(N == 4 || N == 8 || N == 12 || N == 16);
 
@@ -252,6 +252,8 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     return kScoreMax;
   }
 
+  DEBUG_ASSERT(pos >= 0 && pos < static_cast<int>(haystack.size()));
+
   const int haystackLen = static_cast<int>(haystack.size());
 
   const auto kZero = _mm_setzero_si128();
@@ -261,8 +263,9 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   const auto kConsecutive = _mm_set1_ps(kScoreMatchConsecutive);
   const auto kGapLeading = _mm_set_ss(kScoreGapLeading);
 
-  uint32_t lastCh = '/';
-  auto g = _mm_set_ss(0); // Leading gap score
+  uint32_t lastCh =
+      pos == 0 ? uint32_t { '/' } : static_cast<uint32_t>(static_cast<uint8_t>(haystack[pos - 1]));
+  auto g = _mm_mul_ss(_mm_set_ss(static_cast<Score>(pos)), kGapLeading); // Leading gap score
   auto nt = simd::toLower(_mm_load_si128(reinterpret_cast<const __m128i*>(needle.data())));
 
   if constexpr (N == 4) {
@@ -271,7 +274,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d = kMin;
     auto m = kMin;
 
-    for (int i = 0; i < haystackLen; ++i) {
+    for (int i = pos; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
@@ -297,7 +300,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d1 = kMin, d2 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin; // NOLINT(readability-isolate-declaration)
 
-    for (int i = 0; i < haystackLen; ++i) {
+    for (int i = pos; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
@@ -331,7 +334,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d1 = kMin, d2 = kMin, d3 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin; // NOLINT(readability-isolate-declaration)
 
-    for (int i = 0; i < haystackLen; ++i) {
+    for (int i = pos; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
@@ -372,7 +375,7 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
     auto d1 = kMin, d2 = kMin, d3 = kMin, d4 = kMin; // NOLINT(readability-isolate-declaration)
     auto m1 = kMin, m2 = kMin, m3 = kMin, m4 = kMin; // NOLINT(readability-isolate-declaration)
 
-    for (int i = 0; i < haystackLen; ++i) {
+    for (int i = pos; i < haystackLen; ++i) {
       uint32_t ch = static_cast<uint8_t>(haystack[i]);
       Score bonus = kBonusStates[kBonusIndex[ch]][lastCh];
       lastCh = ch;
@@ -412,10 +415,18 @@ Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept
   }
 }
 
-template Score scoreSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
-template Score scoreSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
-template Score scoreSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
-template Score scoreSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+template Score scoreSSE<4>(const AlignedString& needle,
+                           std::string_view haystack,
+                           int pos) noexcept;
+template Score scoreSSE<8>(const AlignedString& needle,
+                           std::string_view haystack,
+                           int pos) noexcept;
+template Score scoreSSE<12>(const AlignedString& needle,
+                            std::string_view haystack,
+                            int pos) noexcept;
+template Score scoreSSE<16>(const AlignedString& needle,
+                            std::string_view haystack,
+                            int pos) noexcept;
 
 #endif // defined(FZX_SSE2)
 

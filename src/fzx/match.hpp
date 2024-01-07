@@ -9,7 +9,7 @@
 namespace fzx {
 
 /// Precondition: haystack is aligned to 16 bytes and is padded to 16 bytes with zeros
-bool matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept;
+int matchFuzzy(const AlignedString& needle, std::string_view haystack) noexcept;
 
 bool matchBegin(const AlignedString& needle, std::string_view haystack) noexcept;
 
@@ -18,6 +18,7 @@ bool matchEnd(const AlignedString& needle, std::string_view haystack) noexcept;
 bool matchExact(const AlignedString& needle, std::string_view haystack) noexcept;
 
 bool matchSubstr(const AlignedString& needle, std::string_view haystack) noexcept;
+/// Precondition: matchSubstr(needle, haystack) == true
 int matchSubstrIndex(const AlignedString& needle, std::string_view haystack) noexcept;
 
 } // namespace fzx

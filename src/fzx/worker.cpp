@@ -151,6 +151,8 @@ try {
   const uint8_t kParentIndex = kParentMap[mIndex];
   MergeState mergeState { mIndex, mPool->mWorkers.size() };
 
+  QueryState queryState;
+
   bool published = false;
   // Commit results and notify whoever is responsible for handling them.
   auto publish = [&] {
@@ -214,6 +216,8 @@ wait:
     auto& queue = *job.mQueue;
     const auto& query = *job.mQuery;
     out.mItems.reserve(job.mItems.size());
+    queryState.mOffsets.reserve(query.items().size());
+
     for (;;) {
       // Reserve a chunk of items.
       //
@@ -235,8 +239,8 @@ wait:
       // Match items and calculate scores.
       for (size_t i = start; i < end; ++i) {
         auto item = job.mItems.at(i);
-        if (query.match(item))
-          out.mItems.emplace_back(static_cast<uint32_t>(i), query.score(item));
+        if (query.match(item, queryState))
+          out.mItems.emplace_back(static_cast<uint32_t>(i), query.score(item, queryState));
       }
 
       // Ignore kMerge events from other workers, we don't care about

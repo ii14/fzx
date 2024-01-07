@@ -18,6 +18,12 @@ enum class MatchType : uint8_t {
   kExact, ///< `^foo$`
 };
 
+struct QueryState
+{
+  int mPos { 0 };
+  std::vector<int> mOffsets;
+};
+
 struct Query
 {
   struct Item
@@ -52,8 +58,8 @@ struct Query
   [[nodiscard]] bool empty() const noexcept { return mItems.empty(); }
   [[nodiscard]] const std::vector<Item>& items() const noexcept { return mItems; }
 
-  [[nodiscard]] bool match(std::string_view s) const;
-  [[nodiscard]] Score score(std::string_view s) const;
+  [[nodiscard]] bool match(std::string_view s, QueryState& state) const;
+  [[nodiscard]] Score score(std::string_view s, QueryState& state) const;
   /// Precondition: match(s) == true
   void matchPositions(std::string_view s, std::vector<bool>& positions) const;
 

@@ -61,14 +61,18 @@ Query Query::parse(std::string_view s)
   return q;
 }
 
-bool Query::match(std::string_view s) const
+bool Query::match(std::string_view s, QueryState& state) const
 {
+  state.mOffsets.clear();
   for (const auto& item : mItems) {
     switch (item.mType) {
-    case MatchType::kFuzzy:
-      if (!matchFuzzy(item.mText, s) ^ item.mNot)
+    case MatchType::kFuzzy: {
+      int res = matchFuzzy(item.mText, s);
+      state.mOffsets.push_back(res);
+      if ((res == -1) ^ item.mNot)
         return false;
       break;
+    }
     case MatchType::kSubstr:
       if (!matchSubstr(item.mText, s) ^ item.mNot)
         return false;
@@ -90,8 +94,9 @@ bool Query::match(std::string_view s) const
   return true;
 }
 
-Score Query::score(std::string_view s) const
+Score Query::score(std::string_view s, QueryState& state) const
 {
+  state.mPos = 0;
   Score sum = 0;
   uint32_t div = 0;
 
@@ -100,6 +105,7 @@ Score Query::score(std::string_view s) const
       continue;
     switch (item.mType) {
     case MatchType::kFuzzy:
+      DEBUG_ASSERT(static_cast<size_t>(state.mPos) < state.mOffsets.size());
       switch (item.mText.size()) {
       default:
         sum += fzx::score(item.mText, s);
@@ -111,25 +117,25 @@ Score Query::score(std::string_view s) const
       case 2:
       case 3:
       case 4:
-        sum += fzx::scoreSSE<4>(item.mText, s);
+        sum += fzx::scoreSSE<4>(item.mText, s, state.mOffsets[state.mPos]);
         break;
       case 5:
       case 6:
       case 7:
       case 8:
-        sum += fzx::scoreSSE<8>(item.mText, s);
+        sum += fzx::scoreSSE<8>(item.mText, s, state.mOffsets[state.mPos]);
         break;
       case 9:
       case 10:
       case 11:
       case 12:
-        sum += fzx::scoreSSE<12>(item.mText, s);
+        sum += fzx::scoreSSE<12>(item.mText, s, state.mOffsets[state.mPos]);
         break;
       case 13:
       case 14:
       case 15:
       case 16:
-        sum += fzx::scoreSSE<16>(item.mText, s);
+        sum += fzx::scoreSSE<16>(item.mText, s, state.mOffsets[state.mPos]);
         break;
 #elif defined(FZX_NEON)
       case 2:
@@ -158,6 +164,7 @@ Score Query::score(std::string_view s) const
 #endif
       }
       ++div;
+      ++state.mPos;
       break;
     case MatchType::kSubstr:
     case MatchType::kBegin:
@@ -174,7 +181,7 @@ Score Query::score(std::string_view s) const
 
 void Query::matchPositions(std::string_view s, std::vector<bool>& positions) const
 {
-  DEBUG_ASSERT(match(s));
+  // DEBUG_ASSERT(match(s));
   positions.clear();
   positions.resize(s.size());
   for (const auto& item : mItems) {

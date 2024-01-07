@@ -66,11 +66,19 @@ Score score1(const AlignedString& needle, std::string_view haystack) noexcept;
 
 #if defined(FZX_SSE2)
 template <size_t N>
-Score scoreSSE(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score scoreSSE<4>(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score scoreSSE<8>(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score scoreSSE<12>(const AlignedString& needle, std::string_view haystack) noexcept;
-extern template Score scoreSSE<16>(const AlignedString& needle, std::string_view haystack) noexcept;
+Score scoreSSE(const AlignedString& needle, std::string_view haystack, int pos = 0) noexcept;
+extern template Score scoreSSE<4>(const AlignedString& needle,
+                                  std::string_view haystack,
+                                  int pos) noexcept;
+extern template Score scoreSSE<8>(const AlignedString& needle,
+                                  std::string_view haystack,
+                                  int pos) noexcept;
+extern template Score scoreSSE<12>(const AlignedString& needle,
+                                   std::string_view haystack,
+                                   int pos) noexcept;
+extern template Score scoreSSE<16>(const AlignedString& needle,
+                                   std::string_view haystack,
+                                   int pos) noexcept;
 #endif // defined(FZX_SSE2)
 
 #if defined(FZX_NEON)

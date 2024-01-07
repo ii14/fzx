@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <cmath>
 
 #include "fzx/config.hpp"
 #include "fzx/score.hpp"
@@ -19,95 +20,127 @@ static inline std::string operator""_s(const char* data, size_t size)
 
 TEST_CASE("fzx::score", "[score]")
 {
+  auto f = [](const AlignedString& needle, const AlignedString& haystack) -> Score {
+    switch (needle.size()) {
+    case 1:
+      return score1(needle, haystack);
+#if defined(FZX_SSE2)
+      // clang-format off
+    case 2: case 3: case 4:
+      return scoreSSE<4>(needle, haystack);
+    case 5: case 6: case 7: case 8:
+      return scoreSSE<8>(needle, haystack);
+    case 9: case 10: case 11: case 12:
+      return scoreSSE<12>(needle, haystack);
+    case 13: case 14: case 15: case 16:
+      return scoreSSE<16>(needle, haystack);
+      // clang-format on
+#elif defined(FZX_NEON)
+      // clang-format off
+    case 2: case 3: case 4:
+      return scoreNeon<4>(needle, haystack);
+    case 5: case 6: case 7: case 8:
+      return scoreNeon<8>(needle, haystack);
+    case 9: case 10: case 11: case 12:
+      return scoreNeon<12>(needle, haystack);
+    case 13: case 14: case 15: case 16:
+      return scoreNeon<16>(needle, haystack);
+      // clang-format on
+#endif
+    default:
+      return score(needle, haystack);
+    }
+  };
+
   SECTION("should prefer starts of words") {
     // App/Models/Order is better than App/MOdels/zRder
-    CHECK(score("amor"sv, "app/models/order"_s) > score("amor"sv, "app/models/zrder"_s));
+    CHECK(f("amor"sv, "app/models/order"sv) > f("amor"sv, "app/models/zrder"sv));
   }
 
   SECTION("should prefer consecutive letters") {
     // App/MOdels/foo is better than App/M/fOo
-    CHECK(score("amo"sv, "app/m/foo"_s) < score("amo"sv, "app/models/foo"_s));
+    CHECK(f("amo"sv, "app/m/foo"sv) < f("amo"sv, "app/models/foo"sv));
   }
 
   SECTION("should prefer contiguous over letter following period") {
     // GEMFIle.Lock < GEMFILe
-    CHECK(score("gemfil"sv, "Gemfile.lock"_s) < score("gemfil"sv, "Gemfile"_s));
+    CHECK(f("gemfil"sv, "Gemfile.lock"sv) < f("gemfil"sv, "Gemfile"sv));
   }
 
   SECTION("should prefer shorter matches") {
-    CHECK(score("abce"sv, "abcdef"_s) > score("abce"sv, "abc de"_s));
-    CHECK(score("abc"sv, "    a b c "_s) > score("abc"sv, " a  b  c "_s));
-    CHECK(score("abc"sv, " a b c    "_s) > score("abc"sv, " a  b  c "_s));
+    CHECK(f("abce"sv, "abcdef"sv) > f("abce"sv, "abc de"sv));
+    CHECK(f("abc"sv, "    a b c "sv) > f("abc"sv, " a  b  c "sv));
+    CHECK(f("abc"sv, " a b c    "sv) > f("abc"sv, " a  b  c "sv));
   }
 
   SECTION("should prefer shorter candidates") {
-    CHECK(score("test"sv, "tests"_s) > score("test"sv, "testing"_s));
+    CHECK(f("test"sv, "tests"sv) > f("test"sv, "testing"sv));
   }
 
   SECTION("should prefer start of candidate") {
     // Scores first letter highly
-    CHECK(score("test"sv, "testing"_s) > score("test"sv, "/testing"_s));
+    CHECK(f("test"sv, "testing"sv) > f("test"sv, "/testing"sv));
   }
 
   SECTION("score exact match") {
     // Exact match is kScoreMax
-    CHECK(Approx(kScoreMax) == score("abc"sv, "abc"_s));
-    CHECK(Approx(kScoreMax) == score("aBc"sv, "abC"_s));
+    CHECK(Approx(kScoreMax) == f("abc"sv, "abc"sv));
+    CHECK(Approx(kScoreMax) == f("aBc"sv, "abC"sv));
   }
 
   SECTION("score empty query") {
     // Empty query always results in kScoreMin
-    CHECK(Approx(kScoreMin) == score(""sv, ""_s));
-    CHECK(Approx(kScoreMin) == score(""sv, "a"_s));
-    CHECK(Approx(kScoreMin) == score(""sv, "bb"_s));
+    CHECK(Approx(kScoreMin) == f(""sv, ""sv));
+    CHECK(Approx(kScoreMin) == f(""sv, "a"sv));
+    CHECK(Approx(kScoreMin) == f(""sv, "bb"sv));
   }
 
   SECTION("score gaps") {
-    CHECK(Approx(kScoreGapLeading) == score("a"sv, "*a"_s));
-    CHECK(Approx(kScoreGapLeading * 2) == score("a"sv, "*ba"_s));
-    CHECK(Approx(kScoreGapLeading * 2 + kScoreGapTrailing) == score("a"sv, "**a*"_s));
-    CHECK(Approx(kScoreGapLeading * 2 + kScoreGapTrailing * 2) == score("a"sv, "**a**"_s));
+    CHECK(Approx(kScoreGapLeading) == f("a"sv, "*a"sv));
+    CHECK(Approx(kScoreGapLeading * 2) == f("a"sv, "*ba"sv));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreGapTrailing) == f("a"sv, "**a*"sv));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreGapTrailing * 2) == f("a"sv, "**a**"sv));
     CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchConsecutive + kScoreGapTrailing * 2)
-          == score("aa"sv, "**aa**"_s));
+          == f("aa"sv, "**aa**"sv));
     CHECK(Approx(kScoreGapLeading + kScoreGapLeading + kScoreGapInner + kScoreGapTrailing
                  + kScoreGapTrailing)
-          == score("aa"sv, "**a*a**"_s));
+          == f("aa"sv, "**a*a**"sv));
   }
 
   SECTION("score consecutive") {
-    CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive) == score("aa"sv, "*aa"_s));
-    CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive * 2) == score("aaa"sv, "*aaa"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive) == f("aa"sv, "*aa"sv));
+    CHECK(Approx(kScoreGapLeading + kScoreMatchConsecutive * 2) == f("aaa"sv, "*aaa"sv));
     CHECK(Approx(kScoreGapLeading + kScoreGapInner + kScoreMatchConsecutive)
-          == score("aaa"sv, "*a*aa"_s));
+          == f("aaa"sv, "*a*aa"sv));
   }
 
   SECTION("score slash") {
-    CHECK(Approx(kScoreGapLeading + kScoreMatchSlash) == score("a"sv, "/a"_s));
-    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchSlash) == score("a"sv, "*/a"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreMatchSlash) == f("a"sv, "/a"sv));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchSlash) == f("a"sv, "*/a"sv));
     CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchSlash + kScoreMatchConsecutive)
-          == score("aa"sv, "a/aa"_s));
+          == f("aa"sv, "a/aa"sv));
   }
 
   SECTION("score capital") {
-    CHECK(Approx(kScoreGapLeading + kScoreMatchCapital) == score("a"sv, "bA"_s));
-    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchCapital) == score("a"sv, "baA"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreMatchCapital) == f("a"sv, "bA"sv));
+    CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchCapital) == f("a"sv, "baA"sv));
     CHECK(Approx(kScoreGapLeading * 2 + kScoreMatchCapital + kScoreMatchConsecutive)
-          == score("aa"sv, "baAa"_s));
+          == f("aa"sv, "baAa"sv));
   }
 
   SECTION("score dot") {
-    CHECK(Approx(kScoreGapLeading + kScoreMatchDot) == score("a"sv, ".a"_s));
-    CHECK(Approx(kScoreGapLeading * 3 + kScoreMatchDot) == score("a"sv, "*a.a"_s));
-    CHECK(Approx(kScoreGapLeading + kScoreGapInner + kScoreMatchDot) == score("a"sv, "*a.a"_s));
+    CHECK(Approx(kScoreGapLeading + kScoreMatchDot) == f("a"sv, ".a"sv));
+    CHECK(Approx(kScoreGapLeading * 3 + kScoreMatchDot) == f("a"sv, "*a.a"sv));
+    CHECK(Approx(kScoreGapLeading + kScoreGapInner + kScoreMatchDot) == f("a"sv, "*a.a"sv));
   }
 
   SECTION("score long string") {
     char buf[4096] {};
     memset(buf, 'a', std::size(buf) - 1);
     std::string_view str { buf, std::size(buf) - 1 };
-    CHECK(Approx(kScoreMin) == score("aa"sv, str));
-    CHECK(Approx(kScoreMin) == score(str, "aa"_s));
-    CHECK(Approx(kScoreMin) == score(str, str));
+    CHECK(Approx(kScoreMin) == f("aa"sv, str));
+    CHECK(Approx(kScoreMin) == f(str, "aa"sv));
+    CHECK(Approx(kScoreMin) == f(str, str));
   }
 
   SECTION("positions consecutive") {
