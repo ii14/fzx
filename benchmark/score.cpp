@@ -10,14 +10,14 @@
 #include "fzx/helper/line_scanner.hpp"
 #include "fzx/match.hpp"
 #include "fzx/score.hpp"
+#include "fzx/items.hpp"
 
 #include "common.hpp"
 
 using namespace std::string_view_literals;
 
-static std::vector<char> gStrings;
-static std::vector<std::string_view> gItems;
 static fzx::AlignedString gQuery;
+static fzx::Items gItems;
 
 // NOLINTNEXTLINE(readability-identifier-naming)
 static void BM_fzy(benchmark::State& s)
@@ -25,7 +25,8 @@ static void BM_fzy(benchmark::State& s)
   const std::string_view query { gQuery.str() };
 
   for ([[maybe_unused]] auto _ : s) {
-    for (const auto& item : gItems) {
+    for (size_t i = 0; i < gItems.size(); ++i) {
+      auto item = gItems.at(i);
       if (fzx::matchFuzzy(query, item)) {
         auto res = fzx::score(query, item);
         benchmark::DoNotOptimize(res);
@@ -33,7 +34,7 @@ static void BM_fzy(benchmark::State& s)
     }
   }
 
-  s.SetBytesProcessed(static_cast<int64_t>(gStrings.size()) * s.iterations());
+  // s.SetBytesProcessed(static_cast<int64_t>(gStrings.size()) * s.iterations());
   s.SetItemsProcessed(static_cast<int64_t>(gItems.size()) * s.iterations());
 }
 
@@ -49,8 +50,7 @@ static void readStdin()
   char buf[4096];
 
   auto push = [&](std::string_view s) {
-    ranges.push_back({ gStrings.size(), s.size() });
-    gStrings.insert(gStrings.end(), s.begin(), s.end());
+    gItems.push(s);
   };
 
   fprintf(stderr, "reading stdin... ");
@@ -64,14 +64,6 @@ static void readStdin()
     }
   }
   fprintf(stderr, "done\n");
-
-  // overallocate 64 bytes, so reading out of bounds with simd doesn't segfault
-  gStrings.reserve(gStrings.size() + 64);
-
-  const auto* data = gStrings.data();
-  for (auto range : ranges) {
-    gItems.emplace_back(data + range.mOffset, range.mLength);
-  }
 }
 
 int main(int argc, char** argv)
@@ -98,13 +90,13 @@ int main(int argc, char** argv)
     return 1;
   }
   readStdin();
-  if (gItems.empty()) {
+  if (gItems.size() == 0) {
     noDataError();
     return 1;
   }
 
   fprintf(stderr, "Input items: %zu\n", gItems.size() - 64);
-  fprintf(stderr, "Input bytes: %zu\n", gStrings.size());
+  // fprintf(stderr, "Input bytes: %zu\n", gStrings.size());
 
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();

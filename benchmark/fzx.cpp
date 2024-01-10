@@ -119,6 +119,8 @@ int main(int argc, char** argv)
     fprintf(stderr, "  bytes: %zu\n", bytes);
   }
 
+  size_t matched = -1;
+
   auto benchmark = [&] {
     std::unique_lock lock { gMutex };
 
@@ -132,6 +134,10 @@ int main(int argc, char** argv)
     ASSERT(gFzx.setQuery(query));
     while (!gFzx.synchronized())
       gCv.wait(lock);
+    if (matched != static_cast<size_t>(-1)) {
+      ASSERT(matched == gFzx.resultsSize());
+    }
+    matched = gFzx.resultsSize();
     gGatherSample = false;
   };
 
@@ -163,6 +169,7 @@ int main(int argc, char** argv)
       fprintf(stderr, "%7s: %zu.%03zu ms\n", what, ms, us);
     };
 
+    fprintf(stderr, "matched: %zu\n", matched);
     print("min", min);
     print("max", max);
     print("mean", static_cast<size_t>(acc / static_cast<double>(gSamples.size())));
