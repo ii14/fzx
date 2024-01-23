@@ -126,5 +126,7 @@ int main(int argc, char** argv)
     } else {
       app.printSelection();
     }
+  } else {
+    return 1;
   }
 }
