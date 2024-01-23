@@ -76,8 +76,8 @@ struct Theme
 {
   Color mDefaultFg, mDefaultBg, mPromptFg, mPromptBg, mMatchFg, mCursorFg, mCursorBg;
   constexpr Theme()
-    : mDefaultFg(Color("#ffffff"))
-    , mDefaultBg(Color("#000000"))
+    : mDefaultFg(TermColorCode::Default)
+    , mDefaultBg(TermColorCode::Default)
     , mPromptFg(Color("#b6a0ff"))
     , mPromptBg(Color("#2f0c3f"))
     , mMatchFg(Color("#00bcff"))
